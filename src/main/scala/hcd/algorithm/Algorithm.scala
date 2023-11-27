@@ -19,22 +19,21 @@ object Algorithm {
     studentWorkshopSelections.view.mapValues(selectedWorkshopsFromWorkshopSelection(workshops)).toMap
 
   // empty selected workshops => false
-  protected[algorithm] def haveDistinctChoiceIds(selectedWorkshops: SelectedWorkshops): Boolean =
+  private def haveDistinctField(selectedWorkshops: SelectedWorkshops, extractor: SelectedWorkshop => Any): Boolean =
     selectedWorkshops.nonEmpty &&
       selectedWorkshops
         .values
-        .groupBy(_.choiceId)
+        .groupBy(extractor)
         .values
         .forall(_.size == 1)
 
   // empty selected workshops => false
+  protected[algorithm] def haveDistinctChoiceIds(selectedWorkshops: SelectedWorkshops): Boolean =
+    haveDistinctField(selectedWorkshops, _.choiceId)
+
+  // empty selected workshops => false
   protected[algorithm] def haveDistinctTimeslots(selectedWorkshops: SelectedWorkshops): Boolean =
-    selectedWorkshops.nonEmpty &&
-      selectedWorkshops
-        .values
-        .groupBy(_.timeSlot)
-        .values
-        .forall(_.size == 1)
+    haveDistinctField(selectedWorkshops, _.timeSlot)
 
   protected[algorithm] def possibleWorkshopCombinations(n: Int)(selectedWorkshops: SelectedWorkshops): Seq[PossibleWorkshops] =
     selectedWorkshops
