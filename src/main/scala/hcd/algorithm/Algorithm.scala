@@ -22,7 +22,7 @@ object Algorithm {
       .toMap
 
   // empty selected workshops => false
-  private def haveDistinctField(selectedWorkshops: SelectedWorkshops, extractor: SelectedWorkshop => Any): Boolean =
+  private def haveDistinctField(extractor: SelectedWorkshop => Any)(selectedWorkshops: SelectedWorkshops): Boolean =
     selectedWorkshops.nonEmpty &&
       selectedWorkshops
         .values
@@ -31,12 +31,10 @@ object Algorithm {
         .forall(_.size == 1)
 
   // empty selected workshops => false
-  protected[algorithm] def haveDistinctChoiceIds(selectedWorkshops: SelectedWorkshops): Boolean =
-    haveDistinctField(selectedWorkshops, _.choiceId)
+  protected[algorithm] def haveDistinctChoiceIds: SelectedWorkshops => Boolean = haveDistinctField(_.choiceId)
 
   // empty selected workshops => false
-  protected[algorithm] def haveDistinctTimeslots(selectedWorkshops: SelectedWorkshops): Boolean =
-    haveDistinctField(selectedWorkshops, _.timeSlot)
+  protected[algorithm] def haveDistinctTimeslots: SelectedWorkshops => Boolean = haveDistinctField(_.timeSlot)
 
   protected[algorithm] def possibleWorkshopCombinations(n: Int)(selectedWorkshops: SelectedWorkshops): Set[PossibleWorkshops] =
     selectedWorkshops
