@@ -8,15 +8,22 @@ object Algorithm {
   protected[algorithm] def workshopsFromWorkshopChoiceId(workshops: Workshops)(choiceId: WorkshopChoiceId): Workshops =
     workshops.collect { case (wsId, ws@Workshop(_, `choiceId`, _, _)) => (wsId, ws) }
 
+  // If a selection is not contained in the workshops, it is ignored.
   protected[algorithm] def selectedWorkshopsFromWorkshopSelection(workshops: Workshops)(workshopSelection: WorkshopSelection): SelectedWorkshops =
-    workshopSelection.toMap.flatMap { case (selectionPriority, choiceId) =>
-      workshops.collect { case (workshopId, Workshop(category, `choiceId`, timeSlot, _)) =>
-        (workshopId, SelectedWorkshop(category, choiceId, timeSlot, selectionPriority))
+    workshopSelection
+      .toMap
+      .flatMap { case (selectionPriority, choiceId) =>
+        workshops.collect { case (workshopId, Workshop(category, `choiceId`, timeSlot, _)) =>
+          (workshopId, SelectedWorkshop(category, choiceId, timeSlot, selectionPriority))
+        }
       }
-    }
 
+  // If a selection is not contained in the workshops, it is ignored.
   protected[algorithm] def studentsSelectedWorkshopsFromStudentWorkshopSelections(workshops: Workshops)(studentWorkshopSelections: StudentWorkshopSelections): Map[StudentId, SelectedWorkshops] =
-    studentWorkshopSelections.view.mapValues(selectedWorkshopsFromWorkshopSelection(workshops)).toMap
+    studentWorkshopSelections
+      .view
+      .mapValues(selectedWorkshopsFromWorkshopSelection(workshops))
+      .toMap
 
   // empty selected workshops => false
   private def haveDistinctField(selectedWorkshops: SelectedWorkshops, extractor: SelectedWorkshop => Any): Boolean =
@@ -42,9 +49,9 @@ object Algorithm {
       .map(_.toMap)
       .filter(haveDistinctChoiceIds)
       .filter(haveDistinctTimeslots)
-      .map(_.map {
-        case (workshopId, SelectedWorkshop(category, _, _, selectionPriority)) => (workshopId, PossibleWorkshop(category, selectionPriority))
-      })
+      .map(_.view.mapValues { case SelectedWorkshop(category, _, _, selectionPriority) =>
+        PossibleWorkshop(category, selectionPriority)
+      }.toMap)
       .toSeq
 
 }
