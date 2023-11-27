@@ -38,7 +38,7 @@ object Algorithm {
   protected[algorithm] def haveDistinctTimeslots(selectedWorkshops: SelectedWorkshops): Boolean =
     haveDistinctField(selectedWorkshops, _.timeSlot)
 
-  protected[algorithm] def possibleWorkshopCombinations(n: Int)(selectedWorkshops: SelectedWorkshops): Seq[PossibleWorkshops] =
+  protected[algorithm] def possibleWorkshopCombinations(n: Int)(selectedWorkshops: SelectedWorkshops): Set[PossibleWorkshops] =
     selectedWorkshops
       .toSeq
       .combinations(n)
@@ -48,6 +48,12 @@ object Algorithm {
       .map(_.view.mapValues { case SelectedWorkshop(category, _, _, selectionPriority) =>
         PossibleWorkshop(category, selectionPriority)
       }.toMap)
-      .toSeq
+      .toSet // adding here and not after .combinations, as else we would need to give specific type, else .toMap complains
+
+  protected[algorithm] def possibleWorkshopCombinations(workshops: Workshops, n: Int)(studentWorkshopSelections: StudentWorkshopSelections): Map[StudentId, Set[PossibleWorkshops]] =
+    studentsSelectedWorkshopsFromStudentWorkshopSelections(workshops)(studentWorkshopSelections)
+      .view
+      .mapValues(possibleWorkshopCombinations(n))
+      .toMap
 
 }
