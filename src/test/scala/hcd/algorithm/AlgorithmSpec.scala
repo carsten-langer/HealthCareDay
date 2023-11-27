@@ -147,12 +147,13 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val expectedWorkshops1 = f.selectedWorkshopsFrom(Map(7 -> Set(42, 43, 44), 9 -> Set(54, 55, 56), 5 -> Set(30, 31, 32)))
       val expectedWorkshops2 = f.selectedWorkshopsFrom(Map(6 -> Set(9, 10, 11), 2 -> Set(3, 4, 5), 4 -> Set(6, 7, 8)))
       val expectedWorkshops3: SelectedWorkshops = Map.empty
-
-      fut(studentWorkshopSelections) should contain theSameElementsAs Map(
+      val expectedStudentSelectedWorkshops = Map(
         student1 -> expectedWorkshops1,
         student2 -> expectedWorkshops2,
         student3 -> expectedWorkshops3,
       )
+
+      fut(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
     }
 
     "filter SelectedWorkshops via haveDistinctChoiceIds" in {
