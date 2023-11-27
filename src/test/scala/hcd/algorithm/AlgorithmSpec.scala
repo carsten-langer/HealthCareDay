@@ -196,7 +196,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val f = fixtureSymmetricWorkshopsNoSeatsLimit(3)
 
       val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(6, 7, 8)))
-      val expectedCombinations1 = Seq(
+      val expectedCombinations1 = Set(
         f.possibleWorkshopsFrom(Set(1 -> 0)),
         f.possibleWorkshopsFrom(Set(1 -> 1)),
         f.possibleWorkshopsFrom(Set(1 -> 2)),
@@ -207,7 +207,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         f.possibleWorkshopsFrom(Set(3 -> 7)),
         f.possibleWorkshopsFrom(Set(3 -> 8)),
       )
-      val expectedCombinations2 = Seq(
+      val expectedCombinations2 = Set(
         f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4)),
         f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5)),
         f.possibleWorkshopsFrom(Set(1 -> 0, 3 -> 7)),
@@ -227,7 +227,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 6)),
         f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 7)),
       )
-      val expectedCombinations3 = Seq(
+      val expectedCombinations3 = Set(
         f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 8)),
         f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 7)),
         f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 8)),
@@ -241,6 +241,49 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       possibleWorkshopCombinations(2)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
       possibleWorkshopCombinations(3)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
       possibleWorkshopCombinations(4)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
+    }
+
+    "generate all possible combinations of workshops for students from given Workshops, the number of to-be-taken workshops N and the StudentWorkshopSelections" in {
+      val f = fixtureSymmetricWorkshopsNoSeatsLimit(6)
+
+      val n = 3
+      val student1 = StudentId(11)
+      val student2 = StudentId(12)
+      val studentWorkshopSelections = Map(
+        student1 -> BiMap(
+          SelectionPriority(1) -> WorkshopChoiceId(0),
+          SelectionPriority(2) -> WorkshopChoiceId(1),
+          SelectionPriority(3) -> WorkshopChoiceId(2),
+        ),
+        student2 -> BiMap(
+          SelectionPriority(6) -> WorkshopChoiceId(1),
+          SelectionPriority(5) -> WorkshopChoiceId(3),
+          SelectionPriority(4) -> WorkshopChoiceId(5),
+        ),
+      )
+
+      val expectedCombinations1 = Set(
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 8)),
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 7)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 8)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5, 3 -> 6)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3, 3 -> 7)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4, 3 -> 6)),
+      )
+      val expectedCombinations2 = Set(
+        f.possibleWorkshopsFrom(Set(6 -> 3, 5 -> 10, 4 -> 17)),
+        f.possibleWorkshopsFrom(Set(6 -> 3, 5 -> 11, 4 -> 16)),
+        f.possibleWorkshopsFrom(Set(6 -> 4, 5 -> 9, 4 -> 17)),
+        f.possibleWorkshopsFrom(Set(6 -> 4, 5 -> 11, 4 -> 15)),
+        f.possibleWorkshopsFrom(Set(6 -> 5, 5 -> 9, 4 -> 16)),
+        f.possibleWorkshopsFrom(Set(6 -> 5, 5 -> 10, 4 -> 15)),
+      )
+      val expectedStudentSelectedWorkshops = Map(
+        student1 -> expectedCombinations1,
+        student2 -> expectedCombinations2,
+      )
+
+      possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
     }
 
   }
