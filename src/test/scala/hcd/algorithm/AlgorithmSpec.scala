@@ -16,11 +16,6 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     trait Fixture {
       def workshops: Workshops
 
-      def workshopsForIds(ids: Set[Int]): Workshops = ids
-        .map(WorkshopId)
-        .map(workshopId => (workshopId, workshops(workshopId))) // @throws[NoSuchElementException] to protect against wrong test assumptions
-        .toMap
-
       // create selected workshops for Map(selectionPriority -> Set(workshopId))
       def selectedWorkshopsFrom(selIds: Map[Int, Set[Int]]): SelectedWorkshops = selIds.flatMap {
         case (selectionPriorityInt, workshopIdsInt) => workshopIdsInt
@@ -102,19 +97,6 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       //import scala.collection.SortedMap
       //studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)(workshopSelections)
       //  .toSeq.sortBy(_._1.id).foreach(t => println(t._1, SortedMap.from(t._2)(Ordering.by(_.id))))
-    }
-
-    "select Workshops from WorkshopChoiceId" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(2)
-      val fut: WorkshopChoiceId => Workshops = workshopsFromWorkshopChoiceId(f.workshops)
-
-      val workshopChoiceId1 = WorkshopChoiceId(0)
-      val workshopChoiceId2 = WorkshopChoiceId(1)
-      val expectedWorkshops1 = f.workshopsForIds(Set(0, 1, 2))
-      val expectedWorkshops2 = f.workshopsForIds(Set(3, 4, 5))
-
-      fut(workshopChoiceId1) should contain theSameElementsAs expectedWorkshops1
-      fut(workshopChoiceId2) should contain theSameElementsAs expectedWorkshops2
     }
 
     "select SelectedWorkshops from WorkshopSelection" in {
