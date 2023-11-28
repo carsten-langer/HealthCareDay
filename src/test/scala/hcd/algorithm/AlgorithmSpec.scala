@@ -35,7 +35,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       }.toMap
     }
 
-    def fixtureSymmetricWorkshopsNoSeatsLimit(noWorkshopChoices: Int): Fixture = new Fixture {
+    def fixtureSymmetricWorkshopsFor(noWorkshopChoices: Int, noSeats: Int): Fixture = new Fixture {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
       private val categories = Seq(Health, Relaxation, Sports)
@@ -53,16 +53,20 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           categories(workshopId.id / 3 % 3), // categories alter h,h,h, r,r,r, s,s,s, h,h,h, ...
           WorkshopChoiceId(workshopId.id / 3), // choiceIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
           timeSlots(workshopId.id % 3), // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
-          seats = Int.MaxValue
+          noSeats
         ))
       ).toMap
     }
+
+    def fixtureSymmetricWorkshops(noWorkshopChoices: Int): Fixture =
+      fixtureSymmetricWorkshopsFor(noWorkshopChoices, 20)
 
     def fixtureFullDataModel = new {
       // Inputs for model size
       private val noWorkshopChoices = 50
       private val noStudents = 1000
       private val noSelectionsPerStudent = 6
+      private val noSeats = 20
 
       // Generate all IDs
       lazy val workshopChoiceIds: Set[WorkshopChoiceId] = Range(0, noWorkshopChoices).toSet.map(WorkshopChoiceId)
@@ -70,15 +74,15 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 
       // Generate symmetric workshops with no seats limit
-      val workshops: Workshops = fixtureSymmetricWorkshopsNoSeatsLimit(noWorkshopChoices).workshops
+      val workshops: Workshops = fixtureSymmetricWorkshopsFor(noWorkshopChoices, noSeats).workshops
     }
 
     "build test data correctly and optionally print it" in {
       val f = fixtureFullDataModel
 
-      f.workshops(WorkshopId(0)) shouldEqual Workshop(Health, WorkshopChoiceId(0), FirstTimeSlot, Int.MaxValue)
-      f.workshops(WorkshopId(4)) shouldEqual Workshop(Relaxation, WorkshopChoiceId(1), SecondTimeSlot, Int.MaxValue)
-      f.workshops(WorkshopId(8)) shouldEqual Workshop(Sports, WorkshopChoiceId(2), ThirdTimeSlot, Int.MaxValue)
+      f.workshops(WorkshopId(0)) shouldEqual Workshop(Health, WorkshopChoiceId(0), FirstTimeSlot, 20)
+      f.workshops(WorkshopId(4)) shouldEqual Workshop(Relaxation, WorkshopChoiceId(1), SecondTimeSlot, 20)
+      f.workshops(WorkshopId(8)) shouldEqual Workshop(Sports, WorkshopChoiceId(2), ThirdTimeSlot, 20)
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
@@ -109,7 +113,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "select SelectedWorkshops from WorkshopSelection" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(4)
+      val f = fixtureSymmetricWorkshops(4)
       val fut: WorkshopSelection => SelectedWorkshops = selectedWorkshopsFromWorkshopSelection(f.workshops)
 
       val workshopSelection1 = BiMap(
@@ -132,7 +136,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "select SelectedWorkshops per student from StudentWorkshopSelections" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(19)
+      val f = fixtureSymmetricWorkshops(19)
       val fut: StudentWorkshopSelections => Map[StudentId, SelectedWorkshops] = studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)
 
       val student1 = StudentId(5)
@@ -166,7 +170,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter SelectedWorkshops via haveDistinctChoiceIds" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(2)
+      val f = fixtureSymmetricWorkshops(2)
 
       val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1)))
       val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(2 -> Set(0, 2, 3)))
@@ -182,7 +186,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter SelectedWorkshops via haveDistinctTimeslots" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(3)
+      val f = fixtureSymmetricWorkshops(3)
 
       val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5)))
       val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(3 -> Set(0, 1), 4 -> Set(5), 5 -> Set(7)))
@@ -202,7 +206,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "select from a selection of Workshops all possible combinations of N workshops with regards to choiceId and timeslots" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(3)
+      val f = fixtureSymmetricWorkshops(3)
 
       val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(6, 7, 8)))
       val expectedCombinations1 = Set(
@@ -253,7 +257,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "generate all possible combinations of workshops for students from given Workshops, the number of to-be-taken workshops N and the StudentWorkshopSelections" in {
-      val f = fixtureSymmetricWorkshopsNoSeatsLimit(6)
+      val f = fixtureSymmetricWorkshops(6)
 
       val n = 3
       val student1 = StudentId(11)
@@ -298,7 +302,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     "provide a method to distribute students to workshops" which {
 
       "yields an empty distribution if no selections were made" in {
-        val f = fixtureSymmetricWorkshopsNoSeatsLimit(1)
+        val f = fixtureSymmetricWorkshops(1)
 
         val n = 3
         val studentWorkshopSelections: StudentWorkshopSelections = Map.empty
@@ -309,7 +313,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       }
 
       "yields a valid distribution for a single student" in {
-        val f = fixtureSymmetricWorkshopsNoSeatsLimit(4)
+        val f = fixtureSymmetricWorkshops(4)
 
         val n = 3
         val student1 = StudentId(1)
