@@ -58,4 +58,7 @@ package object models {
 
   /** A subset of workshops with only the attributes relevant to the algorithm to find the perfect distribution. */
   type PossibleWorkshops = Map[WorkshopId, PossibleWorkshop]
+
+  /** The assignments of students to a workshop. */
+  type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
 }
