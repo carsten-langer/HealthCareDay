@@ -6,6 +6,7 @@ import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import scala.annotation.unused
 import scala.util.Random
 
 class AlgorithmSpec extends AnyWordSpec with Matchers {
@@ -84,20 +85,20 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
 
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
-      lazy val workshopSelections: StudentWorkshopSelections = f.studentIds.map(
+      lazy val studentWorkshopSelections: StudentWorkshopSelections = f.studentIds.map(
         (_, BiMap.from(f.selectionPriorities.zip(Random.shuffle(f.workshopChoiceIds.toSeq))))
       ).toMap
 
       // print workshop selections ordered by student id
-      //workshopSelections.toSeq.sortBy(_._1.id).foreach(println)
+      //studentWorkshopSelections.toSeq.sortBy(_._1.id).foreach(println)
 
       // print studentsSelectedWorkshopsFromStudentWorkshopSelections for full model
-      //import scala.collection.SortedMap
-      //studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)(workshopSelections)
-      //  .toSeq.sortBy(_._1.id).foreach(t => println(t._1, SortedMap.from(t._2)(Ordering.by(_.id))))
+      @unused // may be unused, depending on whether the model is printed out our not
+      lazy val studentsSelectedWorkshops = studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)(studentWorkshopSelections)
+      //studentsSelectedWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
 
       // print studentsPossibleWorkshops for full model
-      lazy val studentsPossibleWorkshops = possibleWorkshopCombinations(f.workshops, 3)(workshopSelections)
+      lazy val studentsPossibleWorkshops = possibleWorkshopCombinations(f.workshops, 3)(studentWorkshopSelections)
       //println(studentsPossibleWorkshops)
 
       // print distributeStudentsToWorkshops for full model
