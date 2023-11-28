@@ -6,7 +6,6 @@ import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import scala.annotation.unused
 import scala.util.Random
 
 class AlgorithmSpec extends AnyWordSpec with Matchers {
@@ -85,7 +84,6 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
 
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
-      @unused // may be unused, depending on whether the model is printed out our not
       lazy val workshopSelections: StudentWorkshopSelections = f.studentIds.map(
         (_, BiMap.from(f.selectionPriorities.zip(Random.shuffle(f.workshopChoiceIds.toSeq))))
       ).toMap
@@ -97,6 +95,16 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       //import scala.collection.SortedMap
       //studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)(workshopSelections)
       //  .toSeq.sortBy(_._1.id).foreach(t => println(t._1, SortedMap.from(t._2)(Ordering.by(_.id))))
+
+      // print studentsPossibleWorkshops for full model
+      lazy val studentsPossibleWorkshops = possibleWorkshopCombinations(f.workshops, 3)(workshopSelections)
+      //println(studentsPossibleWorkshops)
+
+      // print distributeStudentsToWorkshops for full model
+      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops)(studentsPossibleWorkshops)
+      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
+        println(workshopAssignments, metric)
+
     }
 
     "select SelectedWorkshops from WorkshopSelection" in {
@@ -284,6 +292,47 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       )
 
       possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
+    }
+
+    "provide a method to distribute students to workshops" which {
+
+      "yields an empty distribution if no selections were made" in {
+        val f = fixtureSymmetricWorkshopsNoSeatsLimit(1)
+
+        val n = 3
+        val studentWorkshopSelections: StudentWorkshopSelections = Map.empty
+        val studentPossibleWorkshops = possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections)
+        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, 0)
+
+        distributeStudentsToWorkshops(f.workshops)(studentPossibleWorkshops) shouldEqual expectedDistribution
+      }
+
+      "yields a valid distribution for a single student" in {
+        val f = fixtureSymmetricWorkshopsNoSeatsLimit(4)
+
+        val n = 3
+        val student1 = StudentId(1)
+        val studentWorkshopSelections: StudentWorkshopSelections = Map(
+          student1 -> BiMap(
+            SelectionPriority(1) -> WorkshopChoiceId(0),
+            SelectionPriority(2) -> WorkshopChoiceId(1),
+            SelectionPriority(3) -> WorkshopChoiceId(2),
+          ),
+        )
+        val studentPossibleWorkshops = possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections)
+        // assumes that the algorithm orders the input so that the result is stable
+        val expectedResult = (Map(
+          WorkshopId(0) -> Set(student1),
+          WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, WorkshopId(3) -> Set.empty,
+          WorkshopId(4) -> Set(student1),
+          WorkshopId(5) -> Set.empty, WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty,
+          WorkshopId(8) -> Set(student1),
+          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty,
+        ), 6)
+
+        distributeStudentsToWorkshops(f.workshops)(studentPossibleWorkshops) shouldEqual expectedResult
+      }
+
     }
 
   }

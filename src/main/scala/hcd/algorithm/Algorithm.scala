@@ -54,4 +54,54 @@ object Algorithm {
       .mapValues(possibleWorkshopCombinations(n))
       .toMap
 
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops)(studentPossibleWorkshops: Map[StudentId, Set[PossibleWorkshops]]): (WorkshopAssignments, Int) = {
+    case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
+    type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
+
+    val initialFilledWorkshops = workshops.view.mapValues(workshop => FilledWorkshop(workshop.seats, Set.empty)).toMap
+    import Ordering.Implicits._
+    val orderedStudentPossibleWorkshops = studentPossibleWorkshops
+      .view
+      .mapValues(_
+        .toList
+        .map(_
+          .toList
+          .sortBy(_._2.selectionPriority.priority)
+        )
+        .sortBy(_.take(3).map(_._1.id))
+      )
+      .toList
+      .sortBy(_._1.id)
+    println(s"ordered input: $orderedStudentPossibleWorkshops")
+
+    def fillWorkshopsAndCalculateMetric(filledWorkshops: FilledWorkshops, studentId: StudentId, possibleWorkshops: List[(WorkshopId, PossibleWorkshop)]): (FilledWorkshops, Int) = {
+      val newFilledWorkshops = possibleWorkshops.foldLeft(filledWorkshops) {
+        case (accFilledWorkshops, (workshopId, _)) =>
+          accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshops =>
+            filledWorkshops.copy(
+              freeSeats = filledWorkshops.freeSeats - 1,
+              students = filledWorkshops.students.incl(studentId)
+            )
+          ))
+      }
+      val metric = possibleWorkshops.map(_._2.selectionPriority.priority).sum
+      (newFilledWorkshops, metric)
+    }
+
+    // not tail-recursive, as per student the algorithm collects the results for all possible workshops and then
+    // selects those which have the overall minimum metric
+    def rec2(accFilledWorkshops: Map[WorkshopId, FilledWorkshop], accMetric: Int, studentsToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Int) =
+      studentsToDistribute match {
+        case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
+        case (student, possibleWorkshopsList) :: tailStudents =>
+          val resultsThisStudent = possibleWorkshopsList.map { possibleWorkshops =>
+            val (newAccFilledWorkshops, metricOfThisPossibleWorkshops) = fillWorkshopsAndCalculateMetric(accFilledWorkshops, student, possibleWorkshops)
+            rec2(newAccFilledWorkshops, accMetric + metricOfThisPossibleWorkshops, tailStudents)
+          }
+          resultsThisStudent.minBy(_._2) // works as possibleWorkshopsList will not be Nil
+      }
+
+    rec2(initialFilledWorkshops, 0, orderedStudentPossibleWorkshops)
+  }
+
 }
