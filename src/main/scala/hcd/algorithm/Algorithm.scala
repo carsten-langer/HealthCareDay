@@ -22,7 +22,7 @@ object Algorithm {
       .toMap
 
   // empty selected workshops => false
-  private def haveDistinctField(extractor: SelectedWorkshop => Any)(selectedWorkshops: SelectedWorkshops): Boolean =
+  private def haveDistinct(extractor: SelectedWorkshop => Any)(selectedWorkshops: SelectedWorkshops): Boolean =
     selectedWorkshops.nonEmpty &&
       selectedWorkshops
         .values
@@ -31,10 +31,10 @@ object Algorithm {
         .forall(_.size == 1)
 
   // empty selected workshops => false
-  protected[algorithm] def haveDistinctChoiceIds: SelectedWorkshops => Boolean = haveDistinctField(_.choiceId)
+  protected[algorithm] def haveDistinctChoiceIds: SelectedWorkshops => Boolean = haveDistinct(_.choiceId)
 
   // empty selected workshops => false
-  protected[algorithm] def haveDistinctTimeslots: SelectedWorkshops => Boolean = haveDistinctField(_.timeSlot)
+  protected[algorithm] def haveDistinctTimeslots: SelectedWorkshops => Boolean = haveDistinct(_.timeSlot)
 
   protected[algorithm] def possibleWorkshopCombinations(n: Int)(selectedWorkshops: SelectedWorkshops): Set[PossibleWorkshops] =
     selectedWorkshops
@@ -103,18 +103,18 @@ object Algorithm {
 
     // not tail-recursive, as per student the algorithm collects the results for all possible workshops and then
     // selects those which have the overall minimum metric
-    def rec2(accFilledWorkshops: Map[WorkshopId, FilledWorkshop], accMetric: Int, studentsToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Int) =
+    def recursion(accFilledWorkshops: Map[WorkshopId, FilledWorkshop], accMetric: Int, studentsToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Int) =
       studentsToDistribute match {
         case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
         case (student, possibleWorkshopsList) :: tailStudents =>
           val resultsThisStudent = possibleWorkshopsList.map { possibleWorkshops =>
             val (newAccFilledWorkshops, metricOfThisPossibleWorkshops) = fillWorkshopsAndCalculateMetric(accFilledWorkshops, student, possibleWorkshops)
-            rec2(newAccFilledWorkshops, accMetric + metricOfThisPossibleWorkshops, tailStudents)
+            recursion(newAccFilledWorkshops, accMetric + metricOfThisPossibleWorkshops, tailStudents)
           }
           resultsThisStudent.minBy(_._2) // works as possibleWorkshopsList will not be Nil
       }
 
-    rec2(initialFilledWorkshops, 0, orderedStudentPossibleWorkshops)
+    recursion(initialFilledWorkshops, 0, orderedStudentPossibleWorkshops)
   }
 
 }
