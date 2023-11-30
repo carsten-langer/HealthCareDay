@@ -74,7 +74,20 @@ object Algorithm {
       .sortBy(_._1.id)
     println(s"ordered input: $orderedStudentPossibleWorkshops")
 
+    var currentN = 0
+    val startTime = System.currentTimeMillis()
+
+    // currently takes ca. 40 s to calculate 1 combination for Student 996, i.e. for all combinations of 997, 8, 9
+    def countAndPrint(studentId: StudentId, possibleWorkshops: List[(WorkshopId, PossibleWorkshop)]): Unit = {
+      currentN += 1
+      val now = System.currentTimeMillis()
+      if (studentId.id < 997) {
+        println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, possibleWorkshops: $possibleWorkshops")
+      }
+    }
+
     def fillWorkshopsAndCalculateMetric(filledWorkshops: FilledWorkshops, studentId: StudentId, possibleWorkshops: List[(WorkshopId, PossibleWorkshop)]): (FilledWorkshops, Int) = {
+      countAndPrint(studentId, possibleWorkshops)
       val newFilledWorkshops = possibleWorkshops.foldLeft(filledWorkshops) {
         case (accFilledWorkshops, (workshopId, _)) =>
           accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshops =>
