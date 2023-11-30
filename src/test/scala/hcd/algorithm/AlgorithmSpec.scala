@@ -205,10 +205,33 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       haveDistinctTimeslots(selectedWorkshops7) shouldEqual false
     }
 
+    "filter SelectedWorkshops via haveVaryingCategories" in {
+      val f = fixtureSymmetricWorkshops(6)
+
+      val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0)))
+      val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(1 -> Set(3)))
+      val selectedWorkshops3 = f.selectedWorkshopsFrom(Map(1 -> Set(6)))
+      val selectedWorkshops4 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 9)))
+      val selectedWorkshops5 = f.selectedWorkshopsFrom(Map(1 -> Set(4, 13)))
+      val selectedWorkshops6 = f.selectedWorkshopsFrom(Map(1 -> Set(6, 15)))
+      val selectedWorkshops7 = f.selectedWorkshopsFrom(Map(1 -> Set(6, 7, 8)))
+      val selectedWorkshops8: SelectedWorkshops = Map.empty
+
+      haveVaryingCategories(selectedWorkshops1) shouldEqual false
+      haveVaryingCategories(selectedWorkshops2) shouldEqual false
+      haveVaryingCategories(selectedWorkshops3) shouldEqual true
+      haveVaryingCategories(selectedWorkshops4) shouldEqual false
+      haveVaryingCategories(selectedWorkshops5) shouldEqual false
+      haveVaryingCategories(selectedWorkshops6) shouldEqual true
+      haveVaryingCategories(selectedWorkshops7) shouldEqual true
+      haveVaryingCategories(selectedWorkshops8) shouldEqual false
+    }
+
     "select from a selection of Workshops all possible combinations of N workshops with regards to choiceId and timeslots" in {
       val f = fixtureSymmetricWorkshops(3)
 
       val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(6, 7, 8)))
+      val toTrue: Any => Boolean = _ => true
       val expectedCombinations1 = Set(
         f.possibleWorkshopsFrom(Set(1 -> 0)),
         f.possibleWorkshopsFrom(Set(1 -> 1)),
@@ -250,18 +273,54 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       )
       val expectedCombinations4 = Seq.empty // because a combo of 4 will always overlap on timeslots
 
-      possibleWorkshopCombinations(1)(selectedWorkshops) should contain theSameElementsAs expectedCombinations1
-      possibleWorkshopCombinations(2)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
-      possibleWorkshopCombinations(3)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
-      possibleWorkshopCombinations(4)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
+      possibleWorkshopCombinations(1, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations1
+      possibleWorkshopCombinations(2, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
+      possibleWorkshopCombinations(3, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
+      possibleWorkshopCombinations(4, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
+    }
+
+    "select from a selection of Workshops all possible combinations of N workshops also with regards to varying categories" in {
+      val f = fixtureSymmetricWorkshops(4)
+
+      val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(9, 10, 11)))
+      val expectedCombinations1 = Set.empty // because with a combo size of 1 there is no variance in categories
+      val expectedCombinations2 = Set( // combos with only health or only relaxation are excluded
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4)),
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4)),
+        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 10)),
+        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 11)),
+        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 9)),
+        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 11)),
+        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 9)),
+        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 10)),
+      )
+      val expectedCombinations3 = Set(
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 11)),
+        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 10)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 11)),
+        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5, 3 -> 9)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3, 3 -> 10)),
+        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4, 3 -> 9)),
+      )
+      val expectedCombinations4 = Seq.empty // because a combo of 4 will always overlap on timeslots
+
+      possibleWorkshopCombinations(1, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations1
+      possibleWorkshopCombinations(2, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
+      possibleWorkshopCombinations(3, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
+      possibleWorkshopCombinations(4, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
     }
 
     "generate all possible combinations of workshops for students from given Workshops, the number of to-be-taken workshops N and the StudentWorkshopSelections" in {
-      val f = fixtureSymmetricWorkshops(6)
+      val f = fixtureSymmetricWorkshops(7)
 
       val n = 3
       val student1 = StudentId(11)
       val student2 = StudentId(12)
+      val student3 = StudentId(13)
       val studentWorkshopSelections = Map(
         student1 -> BiMap(
           SelectionPriority(1) -> WorkshopChoiceId(0),
@@ -272,6 +331,11 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           SelectionPriority(6) -> WorkshopChoiceId(1),
           SelectionPriority(5) -> WorkshopChoiceId(3),
           SelectionPriority(4) -> WorkshopChoiceId(5),
+        ),
+        student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category health
+          SelectionPriority(1) -> WorkshopChoiceId(0), // health
+          SelectionPriority(2) -> WorkshopChoiceId(3), // health
+          SelectionPriority(3) -> WorkshopChoiceId(6), // health
         ),
       )
 
@@ -294,6 +358,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val expectedStudentSelectedWorkshops = Map(
         student1 -> expectedCombinations1,
         student2 -> expectedCombinations2,
+        student3 -> Set.empty, // as all 3 workshops are of category health
       )
 
       possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
