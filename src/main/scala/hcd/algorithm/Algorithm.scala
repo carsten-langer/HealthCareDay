@@ -4,133 +4,155 @@ import hcd.models._
 
 object Algorithm {
 
-  // If a selection is not contained in the workshops, it is ignored.
-  protected[algorithm] def selectedWorkshopsFromWorkshopSelection(workshops: Workshops)(workshopSelection: WorkshopSelection): SelectedWorkshops =
-    workshopSelection
-      .toMap
+  // If a selected workshop choice is not contained in the workshops, it is ignored.
+  protected[algorithm] def matchingWorkshopsFromSelectedWorkshopChoice(workshops: Workshops)(selectedWorkshopChoices: SelectedWorkshopChoices): MatchingWorkshops =
+    selectedWorkshopChoices
+      .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
       .flatMap { case (selectionPriority, choiceId) =>
-        workshops.collect { case (workshopId, Workshop(category, `choiceId`, timeSlot, _)) =>
-          (workshopId, SelectedWorkshop(category, choiceId, timeSlot, selectionPriority))
+        workshops.collect { case (workshopId, Workshop(_, `choiceId`, _, _)) =>
+          (workshopId, selectionPriority)
         }
       }
 
-  // If a selection is not contained in the workshops, it is ignored.
-  protected[algorithm] def studentsSelectedWorkshopsFromStudentWorkshopSelections(workshops: Workshops)(studentWorkshopSelections: StudentWorkshopSelections): Map[StudentId, SelectedWorkshops] =
-    studentWorkshopSelections
+  // If a selected workshop choice is not contained in the workshops, it is ignored.
+  protected[algorithm] def studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops: Workshops)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): StudentsMatchingWorkshops =
+    studentsSelectedWorkshopChoices
       .view
-      .mapValues(selectedWorkshopsFromWorkshopSelection(workshops))
+      .mapValues(matchingWorkshopsFromSelectedWorkshopChoice(workshops))
       .toMap
 
-  // empty selected workshops => false
-  private def haveDistinct(extractor: SelectedWorkshop => Any)(selectedWorkshops: SelectedWorkshops): Boolean =
-    selectedWorkshops.nonEmpty &&
-      selectedWorkshops
-        .values
-        .groupBy(extractor)
-        .values
-        .forall(_.size == 1)
+  private def extract[A](extractor: Workshop => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
+    workshopComboCandidate.values.map { case (workshop, _) => extractor(workshop) }
 
-  // empty selected workshops => false
-  protected[algorithm] def haveDistinctChoiceIds: SelectedWorkshops => Boolean = haveDistinct(_.choiceId)
+  // empty iterable => false
+  private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
 
-  // empty selected workshops => false
-  protected[algorithm] def haveDistinctTimeslots: SelectedWorkshops => Boolean = haveDistinct(_.timeSlot)
+  // empty workshop combo candidate => false
+  protected[algorithm] def hasDistinctChoiceIds: WorkshopComboCandidate => Boolean = extract(_.choiceId).andThen(areDistinct)
 
-  // Students are not allowed to get assigned all workshops of category health, nor all workshops of category
-  // relaxation. They are allowed to get assigned all workshops of category sports, though.
-  // empty selected workshops => false
-  protected[algorithm] def haveVaryingCategories: SelectedWorkshops => Boolean = selectedWorkshops =>
-    selectedWorkshops.values.exists(_.category != Health) && selectedWorkshops.values.exists(_.category != Relaxation)
+  // empty workshop combo candidate => false
+  protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
 
-  protected[algorithm] def possibleWorkshopCombinations(n: Int, extraFilterPredicate: SelectedWorkshops => Boolean)(selectedWorkshops: SelectedWorkshops): Set[PossibleWorkshops] =
-    selectedWorkshops
+  // Students are not allowed to get assigned a combo with all workshops of category health,
+  // nor a combo with all workshops of category relaxation.
+  // They are allowed to get assigned a combo with all workshops of category sports, though.
+  // empty workshop combo candidate => false
+  protected[algorithm] def hasVaryingCategories: WorkshopComboCandidate => Boolean = workshopComboCandidate => {
+    val categories = extract(_.category)(workshopComboCandidate)
+    categories.exists(_ != Health) && categories.exists(_ != Relaxation)
+  }
+
+  /** From all matching workshops, generate all combinations of comboSize workshops which are possible.
+   * A combo of workshops is possible if the workshops in that combo do not have the same timeslot nor the same
+   * choice id and where the combo also complies to a given extra filter.
+   *
+   * @param comboSize            Number of workshops in a combination, e.g. 3.
+   * @param extraFilterPredicate A candidate of a workshop combination is only selected if extraFilterPredicate is true
+   *                             for it.
+   */
+  protected[algorithm] def generateWorkshopCombos(workshops: Workshops, comboSize: Int, extraFilterPredicate: WorkshopComboCandidate => Boolean)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] =
+    matchingWorkshops
+      .map { case (workshopId, selectionPriority) => (workshopId, (workshops(workshopId), selectionPriority)) }
       .toSeq
-      .combinations(n)
+      .combinations(comboSize)
       .map(_.toMap)
-      .filter(haveDistinctChoiceIds)
-      .filter(haveDistinctTimeslots)
+      .toSet
+      .filter(hasDistinctChoiceIds)
+      .filter(hasDistinctTimeslots)
       .filter(extraFilterPredicate)
-      .map(_.view.mapValues { case SelectedWorkshop(category, _, _, selectionPriority) =>
-        PossibleWorkshop(category, selectionPriority)
+      .map(_.map { case (workshopId, (workshop, selectionPriority)) =>
+        (workshopId, PossibleWorkshop(workshop.category, selectionPriority))
       }.toMap)
-      .toSet // adding here and not after .combinations, as else we would need to give specific type, else .toMap complains
 
-  protected[algorithm] def possibleWorkshopCombinations(workshops: Workshops, n: Int)(studentWorkshopSelections: StudentWorkshopSelections): Map[StudentId, Set[PossibleWorkshops]] =
-    studentsSelectedWorkshopsFromStudentWorkshopSelections(workshops)(studentWorkshopSelections)
+  protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): Map[StudentId, Set[WorkshopCombo]] =
+    studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops)(studentsSelectedWorkshopChoices)
       .view
-      .mapValues(possibleWorkshopCombinations(n, haveVaryingCategories))
+      .mapValues(generateWorkshopCombos(workshops, comboSize, hasVaryingCategories))
       .toMap
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops)(studentPossibleWorkshops: Map[StudentId, Set[PossibleWorkshops]]): (WorkshopAssignments, Int) = {
-    case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
-    type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): (WorkshopAssignments, Metric) = {
+    val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, comboSize)(studentsSelectedWorkshopChoices)
 
-    val initialFilledWorkshops = workshops.view.mapValues(workshop => FilledWorkshop(workshop.seats, Set.empty)).toMap
+    // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
+    // the expected outcome can be pre-calculated.
+    // Also leaves the data structures as lists, as during the recursion we prefer these data types which,
+    // even if they are less expressive, are slightly faster.
     import Ordering.Implicits._
-    val orderedStudentPossibleWorkshops = studentPossibleWorkshops
+    val orderedStudentsWorkshopCombos = studentsWorkshopCombos
       .view
-      .mapValues(_
-        .toList
-        .map(_
+      .mapValues(workshopCombos =>
+        workshopCombos
           .toList
-          .sortBy(_._2.selectionPriority.priority)
-        )
-        .sortBy(_.take(3).map(_._1.id))
+          .map(workshopCombo =>
+            workshopCombo
+              .toList
+              // Sort workshops within a single combo according to selection priority.
+              // This is a prerequisite to find the order between workshop combos.
+              .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(priority))) => priority }
+          )
+          // Sort workshop combos by the already ordered list of workshop ids where each list
+          // represents one workshop combo which was already ordered by selection priority.
+          .sortBy(workshopCombo => workshopCombo.map { case (WorkshopId(id), _) => id })
       )
       .toList
-      .sortBy(_._1.id)
-    println(s"ordered input: $orderedStudentPossibleWorkshops")
+      // sort by students
+      .sortBy { case (StudentId(id), _) => id }
+    println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombos.take(2)}")
+
+    case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
+    type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
+    val initialFilledWorkshops = workshops.view.mapValues(workshop => FilledWorkshop(workshop.seats, Set.empty)).toMap
 
     var currentN = 0
     val startTime = System.currentTimeMillis()
 
     // currently takes ca. 37 s to calculate 1 combination for Student 411
     // i.e. try all combos for students 412, 413, ..., 999
-    def countAndPrint(studentId: StudentId, possibleWorkshops: List[(WorkshopId, PossibleWorkshop)]): Unit = {
+    def countAndPrint(studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1
       val now = System.currentTimeMillis()
       if (studentId.id < 412) {
-        println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, possibleWorkshops: $possibleWorkshops")
+        println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
       }
     }
 
-    def fillWorkshopsAndCalculateMetric(filledWorkshops: FilledWorkshops, studentId: StudentId, possibleWorkshops: List[(WorkshopId, PossibleWorkshop)]): (FilledWorkshops, Int) = {
-      countAndPrint(studentId, possibleWorkshops)
-      val newFilledWorkshops = possibleWorkshops.foldLeft(filledWorkshops) {
+    def fillWorkshopsAndCalculateMetric(filledWorkshops: FilledWorkshops, studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): (FilledWorkshops, Metric) = {
+      countAndPrint(studentId, workshopCombo)
+      val newFilledWorkshops = workshopCombo.foldLeft(filledWorkshops) {
         case (accFilledWorkshops, (workshopId, _)) =>
-          accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshops =>
-            filledWorkshops.copy(
-              freeSeats = filledWorkshops.freeSeats - 1,
-              students = filledWorkshops.students.incl(studentId)
+          accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshop =>
+            filledWorkshop.copy(
+              freeSeats = filledWorkshop.freeSeats - 1,
+              students = filledWorkshop.students.incl(studentId)
             )
           ))
       }
-      val metric = possibleWorkshops.map(_._2.selectionPriority.priority).sum
-      (newFilledWorkshops, metric)
+      val metric = workshopCombo.map { case (_, workshop) => workshop.selectionPriority.priority }.sum
+      (newFilledWorkshops, Metric(metric))
     }
 
-    // not tail-recursive, as per student the algorithm collects the results for all possible workshops and then
+    // not tail-recursive, as per student the algorithm collects the results for all workshop combos and then
     // selects those which have the overall minimum metric
-    def recursion(accFilledWorkshops: Map[WorkshopId, FilledWorkshop], accMetric: Int, studentsToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Int) =
-      studentsToDistribute match {
+    def recursion(accFilledWorkshops: FilledWorkshops, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Metric) =
+      studentsWorkshopCombosToDistribute match {
         case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
         case (_, Nil) :: _ =>
-          // A student with an empty list of possible workshops would only happen if a student has made a selection of
-          // workshop choices such that no combinations of workshops are possible.
+          // A student with an empty list of possible workshop combos would only happen if a student has made a
+          // selection of workshop choices such that no combinations of workshops are possible.
           // During production, there should be a test upfront to not even start the distribution in such case.
           // During development with arbitrary random data this situation can happen, as the random input data could
-          // be such that the haveVaryingCategories filter filters out all conflicting workshop combinations and leaves
-          // no possible workshop combinations. In this case, continue without adding this student to any workshop.
+          // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
+          // possible workshop combos. In this case, continue without adding this student to any workshop.
           (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
-        case (student, possibleWorkshopsList) :: tailStudents =>
-          val resultsThisStudent = possibleWorkshopsList.map { possibleWorkshops =>
-            val (newAccFilledWorkshops, metricOfThisPossibleWorkshops) = fillWorkshopsAndCalculateMetric(accFilledWorkshops, student, possibleWorkshops)
-            recursion(newAccFilledWorkshops, accMetric + metricOfThisPossibleWorkshops, tailStudents)
+        case (student, workshopCombos) :: tailStudents =>
+          val resultsThisStudent = workshopCombos.map { workshopCombo =>
+            val (newAccFilledWorkshops, metricOfThisWorkshopCombo) = fillWorkshopsAndCalculateMetric(accFilledWorkshops, student, workshopCombo)
+            recursion(newAccFilledWorkshops, Metric(accMetric.metric + metricOfThisWorkshopCombo.metric), tailStudents)
           }
-          resultsThisStudent.minBy(_._2) // works as possibleWorkshopsList will not be Nil
+          resultsThisStudent.minBy { case (_, metric) => metric.metric } // works as workshopCombos will not be Nil
       }
 
-    recursion(initialFilledWorkshops, 0, orderedStudentPossibleWorkshops)
+    recursion(initialFilledWorkshops, Metric(0), orderedStudentsWorkshopCombos)
   }
 
 }

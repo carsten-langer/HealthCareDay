@@ -13,33 +13,35 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
 
   "Algorithm" should {
 
-    trait Fixture {
+    trait FixtureWorkshops {
       def workshops: Workshops
 
-      // create selected workshops for Map(selectionPriority -> Set(workshopId))
-      def selectedWorkshopsFrom(selIds: Map[Int, Set[Int]]): SelectedWorkshops = selIds.flatMap {
-        case (selectionPriorityInt, workshopIdsInt) => workshopIdsInt
+      // create a WorkshopComboCandidate from workshop ids with random SelectionPriority
+      def workshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
+        wsIds
           .map(WorkshopId)
-          .map { workshopId =>
-            val Workshop(category, choiceId, timeSlot, _) = workshops(workshopId) // @throws[NoSuchElementException] to protect against wrong test assumptions
-            (workshopId, SelectedWorkshop(category, choiceId, timeSlot, SelectionPriority(selectionPriorityInt)))
-          }
-      }
+          .map(wsId => (wsId, (workshops(wsId), SelectionPriority(Random.nextInt()))))
+          .toMap
 
-      // create possible workshops for Set(selectionPriority -> workshopId)
-      def possibleWorkshopsFrom(selIds: Set[(Int, Int)]): PossibleWorkshops = selIds.map {
-        case (selectionPriorityInt, workshopIdInt) =>
-          val workshopId = WorkshopId(workshopIdInt)
-          val Workshop(category, _, _, _) = workshops(workshopId) // @throws[NoSuchElementException] to protect against wrong test assumptions
-          (workshopId, PossibleWorkshop(category, SelectionPriority(selectionPriorityInt)))
-      }.toMap
+      // create workshop combos from workshop ids, taking the selection priority from matching workshops
+      def workshopCombos(matchingWorkshops: MatchingWorkshops)(wsIdCombos: Set[Set[Int]]): Set[WorkshopCombo] =
+        wsIdCombos.map(wsIdCombo =>
+          wsIdCombo
+            .map(WorkshopId)
+            .map { workshopId =>
+              val category = workshops(workshopId).category
+              val selectionPriority = matchingWorkshops(workshopId)
+              workshopId -> PossibleWorkshop(category, selectionPriority)
+            }
+            .toMap
+        )
     }
 
-    def fixtureSymmetricWorkshopsFor(noWorkshopChoices: Int, noSeats: Int): Fixture = new Fixture {
+    def fixtureSymmetricWorkshopsFor(noWorkshopChoices: Int, noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
       private val categories = Seq(Health, Relaxation, Sports)
-      private val noWorkshops = timeSlots.size * noWorkshopChoices // all workshops are available on all timeslots
+      private val noWorkshops = noWorkshopChoices * timeSlots.size // all workshops are available on all timeslots
 
       // Generate all IDs
       private val workshopIds = Range(0, noWorkshops).map(WorkshopId)
@@ -58,24 +60,29 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       ).toMap
     }
 
-    def fixtureSymmetricWorkshops(noWorkshopChoices: Int): Fixture =
+    def fixtureSymmetricWorkshops(noWorkshopChoices: Int): FixtureWorkshops =
       fixtureSymmetricWorkshopsFor(noWorkshopChoices, 20)
 
-    def fixtureFullDataModel = new {
+    trait FixtureFullDataModel extends FixtureWorkshops {
       // Inputs for model size
       private val noWorkshopChoices = 50
       private val noStudents = 1000
       private val noSelectionsPerStudent = 6
       private val noSeats = 20
 
-      // Generate all IDs
-      lazy val workshopChoiceIds: Set[WorkshopChoiceId] = Range(0, noWorkshopChoices).toSet.map(WorkshopChoiceId)
-      lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
-      lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
+      override val workshops: Workshops = fixtureSymmetricWorkshopsFor(noWorkshopChoices, noSeats).workshops
+      private lazy val workshopChoiceIds: Set[WorkshopChoiceId] = Range(0, noWorkshopChoices).toSet.map(WorkshopChoiceId)
+      private lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
+      private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 
-      // Generate symmetric workshops with no seats limit
-      val workshops: Workshops = fixtureSymmetricWorkshopsFor(noWorkshopChoices, noSeats).workshops
+      // generate random workshop selections
+      Random.setSeed(0L) // fix randomness during development
+      lazy val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = studentIds.map(
+        (_, BiMap.from(selectionPriorities.zip(Random.shuffle(workshopChoiceIds.toSeq))))
+      ).toMap
     }
+
+    def fixtureFullDataModel: FixtureFullDataModel = new FixtureFullDataModel {}
 
     "build test data correctly and optionally print it" in {
       val f = fixtureFullDataModel
@@ -87,62 +94,64 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
 
-      // generate random workshop selections
-      Random.setSeed(0L) // fix randomness during development
-      lazy val studentWorkshopSelections: StudentWorkshopSelections = f.studentIds.map(
-        (_, BiMap.from(f.selectionPriorities.zip(Random.shuffle(f.workshopChoiceIds.toSeq))))
-      ).toMap
+      // print students' selected workshop choices ordered by student id
+      //f.studentsSelectedWorkshopChoices.toSeq.sortBy(_._1.id).foreach(println)
 
-      // print workshop selections ordered by student id
-      //studentWorkshopSelections.toSeq.sortBy(_._1.id).foreach(println)
-
-      // print studentsSelectedWorkshopsFromStudentWorkshopSelections for full model
+      // print students' matching workshops from their selected workshop choices for full model
       @unused // may be unused, depending on whether the model is printed out our not
-      lazy val studentsSelectedWorkshops = studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)(studentWorkshopSelections)
-      //studentsSelectedWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
+      lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(f.workshops)(f.studentsSelectedWorkshopChoices)
+      //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
 
-      // print studentsPossibleWorkshops for full model
-      lazy val studentsPossibleWorkshops = possibleWorkshopCombinations(f.workshops, 3)(studentWorkshopSelections)
-      //println(studentsPossibleWorkshops)
+      // print students' workshop combos for full model
+      // per student there are 96 possible combos to chose 3 out of 6 workshops
+      // print those for the first 2 students
+      @unused // may be unused, depending on whether the model is printed out our not
+      lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize = 3)(f.studentsSelectedWorkshopChoices)
+      //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops)(studentsPossibleWorkshops)
+      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, comboSize = 3)(f.studentsSelectedWorkshopChoices)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
         println(workshopAssignments, metric)
-
     }
 
-    "select SelectedWorkshops from WorkshopSelection" in {
+    "select MatchingWorkshops from SelectedWorkshopChoices" in {
       val f = fixtureSymmetricWorkshops(4)
-      val fut: WorkshopSelection => SelectedWorkshops = selectedWorkshopsFromWorkshopSelection(f.workshops)
+      val fut: SelectedWorkshopChoices => MatchingWorkshops = matchingWorkshopsFromSelectedWorkshopChoice(f.workshops)
 
-      val workshopSelection1 = BiMap(
+      val selectedWorkshopChoices1: SelectedWorkshopChoices = BiMap(
         SelectionPriority(1) -> WorkshopChoiceId(0),
         SelectionPriority(2) -> WorkshopChoiceId(1),
       )
-      val workshopSelection2 = BiMap(
+      val selectedWorkshopChoices2: SelectedWorkshopChoices = BiMap(
         SelectionPriority(5) -> WorkshopChoiceId(3),
         SelectionPriority(6) -> WorkshopChoiceId(2),
       )
-      val workshopSelection3 = BiMap(
+      val selectedWorkshopChoices3: SelectedWorkshopChoices = BiMap(
         SelectionPriority(5) -> WorkshopChoiceId(4), // non-existing workshop choice
       )
-      val expectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5)))
-      val expectedWorkshops2 = f.selectedWorkshopsFrom(Map(5 -> Set(9, 10, 11), 6 -> Set(6, 7, 8)))
+      val expectedMatchingWorkshops1: MatchingWorkshops = Map(
+        WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // WorkshopChoiceId(0)
+        WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // WorkshopChoiceId(1)
+      )
+      val expectedMatchingWorkshops2: MatchingWorkshops = Map(
+        WorkshopId(9) -> SelectionPriority(5), WorkshopId(10) -> SelectionPriority(5), WorkshopId(11) -> SelectionPriority(5), // WorkshopChoiceId(3)
+        WorkshopId(6) -> SelectionPriority(6), WorkshopId(7) -> SelectionPriority(6), WorkshopId(8) -> SelectionPriority(6), // WorkshopChoiceId(2)
+      )
 
-      fut(workshopSelection1) should contain theSameElementsAs expectedWorkshops1
-      fut(workshopSelection2) should contain theSameElementsAs expectedWorkshops2
-      fut(workshopSelection3) shouldBe empty
+      fut(selectedWorkshopChoices1) should contain theSameElementsAs expectedMatchingWorkshops1
+      fut(selectedWorkshopChoices2) should contain theSameElementsAs expectedMatchingWorkshops2
+      fut(selectedWorkshopChoices3) shouldBe empty
     }
 
-    "select SelectedWorkshops per student from StudentWorkshopSelections" in {
+    "select StudentsMatchingWorkshops from StudentsSelectedWorkshopChoices" in {
       val f = fixtureSymmetricWorkshops(19)
-      val fut: StudentWorkshopSelections => Map[StudentId, SelectedWorkshops] = studentsSelectedWorkshopsFromStudentWorkshopSelections(f.workshops)
+      val fut: StudentsSelectedWorkshopChoices => StudentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(f.workshops)
 
       val student1 = StudentId(5)
       val student2 = StudentId(42)
       val student3 = StudentId(-1)
-      val studentWorkshopSelections = Map(
+      val studentWorkshopSelections: StudentsSelectedWorkshopChoices = Map(
         student1 -> BiMap(
           SelectionPriority(7) -> WorkshopChoiceId(14),
           SelectionPriority(9) -> WorkshopChoiceId(18),
@@ -157,171 +166,199 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           SelectionPriority(-2) -> WorkshopChoiceId(19), // non-existing workshop choice
         ),
       )
-      val expectedWorkshops1 = f.selectedWorkshopsFrom(Map(7 -> Set(42, 43, 44), 9 -> Set(54, 55, 56), 5 -> Set(30, 31, 32)))
-      val expectedWorkshops2 = f.selectedWorkshopsFrom(Map(6 -> Set(9, 10, 11), 2 -> Set(3, 4, 5), 4 -> Set(6, 7, 8)))
-      val expectedWorkshops3: SelectedWorkshops = Map.empty
-      val expectedStudentSelectedWorkshops = Map(
-        student1 -> expectedWorkshops1,
-        student2 -> expectedWorkshops2,
-        student3 -> expectedWorkshops3,
+      val expectedStudent1MatchingWorkshops: MatchingWorkshops = Map(
+        WorkshopId(42) -> SelectionPriority(7), WorkshopId(43) -> SelectionPriority(7), WorkshopId(44) -> SelectionPriority(7), // WorkshopChoiceId(14)
+        WorkshopId(54) -> SelectionPriority(9), WorkshopId(55) -> SelectionPriority(9), WorkshopId(56) -> SelectionPriority(9), // WorkshopChoiceId(18)
+        WorkshopId(30) -> SelectionPriority(5), WorkshopId(31) -> SelectionPriority(5), WorkshopId(32) -> SelectionPriority(5), // WorkshopChoiceId(10)
+      )
+      val expectedStudent2MatchingWorkshops: MatchingWorkshops = Map(
+        WorkshopId(9) -> SelectionPriority(6), WorkshopId(10) -> SelectionPriority(6), WorkshopId(11) -> SelectionPriority(6), // WorkshopChoiceId(3)
+        WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // WorkshopChoiceId(1)
+        WorkshopId(6) -> SelectionPriority(4), WorkshopId(7) -> SelectionPriority(4), WorkshopId(8) -> SelectionPriority(4), // WorkshopChoiceId(2)
+      )
+      val expectedStudentsMatchingWorkshops = Map(
+        student1 -> expectedStudent1MatchingWorkshops,
+        student2 -> expectedStudent2MatchingWorkshops,
+        student3 -> Map.empty,
       )
 
-      fut(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
+      fut(studentWorkshopSelections) should contain theSameElementsAs expectedStudentsMatchingWorkshops
     }
 
-    "filter SelectedWorkshops via haveDistinctChoiceIds" in {
+    "filter a WorkshopComboCandidate via hasDistinctChoiceIds" in {
       val f = fixtureSymmetricWorkshops(2)
 
-      val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1)))
-      val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(2 -> Set(0, 2, 3)))
-      val selectedWorkshops3 = f.selectedWorkshopsFrom(Map(3 -> Set(0, 3))) // artificial combination, with the symmetric fixture such choice could not have happened
-      val selectedWorkshops4 = f.selectedWorkshopsFrom(Map(4 -> Set(0), 5 -> Set(5)))
-      val selectedWorkshops5: SelectedWorkshops = Map.empty
+      val workshopComboCandidate1 = f.workshopComboCandidate(Set(1, 2))
+      val workshopComboCandidate2 = f.workshopComboCandidate(Set(0, 2, 3))
+      // artificial combination, with the symmetric fixture such choice could not have happened
+      val workshopComboCandidate3 = f.workshopComboCandidate(Set(0, 3))
+      val workshopComboCandidate4 = f.workshopComboCandidate(Set(0, 4))
+      val workshopComboCandidate5: WorkshopComboCandidate = Map.empty
 
-      haveDistinctChoiceIds(selectedWorkshops1) shouldEqual false
-      haveDistinctChoiceIds(selectedWorkshops2) shouldEqual false
-      haveDistinctChoiceIds(selectedWorkshops3) shouldEqual true
-      haveDistinctChoiceIds(selectedWorkshops4) shouldEqual true
-      haveDistinctChoiceIds(selectedWorkshops5) shouldEqual false
+      hasDistinctChoiceIds(workshopComboCandidate1) shouldEqual false
+      hasDistinctChoiceIds(workshopComboCandidate2) shouldEqual false
+      hasDistinctChoiceIds(workshopComboCandidate3) shouldEqual true
+      hasDistinctChoiceIds(workshopComboCandidate4) shouldEqual true
+      hasDistinctChoiceIds(workshopComboCandidate5) shouldEqual false
     }
 
-    "filter SelectedWorkshops via haveDistinctTimeslots" in {
+    "filter a WorkshopComboCandidate via hasDistinctTimeslots" in {
       val f = fixtureSymmetricWorkshops(3)
 
-      val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5)))
-      val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(3 -> Set(0, 1), 4 -> Set(5), 5 -> Set(7)))
-      val selectedWorkshops3 = f.selectedWorkshopsFrom(Map(6 -> Set(0), 7 -> Set(5)))
-      val selectedWorkshops4 = f.selectedWorkshopsFrom(Map(8 -> Set(1), 9 -> Set(5)))
-      val selectedWorkshops5 = f.selectedWorkshopsFrom(Map(10 -> Set(2), 11 -> Set(5)))
-      val selectedWorkshops6 = f.selectedWorkshopsFrom(Map(12 -> Set(0), 13 -> Set(8), 14 -> Set(4)))
-      val selectedWorkshops7: SelectedWorkshops = Map.empty
+      val workshopComboCandidate1 = f.workshopComboCandidate(Set(0, 1, 2, 3, 4, 5))
+      val workshopComboCandidate2 = f.workshopComboCandidate(Set(0, 1, 5, 7))
+      val workshopComboCandidate3 = f.workshopComboCandidate(Set(0, 5))
+      val workshopComboCandidate4 = f.workshopComboCandidate(Set(1, 5))
+      val workshopComboCandidate5 = f.workshopComboCandidate(Set(2, 5))
+      val workshopComboCandidate6 = f.workshopComboCandidate(Set(0, 8, 4))
+      val workshopComboCandidate7: WorkshopComboCandidate = Map.empty
 
-      haveDistinctTimeslots(selectedWorkshops1) shouldEqual false
-      haveDistinctTimeslots(selectedWorkshops2) shouldEqual false
-      haveDistinctTimeslots(selectedWorkshops3) shouldEqual true
-      haveDistinctTimeslots(selectedWorkshops4) shouldEqual true
-      haveDistinctTimeslots(selectedWorkshops5) shouldEqual false
-      haveDistinctTimeslots(selectedWorkshops6) shouldEqual true
-      haveDistinctTimeslots(selectedWorkshops7) shouldEqual false
+      hasDistinctTimeslots(workshopComboCandidate1) shouldEqual false
+      hasDistinctTimeslots(workshopComboCandidate2) shouldEqual false
+      hasDistinctTimeslots(workshopComboCandidate3) shouldEqual true
+      hasDistinctTimeslots(workshopComboCandidate4) shouldEqual true
+      hasDistinctTimeslots(workshopComboCandidate5) shouldEqual false
+      hasDistinctTimeslots(workshopComboCandidate6) shouldEqual true
+      hasDistinctTimeslots(workshopComboCandidate7) shouldEqual false
     }
 
-    "filter SelectedWorkshops via haveVaryingCategories" in {
+    "filter a WorkshopComboCandidate via hasVaryingCategories" in {
       val f = fixtureSymmetricWorkshops(6)
 
-      val selectedWorkshops1 = f.selectedWorkshopsFrom(Map(1 -> Set(0)))
-      val selectedWorkshops2 = f.selectedWorkshopsFrom(Map(1 -> Set(3)))
-      val selectedWorkshops3 = f.selectedWorkshopsFrom(Map(1 -> Set(6)))
-      val selectedWorkshops4 = f.selectedWorkshopsFrom(Map(1 -> Set(0, 9)))
-      val selectedWorkshops5 = f.selectedWorkshopsFrom(Map(1 -> Set(4, 13)))
-      val selectedWorkshops6 = f.selectedWorkshopsFrom(Map(1 -> Set(6, 15)))
-      val selectedWorkshops7 = f.selectedWorkshopsFrom(Map(1 -> Set(6, 7, 8)))
-      val selectedWorkshops8: SelectedWorkshops = Map.empty
+      val workshopComboCandidate1 = f.workshopComboCandidate(Set(0))
+      val workshopComboCandidate2 = f.workshopComboCandidate(Set(3))
+      val workshopComboCandidate3 = f.workshopComboCandidate(Set(6))
+      val workshopComboCandidate4 = f.workshopComboCandidate(Set(0, 9))
+      val workshopComboCandidate5 = f.workshopComboCandidate(Set(4, 13))
+      val workshopComboCandidate6 = f.workshopComboCandidate(Set(6, 15))
+      val workshopComboCandidate7 = f.workshopComboCandidate(Set(6, 7, 8))
+      val workshopComboCandidate8: WorkshopComboCandidate = Map.empty
 
-      haveVaryingCategories(selectedWorkshops1) shouldEqual false
-      haveVaryingCategories(selectedWorkshops2) shouldEqual false
-      haveVaryingCategories(selectedWorkshops3) shouldEqual true
-      haveVaryingCategories(selectedWorkshops4) shouldEqual false
-      haveVaryingCategories(selectedWorkshops5) shouldEqual false
-      haveVaryingCategories(selectedWorkshops6) shouldEqual true
-      haveVaryingCategories(selectedWorkshops7) shouldEqual true
-      haveVaryingCategories(selectedWorkshops8) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate1) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate2) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate3) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate4) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate5) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate6) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate7) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate8) shouldEqual false
     }
 
-    "select from a selection of Workshops all possible combinations of N workshops with regards to choiceId and timeslots" in {
+    "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, with regards to choiceId and timeslots" in {
       val f = fixtureSymmetricWorkshops(3)
 
-      val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(6, 7, 8)))
-      val toTrue: Any => Boolean = _ => true
-      val expectedCombinations1 = Set(
-        f.possibleWorkshopsFrom(Set(1 -> 0)),
-        f.possibleWorkshopsFrom(Set(1 -> 1)),
-        f.possibleWorkshopsFrom(Set(1 -> 2)),
-        f.possibleWorkshopsFrom(Set(2 -> 3)),
-        f.possibleWorkshopsFrom(Set(2 -> 4)),
-        f.possibleWorkshopsFrom(Set(2 -> 5)),
-        f.possibleWorkshopsFrom(Set(3 -> 6)),
-        f.possibleWorkshopsFrom(Set(3 -> 7)),
-        f.possibleWorkshopsFrom(Set(3 -> 8)),
+      val matchingWorkshops: MatchingWorkshops = Map(
+        WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // WorkshopChoiceId(0)
+        WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // WorkshopChoiceId(1)
+        WorkshopId(6) -> SelectionPriority(3), WorkshopId(7) -> SelectionPriority(3), WorkshopId(8) -> SelectionPriority(3), // WorkshopChoiceId(2)
       )
-      val expectedCombinations2 = Set(
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 7)),
-      )
-      val expectedCombinations3 = Set(
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4, 3 -> 6)),
-      )
-      val expectedCombinations4 = Seq.empty // because a combo of 4 will always overlap on timeslots
+      val alwaysTrue: Any => Boolean = _ => true
+      val genCombos: Set[Set[Int]] => Set[WorkshopCombo] = f.workshopCombos(matchingWorkshops)
+      val expectedCombos1 = genCombos(Set(
+        Set(0),
+        Set(1),
+        Set(2),
+        Set(3),
+        Set(4),
+        Set(5),
+        Set(6),
+        Set(7),
+        Set(8),
+      ))
+      val expectedCombos2 = genCombos(Set(
+        Set(0, 4),
+        Set(0, 5),
+        Set(0, 7),
+        Set(0, 8),
+        Set(1, 3),
+        Set(1, 5),
+        Set(1, 6),
+        Set(1, 8),
+        Set(2, 3),
+        Set(2, 4),
+        Set(2, 6),
+        Set(2, 7),
+        Set(3, 7),
+        Set(3, 8),
+        Set(4, 6),
+        Set(4, 8),
+        Set(5, 6),
+        Set(5, 7),
+      ))
+      val expectedCombos3 = genCombos(Set(
+        Set(0, 4, 8),
+        Set(0, 5, 7),
+        Set(1, 3, 8),
+        Set(1, 5, 6),
+        Set(2, 3, 7),
+        Set(2, 4, 6),
+      ))
+      val expectedCombos4 = Seq.empty // because a combo of 4 will always overlap on timeslots
 
-      possibleWorkshopCombinations(1, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations1
-      possibleWorkshopCombinations(2, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
-      possibleWorkshopCombinations(3, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
-      possibleWorkshopCombinations(4, toTrue)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
+      val workshopCombos1 = generateWorkshopCombos(f.workshops, comboSize = 1, alwaysTrue)(matchingWorkshops)
+      val workshopCombos2 = generateWorkshopCombos(f.workshops, comboSize = 2, alwaysTrue)(matchingWorkshops)
+      val workshopCombos3 = generateWorkshopCombos(f.workshops, comboSize = 3, alwaysTrue)(matchingWorkshops)
+      val workshopCombos4 = generateWorkshopCombos(f.workshops, comboSize = 4, alwaysTrue)(matchingWorkshops)
+
+      workshopCombos1 should contain theSameElementsAs expectedCombos1
+      workshopCombos2 should contain theSameElementsAs expectedCombos2
+      workshopCombos3 should contain theSameElementsAs expectedCombos3
+      workshopCombos4 should contain theSameElementsAs expectedCombos4
     }
 
-    "select from a selection of Workshops all possible combinations of N workshops also with regards to varying categories" in {
+    "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, also with regards to varying categories" in {
       val f = fixtureSymmetricWorkshops(4)
 
-      val selectedWorkshops = f.selectedWorkshopsFrom(Map(1 -> Set(0, 1, 2), 2 -> Set(3, 4, 5), 3 -> Set(9, 10, 11)))
-      val expectedCombinations1 = Set.empty // because with a combo size of 1 there is no variance in categories
-      val expectedCombinations2 = Set( // combos with only health or only relaxation are excluded
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4)),
-        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 10)),
-        f.possibleWorkshopsFrom(Set(2 -> 3, 3 -> 11)),
-        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 9)),
-        f.possibleWorkshopsFrom(Set(2 -> 4, 3 -> 11)),
-        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 9)),
-        f.possibleWorkshopsFrom(Set(2 -> 5, 3 -> 10)),
+      val matchingWorkshops: MatchingWorkshops = Map(
+        WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // WorkshopChoiceId(0) health
+        WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // WorkshopChoiceId(1) relaxation
+        WorkshopId(9) -> SelectionPriority(3), WorkshopId(10) -> SelectionPriority(3), WorkshopId(11) -> SelectionPriority(3), // WorkshopChoiceId(3) health again
       )
-      val expectedCombinations3 = Set(
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 11)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 10)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 11)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5, 3 -> 9)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3, 3 -> 10)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4, 3 -> 9)),
-      )
-      val expectedCombinations4 = Seq.empty // because a combo of 4 will always overlap on timeslots
+      val genCombos: Set[Set[Int]] => Set[WorkshopCombo] = f.workshopCombos(matchingWorkshops)
+      val expectedCombos1 = Set.empty // because with a combo size of 1 there is no variance in categories
+      val expectedCombos2 = genCombos(Set( // combos with only health or only relaxation are excluded
+        Set(0, 4),
+        Set(0, 5),
+        Set(1, 3),
+        Set(1, 5),
+        Set(2, 3),
+        Set(2, 4),
+        Set(3, 10),
+        Set(3, 11),
+        Set(4, 9),
+        Set(4, 11),
+        Set(5, 9),
+        Set(5, 10),
+      ))
+      val expectedCombos3 = genCombos(Set(
+        Set(0, 4, 11),
+        Set(0, 5, 10),
+        Set(1, 3, 11),
+        Set(1, 5, 9),
+        Set(2, 3, 10),
+        Set(2, 4, 9),
+      ))
+      val expectedCombos4 = Seq.empty // because a combo of 4 will always overlap on timeslots
 
-      possibleWorkshopCombinations(1, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations1
-      possibleWorkshopCombinations(2, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations2
-      possibleWorkshopCombinations(3, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations3
-      possibleWorkshopCombinations(4, haveVaryingCategories)(selectedWorkshops) should contain theSameElementsAs expectedCombinations4
+      val workshopCombos1 = generateWorkshopCombos(f.workshops, comboSize = 1, hasVaryingCategories)(matchingWorkshops)
+      val workshopCombos2 = generateWorkshopCombos(f.workshops, comboSize = 2, hasVaryingCategories)(matchingWorkshops)
+      val workshopCombos3 = generateWorkshopCombos(f.workshops, comboSize = 3, hasVaryingCategories)(matchingWorkshops)
+      val workshopCombos4 = generateWorkshopCombos(f.workshops, comboSize = 4, hasVaryingCategories)(matchingWorkshops)
+
+      workshopCombos1 should contain theSameElementsAs expectedCombos1
+      workshopCombos2 should contain theSameElementsAs expectedCombos2
+      workshopCombos3 should contain theSameElementsAs expectedCombos3
+      workshopCombos4 should contain theSameElementsAs expectedCombos4
     }
 
-    "generate all possible combinations of workshops for students from given Workshops, the number of to-be-taken workshops N and the StudentWorkshopSelections" in {
+    "generate all possible combinations of workshops for students from given workshops, comboSize, and the selected workshop choices of the students" in {
       val f = fixtureSymmetricWorkshops(7)
 
-      val n = 3
+      val comboSize = 3
       val student1 = StudentId(11)
       val student2 = StudentId(12)
       val student3 = StudentId(13)
-      val studentWorkshopSelections = Map(
+      val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = Map(
         student1 -> BiMap(
           SelectionPriority(1) -> WorkshopChoiceId(0),
           SelectionPriority(2) -> WorkshopChoiceId(1),
@@ -338,30 +375,44 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           SelectionPriority(3) -> WorkshopChoiceId(6), // health
         ),
       )
-
-      val expectedCombinations1 = Set(
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 4, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 0, 2 -> 5, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 3, 3 -> 8)),
-        f.possibleWorkshopsFrom(Set(1 -> 1, 2 -> 5, 3 -> 6)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 3, 3 -> 7)),
-        f.possibleWorkshopsFrom(Set(1 -> 2, 2 -> 4, 3 -> 6)),
+      val expectedWsIdCombos1 = Set(
+        Set(0, 4, 8),
+        Set(0, 5, 7),
+        Set(1, 3, 8),
+        Set(1, 5, 6),
+        Set(2, 3, 7),
+        Set(2, 4, 6),
       )
-      val expectedCombinations2 = Set(
-        f.possibleWorkshopsFrom(Set(6 -> 3, 5 -> 10, 4 -> 17)),
-        f.possibleWorkshopsFrom(Set(6 -> 3, 5 -> 11, 4 -> 16)),
-        f.possibleWorkshopsFrom(Set(6 -> 4, 5 -> 9, 4 -> 17)),
-        f.possibleWorkshopsFrom(Set(6 -> 4, 5 -> 11, 4 -> 15)),
-        f.possibleWorkshopsFrom(Set(6 -> 5, 5 -> 9, 4 -> 16)),
-        f.possibleWorkshopsFrom(Set(6 -> 5, 5 -> 10, 4 -> 15)),
+      val expectedWsIdCombos2 = Set(
+        Set(3, 10, 17),
+        Set(3, 11, 16),
+        Set(4, 9, 17),
+        Set(4, 11, 15),
+        Set(5, 9, 16),
+        Set(5, 10, 15),
       )
-      val expectedStudentSelectedWorkshops = Map(
-        student1 -> expectedCombinations1,
-        student2 -> expectedCombinations2,
+      val expectedStudentsWsIdCombos = Map(
+        student1 -> expectedWsIdCombos1,
+        student2 -> expectedWsIdCombos2,
         student3 -> Set.empty, // as all 3 workshops are of category health
       )
+      val expectedStudentsWorkshopCombos = expectedStudentsWsIdCombos.map { case (studentId, expectedWsIdCombos) =>
+        val expectedWorkshopCombos = expectedWsIdCombos.map(expectedWsIdCombo =>
+          expectedWsIdCombo
+            .map(WorkshopId)
+            .map { workshopId =>
+              val workshop = f.workshops(workshopId)
+              val category = workshop.category
+              val selectionPriority = studentsSelectedWorkshopChoices(studentId).keyFor(workshop.choiceId).get
+              workshopId -> PossibleWorkshop(category, selectionPriority)
+            }
+            .toMap)
+        studentId -> expectedWorkshopCombos
+      }
 
-      possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections) should contain theSameElementsAs expectedStudentSelectedWorkshops
+      val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize)(studentsSelectedWorkshopChoices)
+
+      studentsWorkshopCombos should contain theSameElementsAs expectedStudentsWorkshopCombos
     }
 
     "provide a method to distribute students to workshops" which {
@@ -369,38 +420,34 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       "yields an empty distribution if no selections were made" in {
         val f = fixtureSymmetricWorkshops(1)
 
-        val n = 3
-        val studentWorkshopSelections: StudentWorkshopSelections = Map.empty
-        val studentPossibleWorkshops = possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections)
-        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, 0)
+        val comboSize = 3
+        val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = Map.empty
+        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0))
 
-        distributeStudentsToWorkshops(f.workshops)(studentPossibleWorkshops) shouldEqual expectedDistribution
+        distributeStudentsToWorkshops(f.workshops, comboSize)(studentsSelectedWorkshopChoices) shouldEqual expectedDistribution
       }
 
       "yields a valid distribution for a single student" in {
         val f = fixtureSymmetricWorkshops(4)
 
-        val n = 3
+        val comboSize = 3
         val student1 = StudentId(1)
-        val studentWorkshopSelections: StudentWorkshopSelections = Map(
+        val studentWorkshopSelections: StudentsSelectedWorkshopChoices = Map(
           student1 -> BiMap(
             SelectionPriority(1) -> WorkshopChoiceId(0),
             SelectionPriority(2) -> WorkshopChoiceId(1),
             SelectionPriority(3) -> WorkshopChoiceId(2),
           ),
         )
-        val studentPossibleWorkshops = possibleWorkshopCombinations(f.workshops, n)(studentWorkshopSelections)
         // assumes that the algorithm orders the input so that the result is stable
         val expectedResult = (Map(
-          WorkshopId(0) -> Set(student1),
-          WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, WorkshopId(3) -> Set.empty,
-          WorkshopId(4) -> Set(student1),
-          WorkshopId(5) -> Set.empty, WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty,
-          WorkshopId(8) -> Set(student1),
-          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty,
-        ), 6)
+          WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // WorkshopChoiceId(0)
+          WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // WorkshopChoiceId(1)
+          WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // WorkshopChoiceId(2)
+          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // WorkshopChoiceId(3)
+        ), Metric(6))
 
-        distributeStudentsToWorkshops(f.workshops)(studentPossibleWorkshops) shouldEqual expectedResult
+        distributeStudentsToWorkshops(f.workshops, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
     }
