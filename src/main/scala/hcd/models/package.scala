@@ -47,13 +47,8 @@ package object models {
   /** All attributes to a workshop. */
   final case class Workshop(category: Category, choiceId: WorkshopChoiceId, timeSlot: TimeSlot, seats: Int)
 
-  /** Only the attributes of a possible workshop which are relevant to the algorithm to find the perfect distribution. */
-  final case class PossibleWorkshop(category: Category, selectionPriority: SelectionPriority)
-
-  // Only internally needed.
-  final case class PossibleWorkshopCandidate(workshop: Workshop, selectionPriority: SelectionPriority)
-
   // Mappings
+
   /**
    * Which workshop choice is selected with which priority.
    * BiMap guarantees both selection priority and workshop choice are unique.
@@ -65,22 +60,6 @@ package object models {
 
   /** All the workshops. */
   type Workshops = Map[WorkshopId, Workshop]
-
-  /** Workshops which generally match to selected workshop choices, with the selection priority. */
-  type MatchingWorkshops = Map[WorkshopId, SelectionPriority]
-
-  /** The matching workshops with selection priority for students. */
-  type StudentsMatchingWorkshops = Map[StudentId, MatchingWorkshops]
-
-  // Only internally needed.
-  // A subset of workshops with represents a candidate for a possible combo of workshops
-  // It contains all attributes and is too heavy for the distribution algorithm.
-  type WorkshopComboCandidate = Map[WorkshopId, PossibleWorkshopCandidate]
-
-  /** A subset of workshops with represents a possible combo of workshops and only contains the attributes relevant
-   * to the algorithm to find the perfect distribution.
-   */
-  type WorkshopCombo = Map[WorkshopId, PossibleWorkshop]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
