@@ -21,7 +21,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       def expectedWorkshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
         wsIds
           .map(WorkshopId)
-          .map(wsId => (wsId, (workshops(wsId), SelectionPriority(Random.nextInt()))))
+          .map(wsId => (wsId, PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt()))))
           .toMap
 
       // create workshop combos for workshops ids, taking the selection priority from matching workshops

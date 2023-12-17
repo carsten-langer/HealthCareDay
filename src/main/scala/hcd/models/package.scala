@@ -51,7 +51,7 @@ package object models {
   final case class PossibleWorkshop(category: Category, selectionPriority: SelectionPriority)
 
   // Only internally needed.
-  private type PossibleWorkshopCandidate = (Workshop, SelectionPriority)
+  final case class PossibleWorkshopCandidate(workshop: Workshop, selectionPriority: SelectionPriority)
 
   // Mappings
   /**
