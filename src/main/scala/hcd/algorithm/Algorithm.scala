@@ -22,7 +22,7 @@ object Algorithm {
       .toMap
 
   private def extract[A](extractor: Workshop => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
-    workshopComboCandidate.values.map { case (workshop, _) => extractor(workshop) }
+    workshopComboCandidate.values.map(possibleWorkshopCandidate => extractor(possibleWorkshopCandidate.workshop))
 
   // empty iterable => false
   private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
@@ -52,7 +52,9 @@ object Algorithm {
    */
   protected[algorithm] def generateWorkshopCombos(workshops: Workshops, comboSize: Int, extraFilterPredicate: WorkshopComboCandidate => Boolean)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] =
     matchingWorkshops
-      .map { case (workshopId, selectionPriority) => (workshopId, (workshops(workshopId), selectionPriority)) }
+      .map { case (workshopId, selectionPriority) =>
+        (workshopId, PossibleWorkshopCandidate(workshops(workshopId), selectionPriority))
+      }
       .toSeq
       .combinations(comboSize)
       .map(_.toMap)
@@ -60,9 +62,11 @@ object Algorithm {
       .filter(hasDistinctChoiceIds)
       .filter(hasDistinctTimeslots)
       .filter(extraFilterPredicate)
-      .map(_.map { case (workshopId, (workshop, selectionPriority)) =>
-        (workshopId, PossibleWorkshop(workshop.category, selectionPriority))
-      }.toMap)
+      .map(workshopComboCandidate =>
+        workshopComboCandidate.map { case (workshopId, PossibleWorkshopCandidate(workshop, selectionPriority)) =>
+          (workshopId, PossibleWorkshop(workshop.category, selectionPriority))
+        }
+      )
 
   protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): Map[StudentId, Set[WorkshopCombo]] =
     studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops)(studentsSelectedWorkshopChoices)

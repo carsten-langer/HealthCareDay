@@ -20,7 +20,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       def workshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
         wsIds
           .map(WorkshopId)
-          .map(wsId => (wsId, (workshops(wsId), SelectionPriority(Random.nextInt()))))
+          .map(wsId => (wsId, PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt()))))
           .toMap
 
       // create workshop combos from workshop ids, taking the selection priority from matching workshops
