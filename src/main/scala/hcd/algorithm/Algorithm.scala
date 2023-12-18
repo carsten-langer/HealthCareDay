@@ -10,7 +10,7 @@ object Algorithm {
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
       .flatMap { case (selectionPriority, choiceId) =>
         workshops.collect { case (workshopId, Workshop(_, `choiceId`, _, _)) =>
-          (workshopId, selectionPriority)
+          workshopId -> selectionPriority
         }
       }
 
@@ -53,7 +53,7 @@ object Algorithm {
   protected[algorithm] def generateWorkshopCombos(workshops: Workshops, comboSize: Int, extraFilterPredicate: WorkshopComboCandidate => Boolean)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] =
     matchingWorkshops
       .map { case (workshopId, selectionPriority) =>
-        (workshopId, PossibleWorkshopCandidate(workshops(workshopId), selectionPriority))
+        workshopId -> PossibleWorkshopCandidate(workshops(workshopId), selectionPriority)
       }
       .toSeq
       .combinations(comboSize)
@@ -64,7 +64,7 @@ object Algorithm {
       .filter(extraFilterPredicate)
       .map(workshopComboCandidate =>
         workshopComboCandidate.map { case (workshopId, PossibleWorkshopCandidate(workshop, selectionPriority)) =>
-          (workshopId, PossibleWorkshop(workshop.category, selectionPriority))
+          workshopId -> PossibleWorkshop(workshop.category, selectionPriority)
         }
       )
 
