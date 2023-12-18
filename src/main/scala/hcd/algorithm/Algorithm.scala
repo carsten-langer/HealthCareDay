@@ -46,15 +46,28 @@ object Algorithm {
     categories.exists(_ != Health) && categories.exists(_ != Relaxation)
   }
 
-  /** From all matching workshops, generate all combinations of comboSize workshops which are possible.
+  // Ideally, students should get assigned a combo which contains at least 1 workshop with selection priority <= 3.
+  // If this filter is taken as hard boundary, it will reduce a lot the number of combo candidates,
+  // but there may be the risk that no distribution could be found.
+  // empty workshop combo candidate => false
+  protected[algorithm] def hasSufficientSelectionPriority: WorkshopComboCandidate => Boolean = workshopComboCandidate =>
+    workshopComboCandidate.nonEmpty &&
+      workshopComboCandidate
+        .values
+        .map { case PossibleWorkshopCandidate(_, SelectionPriority(priority)) => priority }.min <= 3
+
+  /**
+   * From all matching workshops, generate all combinations of comboSize workshops which are possible.
    * A combo of workshops is possible if the workshops in that combo do not have the same timeslot nor the same
    * choice id and where the combo also complies to a given extra filter.
    *
-   * @param comboSize            Number of workshops in a combination, e.g. 3.
-   * @param extraFilterPredicate A candidate of a workshop combination is only selected if extraFilterPredicate is true
-   *                             for it.
+   * @param comboSize             Number of workshops in a combination, e.g. 3.
+   * @param extraFilterPredicates Select a candidate of a workshop combination only if all extraFilterPredicates are
+   *                              true for it.
    */
-  protected[algorithm] def generateWorkshopCombos(workshops: Workshops, comboSize: Int, extraFilterPredicate: WorkshopComboCandidate => Boolean)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] =
+  protected[algorithm] def generateWorkshopCombos(workshops: Workshops, comboSize: Int, extraFilterPredicates: WorkshopComboCandidate => Boolean*)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] = {
+    val extraFilterPredicate: WorkshopComboCandidate => Boolean = workshopComboCandidate =>
+      extraFilterPredicates.foldLeft(true) { case (result, predicate) => result && predicate(workshopComboCandidate) }
     matchingWorkshops
       .map { case (workshopId, selectionPriority) =>
         workshopId -> PossibleWorkshopCandidate(workshops(workshopId), selectionPriority)
@@ -71,11 +84,12 @@ object Algorithm {
           workshopId -> PossibleWorkshop(workshop.category, selectionPriority)
         }
       )
+  }
 
   protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): Map[StudentId, Set[WorkshopCombo]] =
     studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops)(studentsSelectedWorkshopChoices)
       .view
-      .mapValues(generateWorkshopCombos(workshops, comboSize, hasVaryingCategories))
+      .mapValues(generateWorkshopCombos(workshops, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
   protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): (WorkshopAssignments, Metric) = {
@@ -114,8 +128,9 @@ object Algorithm {
     var currentN = 0
     val startTime = System.currentTimeMillis()
 
-    // currently takes ca. 37 s to calculate 1 combination for Student 411
+    // currently takes ca. 30 s to calculate 1 combination for Student 411
     // i.e. try all combos for students 412, 413, ..., 999
+    // with 90 workshop combos per student
     def countAndPrint(studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1
       val now = System.currentTimeMillis()

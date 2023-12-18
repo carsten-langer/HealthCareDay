@@ -25,6 +25,14 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
             .map(wsId => wsId -> PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt())))
         )
 
+      // create a WorkshopComboCandidate
+      def expectedWorkshopComboCandidate(wsIdSelPrios: BiMap[Int, Int]): WorkshopComboCandidate =
+        wsIdSelPrios
+          .map { case (wsId, selPrio) =>
+            val workshopId = WorkshopId(wsId)
+            workshopId -> PossibleWorkshopCandidate(workshops(workshopId), SelectionPriority(selPrio))
+          }
+
       // create workshop combos for workshops ids, taking the selection priority from matching workshops
       def expectedWorkshopCombos(matchingWorkshops: MatchingWorkshops)(wsIdCombos: Set[Set[Int]]): Set[WorkshopCombo] =
         wsIdCombos.map(wsIdCombo =>
@@ -267,6 +275,22 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       hasVaryingCategories(workshopComboCandidate8) shouldEqual false
     }
 
+    "filter a WorkshopComboCandidate via hasSufficientSelectionPriority " in {
+      val f = fixtureSymmetricWorkshops(4)
+
+      val workshopComboCandidate1 = f.expectedWorkshopComboCandidate(BiMap(10 -> 1, 11 -> 2))
+      val workshopComboCandidate2 = f.expectedWorkshopComboCandidate(BiMap(10 -> 2, 11 -> 4))
+      val workshopComboCandidate3 = f.expectedWorkshopComboCandidate(BiMap(10 -> 3, 11 -> 5))
+      val workshopComboCandidate4 = f.expectedWorkshopComboCandidate(BiMap(10 -> 4, 11 -> 6))
+      val workshopComboCandidate5: WorkshopComboCandidate = BiMap.empty
+
+      hasSufficientSelectionPriority(workshopComboCandidate1) shouldEqual true
+      hasSufficientSelectionPriority(workshopComboCandidate2) shouldEqual true
+      hasSufficientSelectionPriority(workshopComboCandidate3) shouldEqual true
+      hasSufficientSelectionPriority(workshopComboCandidate4) shouldEqual false
+      hasSufficientSelectionPriority(workshopComboCandidate5) shouldEqual false
+    }
+
     "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, with regards to choiceId and timeslots" in {
       val f = fixtureSymmetricWorkshops(3)
 
@@ -393,6 +417,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       val student1 = StudentId(11)
       val student2 = StudentId(12)
       val student3 = StudentId(13)
+      val student4 = StudentId(14)
       val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = Map(
         student1 -> BiMap(
           SelectionPriority(1) -> WorkshopChoiceId(0),
@@ -400,7 +425,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           SelectionPriority(3) -> WorkshopChoiceId(2),
         ),
         student2 -> BiMap(
-          SelectionPriority(6) -> WorkshopChoiceId(1),
+          SelectionPriority(3) -> WorkshopChoiceId(1),
           SelectionPriority(5) -> WorkshopChoiceId(3),
           SelectionPriority(4) -> WorkshopChoiceId(5),
         ),
@@ -408,6 +433,11 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           SelectionPriority(1) -> WorkshopChoiceId(0), // health
           SelectionPriority(2) -> WorkshopChoiceId(3), // health
           SelectionPriority(3) -> WorkshopChoiceId(6), // health
+        ),
+        student4 -> BiMap( // no selection priority 1, 2, 3
+          SelectionPriority(6) -> WorkshopChoiceId(1),
+          SelectionPriority(5) -> WorkshopChoiceId(3),
+          SelectionPriority(4) -> WorkshopChoiceId(5),
         ),
       )
       val expectedWsIdCombos1 = Set(
@@ -430,6 +460,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         student1 -> expectedWsIdCombos1,
         student2 -> expectedWsIdCombos2,
         student3 -> Set.empty, // as all 3 workshops are of category health
+        student4 -> Set.empty, // as there is no workshops with selection priority 1, 2, 3
       )
       val expectedStudentsWorkshopCombos = expectedStudentsWsIdCombos.map { case (studentId, expectedWsIdCombos) =>
         val expectedWorkshopCombos = expectedWsIdCombos.map(expectedWsIdCombo =>
