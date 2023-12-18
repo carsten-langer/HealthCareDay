@@ -19,22 +19,23 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
 
       // create a WorkshopComboCandidate with random SelectionPriority
       def expectedWorkshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
-        wsIds
-          .map(WorkshopId)
-          .map(wsId => wsId -> PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt())))
-          .toMap
+        BiMap.from(
+          wsIds
+            .map(WorkshopId)
+            .map(wsId => wsId -> PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt())))
+        )
 
       // create workshop combos for workshops ids, taking the selection priority from matching workshops
       def expectedWorkshopCombos(matchingWorkshops: MatchingWorkshops)(wsIdCombos: Set[Set[Int]]): Set[WorkshopCombo] =
         wsIdCombos.map(wsIdCombo =>
-          wsIdCombo
-            .map(WorkshopId)
-            .map { workshopId =>
-              val category = workshops(workshopId).category
-              val selectionPriority = matchingWorkshops(workshopId)
-              workshopId -> PossibleWorkshop(category, selectionPriority)
-            }
-            .toMap
+          BiMap.from(
+            wsIdCombo
+              .map(WorkshopId)
+              .map { workshopId =>
+                val category = workshops(workshopId).category
+                val selectionPriority = matchingWorkshops(workshopId)
+                workshopId -> PossibleWorkshop(category, selectionPriority)
+              })
         )
     }
 
@@ -51,14 +52,14 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       // each workshop choice exists in all timeslot
       // workshop categories are equally distributed
       // no limits of workshop seats
-      override val workshops: Workshops = workshopIds.map(workshopId =>
+      override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
         workshopId -> Workshop(
           categories(workshopId.id / 3 % 3), // categories alter h,h,h, r,r,r, s,s,s, h,h,h, ...
           WorkshopChoiceId(workshopId.id / 3), // choiceIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
           timeSlots(workshopId.id % 3), // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
           noSeats
         )
-      ).toMap
+      ))
     }
 
     def fixtureSymmetricWorkshops(noWorkshopChoices: Int): FixtureWorkshops =
@@ -215,7 +216,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       // artificial combination, with the symmetric fixture such choice could not have happened
       val workshopComboCandidate3 = f.expectedWorkshopComboCandidate(Set(0, 3))
       val workshopComboCandidate4 = f.expectedWorkshopComboCandidate(Set(0, 4))
-      val workshopComboCandidate5: WorkshopComboCandidate = Map.empty
+      val workshopComboCandidate5: WorkshopComboCandidate = BiMap.empty
 
       hasDistinctChoiceIds(workshopComboCandidate1) shouldEqual false
       hasDistinctChoiceIds(workshopComboCandidate2) shouldEqual false
@@ -233,7 +234,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       val workshopComboCandidate4 = f.expectedWorkshopComboCandidate(Set(1, 5))
       val workshopComboCandidate5 = f.expectedWorkshopComboCandidate(Set(2, 5))
       val workshopComboCandidate6 = f.expectedWorkshopComboCandidate(Set(0, 8, 4))
-      val workshopComboCandidate7: WorkshopComboCandidate = Map.empty
+      val workshopComboCandidate7: WorkshopComboCandidate = BiMap.empty
 
       hasDistinctTimeslots(workshopComboCandidate1) shouldEqual false
       hasDistinctTimeslots(workshopComboCandidate2) shouldEqual false
@@ -254,7 +255,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       val workshopComboCandidate5 = f.expectedWorkshopComboCandidate(Set(4, 13))
       val workshopComboCandidate6 = f.expectedWorkshopComboCandidate(Set(6, 15))
       val workshopComboCandidate7 = f.expectedWorkshopComboCandidate(Set(6, 7, 8))
-      val workshopComboCandidate8: WorkshopComboCandidate = Map.empty
+      val workshopComboCandidate8: WorkshopComboCandidate = BiMap.empty
 
       hasVaryingCategories(workshopComboCandidate1) shouldEqual false
       hasVaryingCategories(workshopComboCandidate2) shouldEqual false
