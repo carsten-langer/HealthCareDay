@@ -21,7 +21,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       def expectedWorkshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
         wsIds
           .map(WorkshopId)
-          .map(wsId => (wsId, PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt()))))
+          .map(wsId => wsId -> PossibleWorkshopCandidate(workshops(wsId), SelectionPriority(Random.nextInt())))
           .toMap
 
       // create workshop combos for workshops ids, taking the selection priority from matching workshops
@@ -52,12 +52,12 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       // workshop categories are equally distributed
       // no limits of workshop seats
       override val workshops: Workshops = workshopIds.map(workshopId =>
-        (workshopId, Workshop(
+        workshopId -> Workshop(
           categories(workshopId.id / 3 % 3), // categories alter h,h,h, r,r,r, s,s,s, h,h,h, ...
           WorkshopChoiceId(workshopId.id / 3), // choiceIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
           timeSlots(workshopId.id % 3), // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
           noSeats
-        ))
+        )
       ).toMap
     }
 
@@ -79,7 +79,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
       lazy val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = studentIds.map(
-        (_, BiMap.from(selectionPriorities.zip(Random.shuffle(workshopChoiceIds.toSeq))))
+        _ -> BiMap.from(selectionPriorities.zip(Random.shuffle(workshopChoiceIds.toSeq)))
       ).toMap
     }
 
