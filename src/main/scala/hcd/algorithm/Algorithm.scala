@@ -1,6 +1,7 @@
 package hcd.algorithm
 
 import hcd.models._
+import io.cvbio.collection.mutable.bimap.BiMap
 
 object Algorithm {
 
@@ -22,7 +23,10 @@ object Algorithm {
       .toMap
 
   private def extract[A](extractor: Workshop => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
-    workshopComboCandidate.values.map(possibleWorkshopCandidate => extractor(possibleWorkshopCandidate.workshop))
+    workshopComboCandidate
+      .values // yields a Set of possible workshop candidates
+      .toSeq // transform to Seq to allow several possible workshop candidates to have the same A being extracted
+      .map(possibleWorkshopCandidate => extractor(possibleWorkshopCandidate.workshop))
 
   // empty iterable => false
   private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
@@ -57,7 +61,7 @@ object Algorithm {
       }
       .toSeq
       .combinations(comboSize)
-      .map(_.toMap)
+      .map(BiMap.from)
       .toSet
       .filter(hasDistinctChoiceIds)
       .filter(hasDistinctTimeslots)

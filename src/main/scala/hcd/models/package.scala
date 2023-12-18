@@ -58,8 +58,12 @@ package object models {
   /** The students' workshop choice selections. */
   type StudentsSelectedWorkshopChoices = Map[StudentId, SelectedWorkshopChoices]
 
-  /** All the workshops. */
-  type Workshops = Map[WorkshopId, Workshop]
+  /**
+   * All the workshops.
+   * BiMap guarantees both workshop id and workshop are unique.
+   * This works as a workshop is also unique by its combination of choiceId and timeSlot.
+   */
+  type Workshops = BiMap[WorkshopId, Workshop]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]

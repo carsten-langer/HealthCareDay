@@ -1,6 +1,7 @@
 package hcd
 
 import hcd.models._
+import io.cvbio.collection.mutable.bimap.BiMap
 
 package object algorithm {
   // Aggregate types
@@ -20,9 +21,15 @@ package object algorithm {
 
   // A subset of workshops with represents a candidate for a possible combo of workshops
   // It contains all attributes and is too heavy for the distribution algorithm.
-  protected[algorithm] type WorkshopComboCandidate = Map[WorkshopId, PossibleWorkshopCandidate]
+  // BiMap guarantees both workshop id and possible workshop candidate are unique (for a single student).
+  // This works as a workshop is also unique by its combination of choiceId and timeSlot.
+  protected[algorithm] type WorkshopComboCandidate = BiMap[WorkshopId, PossibleWorkshopCandidate]
 
   // A subset of workshops with represents a possible combo of workshops and only contains the attributes relevant
   // to the algorithm to find the perfect distribution.
-  protected[algorithm] type WorkshopCombo = Map[WorkshopId, PossibleWorkshop]
+  // BiMap guarantees both workshop id and possible workshop are unique (for a single student).
+  // This is true as long as we stick to only take workshops as possible workshops which the student chose via
+  // workshop choice id. Once we have to extend the distribution to include non-selected workshops, we have to
+  // think which selection priority we assign to such replacement workshops and if we then have to remove the BiMap.
+  protected[algorithm] type WorkshopCombo = BiMap[WorkshopId, PossibleWorkshop]
 }
