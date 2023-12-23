@@ -47,48 +47,48 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         )
     }
 
-    def fixtureSymmetricWorkshopsFor(noWorkshopChoices: Int, noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
+    def fixtureSymmetricWorkshopsFor(noTopics: Int, noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
       private val categories = Seq(Nutrition, Relaxation, Sports)
-      private val noWorkshops = noWorkshopChoices * timeSlots.size // all workshops are available on all timeslots
+      private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available on all timeslots
 
       // Generate all IDs
       private val workshopIds = Range(0, noWorkshops).map(WorkshopId)
 
       // Generate symmetric workshops:
-      // each workshop choice exists in all timeslot
+      // each workshop topic exists in all timeslot
       // workshop categories are equally distributed
       // no limits of workshop seats
       override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
         workshopId -> Workshop(
           categories(workshopId.id / 3 % 3), // categories alter h,h,h, r,r,r, s,s,s, h,h,h, ...
-          WorkshopChoiceId(workshopId.id / 3), // choiceIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
+          TopicId(workshopId.id / 3), // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
           timeSlots(workshopId.id % 3), // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
           noSeats
         )
       ))
     }
 
-    def fixtureSymmetricWorkshops(noWorkshopChoices: Int): FixtureWorkshops =
-      fixtureSymmetricWorkshopsFor(noWorkshopChoices, 20)
+    def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshops =
+      fixtureSymmetricWorkshopsFor(noTopics, 20)
 
     trait FixtureFullDataModel extends FixtureWorkshops {
       // Inputs for model size
-      private val noWorkshopChoices = 50
+      private val noTopics = 50
       private val noStudents = 1000
       private val noSelectionsPerStudent = 6
       private val noSeats = 20
 
-      override val workshops: Workshops = fixtureSymmetricWorkshopsFor(noWorkshopChoices, noSeats).workshops
-      lazy val workshopChoiceIds: Set[WorkshopChoiceId] = Range(0, noWorkshopChoices).toSet.map(WorkshopChoiceId)
+      override val workshops: Workshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats).workshops
+      lazy val topicIds: Set[TopicId] = Range(0, noTopics).toSet.map(TopicId)
       lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
       lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
-      lazy val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = studentIds.map(
-        _ -> BiMap.from(selectionPriorities.zip(Random.shuffle(workshopChoiceIds.toSeq)))
+      lazy val studentsSelectedTopics: StudentsSelectedTopics = studentIds.map(
+        _ -> BiMap.from(selectionPriorities.zip(Random.shuffle(topicIds.toSeq)))
       ).toMap
     }
 
@@ -96,48 +96,48 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
 
     "build test data correctly and optionally print it" in {
       val f = fixtureFullDataModel
-      f.workshops(WorkshopId(0)) shouldEqual Workshop(Nutrition, WorkshopChoiceId(0), FirstTimeSlot, 20)
-      f.workshops(WorkshopId(4)) shouldEqual Workshop(Relaxation, WorkshopChoiceId(1), SecondTimeSlot, 20)
-      f.workshops(WorkshopId(8)) shouldEqual Workshop(Sports, WorkshopChoiceId(2), ThirdTimeSlot, 20)
+      f.workshops(WorkshopId(0)) shouldEqual Workshop(Nutrition, TopicId(0), FirstTimeSlot, 20)
+      f.workshops(WorkshopId(4)) shouldEqual Workshop(Relaxation, TopicId(1), SecondTimeSlot, 20)
+      f.workshops(WorkshopId(8)) shouldEqual Workshop(Sports, TopicId(2), ThirdTimeSlot, 20)
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
 
-      // print students' selected workshop choices ordered by student id
-      //f.studentsSelectedWorkshopChoices.toSeq.sortBy(_._1.id).foreach(println)
+      // print students' selected workshop topics ordered by student id
+      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(println)
 
-      // print students' matching workshops from their selected workshop choices for full model
+      // print students' matching workshops from their selected workshop topics for full model
       @unused // may be unused, depending on whether the model is printed out our not
-      lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(f.workshops)(f.studentsSelectedWorkshopChoices)
+      lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)(f.studentsSelectedTopics)
       //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
 
       // print students' workshop combos for full model
       // per student there are 96 possible combos to chose 3 out of 6 workshops
       // print those for the first 2 students
       @unused // may be unused, depending on whether the model is printed out our not
-      lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize = 3)(f.studentsSelectedWorkshopChoices)
+      lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize = 3)(f.studentsSelectedTopics)
       //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, comboSize = 3)(f.studentsSelectedWorkshopChoices)
+      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, comboSize = 3)(f.studentsSelectedTopics)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
         println(workshopAssignments, metric)
     }
 
-    "select MatchingWorkshops from SelectedWorkshopChoices " in {
+    "select MatchingWorkshops from SelectedTopics " in {
       val f = fixtureSymmetricWorkshops(4)
-      val fut: SelectedWorkshopChoices => MatchingWorkshops = matchingWorkshopsFromSelectedWorkshopChoice(f.workshops)
+      val fut: SelectedTopics => MatchingWorkshops = matchingWorkshopsFromSelectedTopics(f.workshops)
 
-      val selectedWorkshopChoices1: SelectedWorkshopChoices = BiMap(
-        SelectionPriority(1) -> WorkshopChoiceId(0),
-        SelectionPriority(2) -> WorkshopChoiceId(1),
+      val selectedWorkshopTopics1: SelectedTopics = BiMap(
+        SelectionPriority(1) -> TopicId(0),
+        SelectionPriority(2) -> TopicId(1),
       )
-      val selectedWorkshopChoices2: SelectedWorkshopChoices = BiMap(
-        SelectionPriority(5) -> WorkshopChoiceId(3),
-        SelectionPriority(6) -> WorkshopChoiceId(2),
+      val selectedWorkshopTopics2: SelectedTopics = BiMap(
+        SelectionPriority(5) -> TopicId(3),
+        SelectionPriority(6) -> TopicId(2),
       )
-      val selectedWorkshopChoices3: SelectedWorkshopChoices = BiMap(
-        SelectionPriority(5) -> WorkshopChoiceId(4), // non-existing workshop choice
+      val selectedWorkshopTopics3: SelectedTopics = BiMap(
+        SelectionPriority(5) -> TopicId(4), // non-existing workshop topic
       )
 
       val expectedMatchingWorkshops1: MatchingWorkshops = Map(
@@ -157,31 +157,31 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         WorkshopId(8) -> SelectionPriority(6),
       )
 
-      fut(selectedWorkshopChoices1) should contain theSameElementsAs expectedMatchingWorkshops1
-      fut(selectedWorkshopChoices2) should contain theSameElementsAs expectedMatchingWorkshops2
-      fut(selectedWorkshopChoices3) shouldBe empty
+      fut(selectedWorkshopTopics1) should contain theSameElementsAs expectedMatchingWorkshops1
+      fut(selectedWorkshopTopics2) should contain theSameElementsAs expectedMatchingWorkshops2
+      fut(selectedWorkshopTopics3) shouldBe empty
     }
 
-    "select StudentsMatchingWorkshops from StudentsSelectedWorkshopChoices" in {
+    "select StudentsMatchingWorkshops from StudentsSelectedTopics" in {
       val f = fixtureSymmetricWorkshops(19)
-      val fut: StudentsSelectedWorkshopChoices => StudentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(f.workshops)
+      val fut: StudentsSelectedTopics => StudentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)
 
       val student1 = StudentId(5)
       val student2 = StudentId(42)
       val student3 = StudentId(-1)
-      val studentWorkshopSelections: StudentsSelectedWorkshopChoices = Map(
+      val studentWorkshopSelections: StudentsSelectedTopics = Map(
         student1 -> BiMap(
-          SelectionPriority(7) -> WorkshopChoiceId(14),
-          SelectionPriority(9) -> WorkshopChoiceId(18),
-          SelectionPriority(5) -> WorkshopChoiceId(10),
+          SelectionPriority(7) -> TopicId(14),
+          SelectionPriority(9) -> TopicId(18),
+          SelectionPriority(5) -> TopicId(10),
         ),
         student2 -> BiMap(
-          SelectionPriority(6) -> WorkshopChoiceId(3),
-          SelectionPriority(2) -> WorkshopChoiceId(1),
-          SelectionPriority(4) -> WorkshopChoiceId(2),
+          SelectionPriority(6) -> TopicId(3),
+          SelectionPriority(2) -> TopicId(1),
+          SelectionPriority(4) -> TopicId(2),
         ),
         student3 -> BiMap(
-          SelectionPriority(-2) -> WorkshopChoiceId(19), // non-existing workshop choice
+          SelectionPriority(-2) -> TopicId(19), // non-existing workshop topic
         ),
       )
       val expectedStudent1MatchingWorkshops: MatchingWorkshops = Map(
@@ -216,7 +216,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       fut(studentWorkshopSelections) should contain theSameElementsAs expectedStudentsMatchingWorkshops
     }
 
-    "filter a WorkshopComboCandidate via hasDistinctChoiceIds " in {
+    "filter a WorkshopComboCandidate via hasDistinctTopicIds " in {
       val f = fixtureSymmetricWorkshops(2)
 
       val workshopComboCandidate1 = f.expectedWorkshopComboCandidate(Set(1, 2))
@@ -226,11 +226,11 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       val workshopComboCandidate4 = f.expectedWorkshopComboCandidate(Set(0, 4))
       val workshopComboCandidate5: WorkshopComboCandidate = BiMap.empty
 
-      hasDistinctChoiceIds(workshopComboCandidate1) shouldEqual false
-      hasDistinctChoiceIds(workshopComboCandidate2) shouldEqual false
-      hasDistinctChoiceIds(workshopComboCandidate3) shouldEqual true
-      hasDistinctChoiceIds(workshopComboCandidate4) shouldEqual true
-      hasDistinctChoiceIds(workshopComboCandidate5) shouldEqual false
+      hasDistinctTopicIds(workshopComboCandidate1) shouldEqual false
+      hasDistinctTopicIds(workshopComboCandidate2) shouldEqual false
+      hasDistinctTopicIds(workshopComboCandidate3) shouldEqual true
+      hasDistinctTopicIds(workshopComboCandidate4) shouldEqual true
+      hasDistinctTopicIds(workshopComboCandidate5) shouldEqual false
     }
 
     "filter a WorkshopComboCandidate via hasDistinctTimeslots " in {
@@ -291,7 +291,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       hasSufficientSelectionPriority(workshopComboCandidate5) shouldEqual false
     }
 
-    "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, with regards to choiceId and timeslots" in {
+    "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, with regards to topicId and timeslots" in {
       val f = fixtureSymmetricWorkshops(3)
 
       val matchingWorkshops: MatchingWorkshops = Map(
@@ -410,7 +410,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       workshopCombos4 should contain theSameElementsAs expectedCombos4
     }
 
-    "generate all possible combinations of workshops for students from given workshops, comboSize, and the selected workshop choices of the students" in {
+    "generate all possible combinations of workshops for students from given workshops, comboSize, and the selected workshop topics of the students" in {
       val f = fixtureSymmetricWorkshops(7)
 
       val comboSize = 3
@@ -418,26 +418,26 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       val student2 = StudentId(12)
       val student3 = StudentId(13)
       val student4 = StudentId(14)
-      val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = Map(
+      val studentsSelectedTopics: StudentsSelectedTopics = Map(
         student1 -> BiMap(
-          SelectionPriority(1) -> WorkshopChoiceId(0),
-          SelectionPriority(2) -> WorkshopChoiceId(1),
-          SelectionPriority(3) -> WorkshopChoiceId(2),
+          SelectionPriority(1) -> TopicId(0),
+          SelectionPriority(2) -> TopicId(1),
+          SelectionPriority(3) -> TopicId(2),
         ),
         student2 -> BiMap(
-          SelectionPriority(3) -> WorkshopChoiceId(1),
-          SelectionPriority(5) -> WorkshopChoiceId(3),
-          SelectionPriority(4) -> WorkshopChoiceId(5),
+          SelectionPriority(3) -> TopicId(1),
+          SelectionPriority(5) -> TopicId(3),
+          SelectionPriority(4) -> TopicId(5),
         ),
         student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category nutrition
-          SelectionPriority(1) -> WorkshopChoiceId(0), // nutrition
-          SelectionPriority(2) -> WorkshopChoiceId(3), // nutrition
-          SelectionPriority(3) -> WorkshopChoiceId(6), // nutrition
+          SelectionPriority(1) -> TopicId(0), // nutrition
+          SelectionPriority(2) -> TopicId(3), // nutrition
+          SelectionPriority(3) -> TopicId(6), // nutrition
         ),
         student4 -> BiMap( // no selection priority 1, 2, 3
-          SelectionPriority(6) -> WorkshopChoiceId(1),
-          SelectionPriority(5) -> WorkshopChoiceId(3),
-          SelectionPriority(4) -> WorkshopChoiceId(5),
+          SelectionPriority(6) -> TopicId(1),
+          SelectionPriority(5) -> TopicId(3),
+          SelectionPriority(4) -> TopicId(5),
         ),
       )
       val expectedWsIdCombos1 = Set(
@@ -469,14 +469,14 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
             .map { workshopId =>
               val workshop = f.workshops(workshopId)
               val category = workshop.category
-              val selectionPriority = studentsSelectedWorkshopChoices(studentId).keyFor(workshop.choiceId).get
+              val selectionPriority = studentsSelectedTopics(studentId).keyFor(workshop.topicId).get
               workshopId -> PossibleWorkshop(category, selectionPriority)
             }
             .toMap)
         studentId -> expectedWorkshopCombos
       }
 
-      val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize)(studentsSelectedWorkshopChoices)
+      val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, comboSize)(studentsSelectedTopics)
       studentsWorkshopCombos should contain theSameElementsAs expectedStudentsWorkshopCombos
     }
 
@@ -486,10 +486,10 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         val f = fixtureSymmetricWorkshops(1)
 
         val comboSize = 3
-        val studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices = Map.empty
+        val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
         val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0))
 
-        distributeStudentsToWorkshops(f.workshops, comboSize)(studentsSelectedWorkshopChoices) shouldEqual expectedDistribution
+        distributeStudentsToWorkshops(f.workshops, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
 
       "yields a valid distribution for a single student" in {
@@ -497,11 +497,11 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
 
         val comboSize = 3
         val student1 = StudentId(1)
-        val studentWorkshopSelections: StudentsSelectedWorkshopChoices = Map(
+        val studentWorkshopSelections: StudentsSelectedTopics = Map(
           student1 -> BiMap(
-            SelectionPriority(1) -> WorkshopChoiceId(0),
-            SelectionPriority(2) -> WorkshopChoiceId(1),
-            SelectionPriority(3) -> WorkshopChoiceId(2),
+            SelectionPriority(1) -> TopicId(0),
+            SelectionPriority(2) -> TopicId(1),
+            SelectionPriority(3) -> TopicId(2),
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
