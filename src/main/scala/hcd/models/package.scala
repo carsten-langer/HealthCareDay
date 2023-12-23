@@ -28,7 +28,7 @@ package object models {
   // Type safe enumerations
   sealed trait Category
 
-  final case object Health extends Category
+  final case object Nutrition extends Category
 
   final case object Relaxation extends Category
 

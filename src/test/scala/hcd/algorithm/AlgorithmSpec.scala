@@ -49,7 +49,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     def fixtureSymmetricWorkshopsFor(noWorkshopChoices: Int, noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
-      private val categories = Seq(Health, Relaxation, Sports)
+      private val categories = Seq(Nutrition, Relaxation, Sports)
       private val noWorkshops = noWorkshopChoices * timeSlots.size // all workshops are available on all timeslots
 
       // Generate all IDs
@@ -61,7 +61,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       // no limits of workshop seats
       override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
         workshopId -> Workshop(
-          categories(workshopId.id / 3 % 3), // categories alter h,h,h, r,r,r, s,s,s, h,h,h, ...
+          categories(workshopId.id / 3 % 3), // categories alter n,n,n, r,r,r, s,s,s, n,n,n, ...
           WorkshopChoiceId(workshopId.id / 3), // choiceIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
           timeSlots(workshopId.id % 3), // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
           noSeats
@@ -96,7 +96,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     "build test data correctly and optionally print it" in {
       val f = fixtureFullDataModel
 
-      f.workshops(WorkshopId(0)) shouldEqual Workshop(Health, WorkshopChoiceId(0), FirstTimeSlot, 20)
+      f.workshops(WorkshopId(0)) shouldEqual Workshop(Nutrition, WorkshopChoiceId(0), FirstTimeSlot, 20)
       f.workshops(WorkshopId(4)) shouldEqual Workshop(Relaxation, WorkshopChoiceId(1), SecondTimeSlot, 20)
       f.workshops(WorkshopId(8)) shouldEqual Workshop(Sports, WorkshopChoiceId(2), ThirdTimeSlot, 20)
 
@@ -335,13 +335,13 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val f = fixtureSymmetricWorkshops(4)
 
       val matchingWorkshops: MatchingWorkshops = Map(
-        WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // WorkshopChoiceId(0) health
+        WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // WorkshopChoiceId(0) nutrition
         WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // WorkshopChoiceId(1) relaxation
-        WorkshopId(9) -> SelectionPriority(3), WorkshopId(10) -> SelectionPriority(3), WorkshopId(11) -> SelectionPriority(3), // WorkshopChoiceId(3) health again
+        WorkshopId(9) -> SelectionPriority(3), WorkshopId(10) -> SelectionPriority(3), WorkshopId(11) -> SelectionPriority(3), // WorkshopChoiceId(3) nutrition again
       )
       val genCombos: Set[Set[Int]] => Set[WorkshopCombo] = f.workshopCombos(matchingWorkshops)
       val expectedCombos1 = Set.empty // because with a combo size of 1 there is no variance in categories
-      val expectedCombos2 = genCombos(Set( // combos with only health or only relaxation are excluded
+      val expectedCombos2 = genCombos(Set( // combos with only nutrition or only relaxation are excluded
         Set(0, 4),
         Set(0, 5),
         Set(1, 3),
@@ -395,10 +395,10 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           SelectionPriority(5) -> WorkshopChoiceId(3),
           SelectionPriority(4) -> WorkshopChoiceId(5),
         ),
-        student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category health
-          SelectionPriority(1) -> WorkshopChoiceId(0), // health
-          SelectionPriority(2) -> WorkshopChoiceId(3), // health
-          SelectionPriority(3) -> WorkshopChoiceId(6), // health
+        student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category nutrition
+          SelectionPriority(1) -> WorkshopChoiceId(0), // nutrition
+          SelectionPriority(2) -> WorkshopChoiceId(3), // nutrition
+          SelectionPriority(3) -> WorkshopChoiceId(6), // nutrition
         ),
         student4 -> BiMap( // no selection priority 1, 2, 3
           SelectionPriority(6) -> WorkshopChoiceId(1),
@@ -425,7 +425,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val expectedStudentsWsIdCombos = Map(
         student1 -> expectedWsIdCombos1,
         student2 -> expectedWsIdCombos2,
-        student3 -> Set.empty, // as all 3 workshops are of category health
+        student3 -> Set.empty, // as all 3 workshops are of category nutrition
         student4 -> Set.empty, // as there is no workshops with selection priority 1, 2, 3
       )
       val expectedStudentsWorkshopCombos = expectedStudentsWsIdCombos.map { case (studentId, expectedWsIdCombos) =>
