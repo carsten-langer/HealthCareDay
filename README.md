@@ -17,7 +17,7 @@ __topic__, like _meditation_, _soccer_, _diving_, _cooking_, ... The workshop to
 grained topic __category__ of _nutrition_, _relaxation_, and _sports_.
 
 Upfront, the students can choose a certain number of topics from the list of all workshop topics.
-They are allowed to give a __selection priority__ to their __workshop topic choices__.
+They are allowed to give a __selection priority__ to their workshop topic choices.
 
 Most workshop topics will be offered in all the three timeslots. That is, behind a workshop topic there are typically
 three actual workshops to which a student could be distributed. But not all workshop topics are offered on all three
@@ -48,7 +48,7 @@ As further limitations in distributing the students to the actual workshops we c
 * No student shall be distributed to three workshops from only category _nutrition_, nor to three workshops from only
   category _relaxation_. It is OK but however not encouraged (lower metric) to distribute a student to three workshops
   from only category _sports_.
-* Each student should at least get one workshop assigned from the list of workshop topic choices with selection
+* Each student should at least get one workshop assigned from the list of chosen workshop topics with selection
   preference of 1, 2, or 3. This is a minimum requirement. In general, the better the actual workshops the student is
   assigned to fit to the student's selection priority, the better the distribution (metric).
 

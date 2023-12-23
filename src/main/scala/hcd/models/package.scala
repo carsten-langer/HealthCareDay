@@ -3,15 +3,15 @@ package hcd
 import io.cvbio.collection.mutable.bimap.BiMap
 
 /**
- * Workshop: A concrete workshop with a single timeslot, number of seats, room etc.
- * Workshop Choice: A workshop a student can chose. Typically behind each workshop choice there are 3 real workshops
+ * Workshop: A concrete workshop with a single timeslot, number of seats, room etc., dealing with one topic.
+ * Topic: A workshop topic a student can chose. Typically behind each workshop topic there are 3 concrete workshops
  * with different timeslots.
  */
 package object models {
   // Identifiers, with their own type for type safety, extending AnyVal for performance, i.e. no boxing/unboxing needed.
 
-  /** ID of a workshop choice a student has, e.g. 1 to 50. */
-  final case class WorkshopChoiceId(id: Int) extends AnyVal
+  /** ID of a workshop topic a student can chose from, e.g. 1 to 50. */
+  final case class TopicId(id: Int) extends AnyVal
 
   /** ID of a student, e.g. 1 to 1000. */
   final case class StudentId(id: Int) extends AnyVal
@@ -19,7 +19,7 @@ package object models {
   /** Selection priority, e.g. 1 to 6. */
   final case class SelectionPriority(priority: Int) extends AnyVal
 
-  /** ID of the workshop, e.g. 1 to 150. */
+  /** ID of a concrete workshop, e.g. 1 to 150. */
   final case class WorkshopId(id: Int) extends AnyVal
 
   /** Metric of a combo or distribution. */
@@ -44,24 +44,24 @@ package object models {
 
   // Aggregate types
 
-  /** All attributes to a workshop. */
-  final case class Workshop(category: Category, choiceId: WorkshopChoiceId, timeSlot: TimeSlot, seats: Int)
+  /** All attributes to a concrete workshop. */
+  final case class Workshop(category: Category, topicId: TopicId, timeSlot: TimeSlot, seats: Int)
 
   // Mappings
 
   /**
-   * Which workshop choice is selected with which priority.
-   * BiMap guarantees both selection priority and workshop choice are unique.
+   * Which workshop topic is selected with which priority.
+   * BiMap guarantees both selection priority and workshop topic are unique.
    */
-  type SelectedWorkshopChoices = BiMap[SelectionPriority, WorkshopChoiceId]
+  type SelectedTopics = BiMap[SelectionPriority, TopicId]
 
-  /** The students' workshop choice selections. */
-  type StudentsSelectedWorkshopChoices = Map[StudentId, SelectedWorkshopChoices]
+  /** The students' workshop topic selections. */
+  type StudentsSelectedTopics = Map[StudentId, SelectedTopics]
 
   /**
-   * All the workshops.
+   * All the concrete workshops.
    * BiMap guarantees both workshop id and workshop are unique.
-   * This works as a workshop is also unique by its combination of choiceId and timeSlot.
+   * This works as a workshop is also unique by its combination of topicId and timeSlot.
    */
   type Workshops = BiMap[WorkshopId, Workshop]
 

@@ -5,21 +5,21 @@ import io.cvbio.collection.mutable.bimap.BiMap
 
 object Algorithm {
 
-  // If a selected workshop choice is not contained in the workshops, it is ignored.
-  protected[algorithm] def matchingWorkshopsFromSelectedWorkshopChoice(workshops: Workshops)(selectedWorkshopChoices: SelectedWorkshopChoices): MatchingWorkshops =
-    selectedWorkshopChoices
+  // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
+  protected[algorithm] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
+    selectedTopics
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
-      .flatMap { case (selectionPriority, choiceId) =>
-        workshops.collect { case (workshopId, Workshop(_, `choiceId`, _, _)) =>
+      .flatMap { case (selectionPriority, topicId) =>
+        workshops.collect { case (workshopId, Workshop(_, `topicId`, _, _)) =>
           workshopId -> selectionPriority
         }
       }
 
-  // If a selected workshop choice is not contained in the workshops, it is ignored.
-  protected[algorithm] def studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops: Workshops)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): StudentsMatchingWorkshops =
-    studentsSelectedWorkshopChoices
+  // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
+  protected[algorithm] def studentsMatchingWorkshopsFromStudentSelectedTopics(workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): StudentsMatchingWorkshops =
+    studentsSelectedTopics
       .view
-      .mapValues(matchingWorkshopsFromSelectedWorkshopChoice(workshops))
+      .mapValues(matchingWorkshopsFromSelectedTopics(workshops))
       .toMap
 
   private def extract[A](extractor: Workshop => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
@@ -32,7 +32,7 @@ object Algorithm {
   private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
 
   // empty workshop combo candidate => false
-  protected[algorithm] def hasDistinctChoiceIds: WorkshopComboCandidate => Boolean = extract(_.choiceId).andThen(areDistinct)
+  protected[algorithm] def hasDistinctTopicIds: WorkshopComboCandidate => Boolean = extract(_.topicId).andThen(areDistinct)
 
   // empty workshop combo candidate => false
   protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
@@ -59,7 +59,7 @@ object Algorithm {
   /**
    * From all matching workshops, generate all combinations of comboSize workshops which are possible.
    * A combo of workshops is possible if the workshops in that combo do not have the same timeslot nor the same
-   * choice id and where the combo also complies to a given extra filter.
+   * topic id and where the combo also complies to a given extra filter.
    *
    * @param comboSize             Number of workshops in a combination, e.g. 3.
    * @param extraFilterPredicates Select a candidate of a workshop combination only if all extraFilterPredicates are
@@ -76,7 +76,7 @@ object Algorithm {
       .combinations(comboSize)
       .map(BiMap.from)
       .toSet
-      .filter(hasDistinctChoiceIds)
+      .filter(hasDistinctTopicIds)
       .filter(hasDistinctTimeslots)
       .filter(extraFilterPredicate)
       .map(workshopComboCandidate =>
@@ -86,14 +86,14 @@ object Algorithm {
       )
   }
 
-  protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): Map[StudentId, Set[WorkshopCombo]] =
-    studentsMatchingWorkshopsFromStudentSelectedWorkshopChoices(workshops)(studentsSelectedWorkshopChoices)
+  protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Map[StudentId, Set[WorkshopCombo]] =
+    studentsMatchingWorkshopsFromStudentSelectedTopics(workshops)(studentsSelectedTopics)
       .view
       .mapValues(generateWorkshopCombos(workshops, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, comboSize: Int)(studentsSelectedWorkshopChoices: StudentsSelectedWorkshopChoices): (WorkshopAssignments, Metric) = {
-    val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, comboSize)(studentsSelectedWorkshopChoices)
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
+    val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, comboSize)(studentsSelectedTopics)
 
     // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
     // the expected outcome can be pre-calculated.
@@ -161,7 +161,7 @@ object Algorithm {
         case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
         case (_, Nil) :: _ =>
           // A student with an empty list of possible workshop combos would only happen if a student has made a
-          // selection of workshop choices such that no combinations of workshops are possible.
+          // selection of workshop topics such that no combinations of workshops are possible.
           // During production, there should be a test upfront to not even start the distribution in such case.
           // During development with arbitrary random data this situation can happen, as the random input data could
           // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
