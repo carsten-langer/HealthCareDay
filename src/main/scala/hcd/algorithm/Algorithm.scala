@@ -37,13 +37,13 @@ object Algorithm {
   // empty workshop combo candidate => false
   protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
 
-  // Students are not allowed to get assigned a combo with all workshops of category health,
+  // Students are not allowed to get assigned a combo with all workshops of category nutrition,
   // nor a combo with all workshops of category relaxation.
   // They are allowed to get assigned a combo with all workshops of category sports, though.
   // empty workshop combo candidate => false
   protected[algorithm] def hasVaryingCategories: WorkshopComboCandidate => Boolean = workshopComboCandidate => {
     val categories = extract(_.category)(workshopComboCandidate)
-    categories.exists(_ != Health) && categories.exists(_ != Relaxation)
+    categories.exists(_ != Nutrition) && categories.exists(_ != Relaxation)
   }
 
   // Ideally, students should get assigned a combo which contains at least 1 workshop with selection priority <= 3.
