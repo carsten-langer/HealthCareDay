@@ -6,7 +6,7 @@ import io.cvbio.collection.mutable.bimap.BiMap
 package object algorithm {
   // Aggregate types
 
-  protected[algorithm] final case class PossibleWorkshopCandidate(workshop: Workshop, selectionPriority: SelectionPriority)
+  protected[algorithm] final case class PossibleWorkshopCandidate(workshop: Workshop, category: Category, selectionPriority: SelectionPriority)
 
   // Only the attributes of a possible workshop which are relevant to the algorithm to find the perfect distribution.
   protected[algorithm] final case class PossibleWorkshop(category: Category, selectionPriority: SelectionPriority)
