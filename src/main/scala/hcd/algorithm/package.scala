@@ -6,7 +6,8 @@ import io.cvbio.collection.mutable.bimap.BiMap
 package object algorithm {
   // Aggregate types
 
-  protected[algorithm] final case class PossibleWorkshopCandidate(workshop: Workshop, category: Category, selectionPriority: SelectionPriority)
+  // Collects temporarily all attributes of a workshop candidate which, if possible, could then be part of a  workshop combo.
+  protected[algorithm] final case class WorkshopCandidate(workshop: Workshop, category: Category, selectionPriority: SelectionPriority)
 
   // Only the attributes of a possible workshop which are relevant to the algorithm to find the perfect distribution.
   protected[algorithm] final case class PossibleWorkshop(category: Category, selectionPriority: SelectionPriority)
@@ -21,9 +22,9 @@ package object algorithm {
 
   // A subset of workshops with represents a candidate for a possible combo of workshops
   // It contains all attributes and is too heavy for the distribution algorithm.
-  // BiMap guarantees both workshop id and possible workshop candidate are unique (for a single student).
-  // This works as a workshop is also unique by its combination of topicId and timeSlot.
-  protected[algorithm] type WorkshopComboCandidate = BiMap[WorkshopId, PossibleWorkshopCandidate]
+  // BiMap guarantees both workshop id and workshop candidate are unique (for a single student).
+  // This works as a workshop candidate is also unique by its combination of topicId and timeSlot.
+  protected[algorithm] type WorkshopComboCandidate = BiMap[WorkshopId, WorkshopCandidate]
 
   // A subset of workshops with represents a possible combo of workshops and only contains the attributes relevant
   // to the algorithm to find the perfect distribution.

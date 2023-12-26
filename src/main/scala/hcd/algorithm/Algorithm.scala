@@ -22,10 +22,10 @@ object Algorithm {
       .mapValues(matchingWorkshopsFromSelectedTopics(workshops))
       .toMap
 
-  private def extract[A](extractor: PossibleWorkshopCandidate => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
+  private def extract[A](extractor: WorkshopCandidate => A): WorkshopComboCandidate => Iterable[A] = workshopComboCandidate =>
     workshopComboCandidate
-      .values // yields a Set of possible workshop candidates
-      .toSeq // transform to Seq to allow several possible workshop candidates to have the same A being extracted
+      .values // yields a Set of workshop candidates
+      .toSeq // transform to Seq to allow several workshop candidates to have the same A being extracted
       .map(extractor)
 
   // empty iterable => false
@@ -54,7 +54,7 @@ object Algorithm {
     workshopComboCandidate.nonEmpty &&
       workshopComboCandidate
         .values
-        .map { case PossibleWorkshopCandidate(_, _, SelectionPriority(prio)) => prio }
+        .map { case WorkshopCandidate(_, _, SelectionPriority(prio)) => prio }
         .min <= 3
 
   /**
@@ -73,7 +73,7 @@ object Algorithm {
       .map { case (workshopId, selectionPriority) =>
         val workshop = workshops(workshopId)
         val category = topics(workshop.topicId)
-        workshopId -> PossibleWorkshopCandidate(workshop, category, selectionPriority)
+        workshopId -> WorkshopCandidate(workshop, category, selectionPriority)
       }
       .toSeq
       .combinations(comboSize)
@@ -83,7 +83,7 @@ object Algorithm {
       .filter(hasDistinctTimeslots)
       .filter(extraFilterPredicate)
       .map(workshopComboCandidate =>
-        workshopComboCandidate.map { case (workshopId, PossibleWorkshopCandidate(_, category, selectionPriority)) =>
+        workshopComboCandidate.map { case (workshopId, WorkshopCandidate(_, category, selectionPriority)) =>
           workshopId -> PossibleWorkshop(category, selectionPriority)
         }
       )

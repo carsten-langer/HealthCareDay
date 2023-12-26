@@ -26,7 +26,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
             .map { workshopId =>
               val workshop = workshops(workshopId)
               val category = topics(workshop.topicId)
-              workshopId -> PossibleWorkshopCandidate(workshop, category, SelectionPriority(Random.nextInt()))
+              workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(Random.nextInt()))
             }
         )
 
@@ -37,7 +37,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
             val workshopId = WorkshopId(wsId)
             val workshop = workshops(workshopId)
             val category = topics(workshop.topicId)
-            workshopId -> PossibleWorkshopCandidate(workshop, category, SelectionPriority(selPrio))
+            workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(selPrio))
           }
 
       // create workshop combos from workshop ids, taking the selection priority from matching workshops
