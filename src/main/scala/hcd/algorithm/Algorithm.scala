@@ -54,7 +54,7 @@ object Algorithm {
     workshopComboCandidate.nonEmpty &&
       workshopComboCandidate
         .values
-        .map { case PossibleWorkshopCandidate(_, _, SelectionPriority(priority)) => priority }
+        .map { case PossibleWorkshopCandidate(_, _, SelectionPriority(prio)) => prio }
         .min <= 3
 
   /**
@@ -113,7 +113,7 @@ object Algorithm {
               .toList
               // Sort workshops within a single combo according to selection priority.
               // This is a prerequisite to find the order between workshop combos.
-              .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(priority))) => priority }
+              .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }
           )
           // Sort workshop combos by the already ordered list of workshop ids where each list
           // represents one workshop combo which was already ordered by selection priority.
@@ -153,7 +153,7 @@ object Algorithm {
             )
           ))
       }
-      val metric = workshopCombo.map { case (_, workshop) => workshop.selectionPriority.priority }.sum
+      val metric = workshopCombo.map { case (_, workshop) => workshop.selectionPriority.prio }.sum
       (newFilledWorkshops, Metric(metric))
     }
 

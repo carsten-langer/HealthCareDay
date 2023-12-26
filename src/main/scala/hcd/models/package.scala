@@ -17,7 +17,7 @@ package object models {
   final case class StudentId(id: Int) extends AnyVal
 
   /** Selection priority, e.g. 1 to 6. */
-  final case class SelectionPriority(priority: Int) extends AnyVal
+  final case class SelectionPriority(prio: Int) extends AnyVal
 
   /** ID of a concrete workshop, e.g. 1 to 150. */
   final case class WorkshopId(id: Int) extends AnyVal
