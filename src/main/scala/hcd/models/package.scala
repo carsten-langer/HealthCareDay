@@ -51,12 +51,12 @@ package object models {
 
   /** All topics with their category. */
   type Topics = Map[TopicId, Category]
-  
+
   /**
-   * Which workshop topic is selected with which priority.
-   * BiMap guarantees both selection priority and workshop topic are unique.
+   * Which workshop topic is selected with which priority (per student).
+   * BiMap guarantees both topic and selection priority are unique (per student).
    */
-  type SelectedTopics = BiMap[SelectionPriority, TopicId]
+  type SelectedTopics = BiMap[TopicId, SelectionPriority]
 
   /** The students' workshop topic selections. */
   type StudentsSelectedTopics = Map[StudentId, SelectedTopics]
