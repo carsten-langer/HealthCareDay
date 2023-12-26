@@ -10,7 +10,7 @@ object Algorithm {
     selectedTopics
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
       .flatMap { case (topicId, selectionPriority) =>
-        workshops.collect { case (workshopId, Workshop(`topicId`, _, _)) =>
+        workshops.collect { case (workshopId, TopicTimeslot(`topicId`, _)) =>
           workshopId -> selectionPriority
         }
       }
@@ -32,10 +32,10 @@ object Algorithm {
   private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
 
   // empty workshop combo candidate => false
-  protected[algorithm] def hasDistinctTopicIds: WorkshopComboCandidate => Boolean = extract(_.workshop.topicId).andThen(areDistinct)
+  protected[algorithm] def hasDistinctTopicIds: WorkshopComboCandidate => Boolean = extract(_.topicId).andThen(areDistinct)
 
   // empty workshop combo candidate => false
-  protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.workshop.timeSlot).andThen(areDistinct)
+  protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
 
   // Students are not allowed to get assigned a combo with all workshops of category nutrition,
   // nor a combo with all workshops of category relaxation.
@@ -54,7 +54,7 @@ object Algorithm {
     workshopComboCandidate.nonEmpty &&
       workshopComboCandidate
         .values
-        .map { case WorkshopCandidate(_, _, SelectionPriority(prio)) => prio }
+        .map { case WorkshopCandidate(_, _, _, SelectionPriority(prio)) => prio }
         .min <= 3
 
   /**
@@ -71,9 +71,9 @@ object Algorithm {
       extraFilterPredicates.foldLeft(true) { case (result, predicate) => result && predicate(workshopComboCandidate) }
     matchingWorkshops
       .map { case (workshopId, selectionPriority) =>
-        val workshop = workshops(workshopId)
-        val category = topics(workshop.topicId)
-        workshopId -> WorkshopCandidate(workshop, category, selectionPriority)
+        val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+        val category = topics(topicId)
+        workshopId -> WorkshopCandidate(topicId, timeSlot, category, selectionPriority)
       }
       .toSeq
       .combinations(comboSize)
@@ -83,7 +83,7 @@ object Algorithm {
       .filter(hasDistinctTimeslots)
       .filter(extraFilterPredicate)
       .map(workshopComboCandidate =>
-        workshopComboCandidate.map { case (workshopId, WorkshopCandidate(_, category, selectionPriority)) =>
+        workshopComboCandidate.map { case (workshopId, WorkshopCandidate(_, _, category, selectionPriority)) =>
           workshopId -> PossibleWorkshop(category, selectionPriority)
         }
       )
@@ -95,7 +95,7 @@ object Algorithm {
       .mapValues(generateWorkshopCombos(workshops, topics, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, workshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
 
     // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
@@ -126,7 +126,9 @@ object Algorithm {
 
     case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
     type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
-    val initialFilledWorkshops = workshops.view.mapValues(workshop => FilledWorkshop(workshop.seats, Set.empty)).toMap
+    val initialFilledWorkshops = workshops.toMap.map { case (workshopId, _) =>
+      workshopId -> FilledWorkshop(workshopSeats(workshopId).n, Set.empty)
+    }
 
     var currentN = 0
     val startTime = System.currentTimeMillis()

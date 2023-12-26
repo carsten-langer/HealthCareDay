@@ -7,7 +7,7 @@ package object algorithm {
   // Aggregate types
 
   // Collects temporarily all attributes of a workshop candidate which, if possible, could then be part of a  workshop combo.
-  protected[algorithm] final case class WorkshopCandidate(workshop: Workshop, category: Category, selectionPriority: SelectionPriority)
+  protected[algorithm] final case class WorkshopCandidate(topicId: TopicId, timeSlot: TimeSlot, category: Category, selectionPriority: SelectionPriority)
 
   // Only the attributes of a possible workshop which are relevant to the algorithm to find the perfect distribution.
   protected[algorithm] final case class PossibleWorkshop(category: Category, selectionPriority: SelectionPriority)

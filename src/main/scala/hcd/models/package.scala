@@ -22,6 +22,9 @@ package object models {
   /** ID of a concrete workshop, e.g. 1 to 150. */
   final case class WorkshopId(id: Int) extends AnyVal
 
+  /** Number of workshop seats, e.g. 20. */
+  final case class Seats(n: Int) extends AnyVal
+
   /** Metric of a combo or distribution. */
   final case class Metric(metric: Int) extends AnyVal
 
@@ -44,8 +47,8 @@ package object models {
 
   // Aggregate types
 
-  /** All attributes to a concrete workshop. */
-  final case class Workshop(topicId: TopicId, timeSlot: TimeSlot, seats: Int)
+  /** A workshop is determined by a topic and a timeslot. This combination determines a concrete workshop. */
+  final case class TopicTimeslot(topicId: TopicId, timeSlot: TimeSlot)
 
   // Mappings
 
@@ -63,10 +66,14 @@ package object models {
 
   /**
    * All the concrete workshops.
-   * BiMap guarantees both workshop id and workshop are unique.
-   * This works as a workshop is also unique by its combination of topicId and timeSlot.
+   * BiMap guarantees both workshop id and combination of topic id and timeslot is unique.
+   * That is: each topic can only exist once per timeslot, and such topic/timeslot combination is a unique concrete
+   * workshop.
    */
-  type Workshops = BiMap[WorkshopId, Workshop]
+  type Workshops = BiMap[WorkshopId, TopicTimeslot]
+
+  /** The seats that each workshop has. */
+  type WorkshopSeats = Map[WorkshopId, Seats]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]

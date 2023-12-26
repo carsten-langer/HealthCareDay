@@ -19,15 +19,17 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
 
       def workshops: Workshops
 
+      def workshopSeats: WorkshopSeats
+
       // create a WorkshopComboCandidate with random SelectionPriority
       def expectedWorkshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
         BiMap.from(
           wsIds
             .map(WorkshopId)
             .map { workshopId =>
-              val workshop = workshops(workshopId)
-              val category = topics(workshop.topicId)
-              workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(Random.nextInt()))
+              val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+              val category = topics(topicId)
+              workshopId -> WorkshopCandidate(topicId, timeSlot, category, SelectionPriority(Random.nextInt()))
             }
         )
 
@@ -36,9 +38,9 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         wsIdSelPrios
           .map { case (wsId, selPrio) =>
             val workshopId = WorkshopId(wsId)
-            val workshop = workshops(workshopId)
-            val category = topics(workshop.topicId)
-            workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(selPrio))
+            val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+            val category = topics(topicId)
+            workshopId -> WorkshopCandidate(topicId, timeSlot, category, SelectionPriority(selPrio))
           }
 
       // create workshop combos for workshops ids, taking the selection priority from matching workshops
@@ -74,12 +76,12 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
       override val topics: Topics = topicIds.map(topicId => topicId -> categories(topicId.id % categories.size)).toMap
       override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
-        workshopId -> Workshop(
+        workshopId -> TopicTimeslot(
           TopicId(workshopId.id / timeSlots.size),
-          timeSlots(workshopId.id % timeSlots.size),
-          noSeats
+          timeSlots(workshopId.id % timeSlots.size)
         )
       ))
+      override val workshopSeats: WorkshopSeats = workshopIds.map(_ -> Seats(noSeats)).toMap
     }
 
     def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshops =
@@ -95,6 +97,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
       override val topics: Topics = underlyingWorkshops.topics
       override val workshops: Workshops = underlyingWorkshops.workshops
+      override val workshopSeats: WorkshopSeats = underlyingWorkshops.workshopSeats
       lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
       lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 
@@ -112,9 +115,11 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       f.topics(TopicId(0)) shouldEqual Nutrition
       f.topics(TopicId(1)) shouldEqual Relaxation
       f.topics(TopicId(2)) shouldEqual Sports
-      f.workshops(WorkshopId(0)) shouldEqual Workshop(TopicId(0), FirstTimeSlot, 20)
-      f.workshops(WorkshopId(4)) shouldEqual Workshop(TopicId(1), SecondTimeSlot, 20)
-      f.workshops(WorkshopId(8)) shouldEqual Workshop(TopicId(2), ThirdTimeSlot, 20)
+      f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
+      f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
+      f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)
+      f.workshopSeats(WorkshopId(0)).n shouldEqual 20
+      f.workshopSeats(WorkshopId(149)).n shouldEqual 20
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
@@ -135,7 +140,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
+      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
         println(workshopAssignments, metric)
     }
@@ -505,7 +510,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
         val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
+        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
 
       "yields a valid distribution for a single student" in {
@@ -530,7 +535,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty,
         ), Metric(6))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
     }
