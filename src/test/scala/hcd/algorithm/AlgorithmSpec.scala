@@ -27,7 +27,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
             .map { workshopId =>
               val workshop = workshops(workshopId)
               val category = topics(workshop.topicId)
-              workshopId -> PossibleWorkshopCandidate(workshop, category, SelectionPriority(Random.nextInt()))
+              workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(Random.nextInt()))
             }
         )
 
@@ -38,7 +38,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
             val workshopId = WorkshopId(wsId)
             val workshop = workshops(workshopId)
             val category = topics(workshop.topicId)
-            workshopId -> PossibleWorkshopCandidate(workshop, category, SelectionPriority(selPrio))
+            workshopId -> WorkshopCandidate(workshop, category, SelectionPriority(selPrio))
           }
 
       // create workshop combos for workshops ids, taking the selection priority from matching workshops
