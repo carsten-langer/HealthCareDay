@@ -100,7 +100,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
       lazy val studentsSelectedTopics: StudentsSelectedTopics = studentIds.map(
-        _ -> BiMap.from(selectionPriorities.zip(Random.shuffle(topics.keySet.toSeq)))
+        _ -> BiMap.from(Random.shuffle(topics.keySet.toSeq).zip(selectionPriorities))
       ).toMap
     }
 
@@ -145,15 +145,15 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val fut: SelectedTopics => MatchingWorkshops = matchingWorkshopsFromSelectedTopics(f.workshops)
 
       val selectedWorkshopTopics1: SelectedTopics = BiMap(
-        SelectionPriority(1) -> TopicId(0),
-        SelectionPriority(2) -> TopicId(1),
+        TopicId(0) -> SelectionPriority(1),
+        TopicId(1) -> SelectionPriority(2),
       )
       val selectedWorkshopTopics2: SelectedTopics = BiMap(
-        SelectionPriority(5) -> TopicId(3),
-        SelectionPriority(6) -> TopicId(2),
+        TopicId(3) -> SelectionPriority(5),
+        TopicId(2) -> SelectionPriority(6),
       )
       val selectedWorkshopTopics3: SelectedTopics = BiMap(
-        SelectionPriority(5) -> TopicId(4), // non-existing workshop topic
+        TopicId(4) -> SelectionPriority(5), // non-existing workshop topic
       )
       val expectedMatchingWorkshops1: MatchingWorkshops = Map(
         WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // TopicId(0)
@@ -178,17 +178,17 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val student3 = StudentId(-1)
       val studentWorkshopSelections: StudentsSelectedTopics = Map(
         student1 -> BiMap(
-          SelectionPriority(7) -> TopicId(14),
-          SelectionPriority(9) -> TopicId(18),
-          SelectionPriority(5) -> TopicId(10),
+          TopicId(14) -> SelectionPriority(7),
+          TopicId(18) -> SelectionPriority(9),
+          TopicId(10) -> SelectionPriority(5),
         ),
         student2 -> BiMap(
-          SelectionPriority(6) -> TopicId(3),
-          SelectionPriority(2) -> TopicId(1),
-          SelectionPriority(4) -> TopicId(2),
+          TopicId(3) -> SelectionPriority(6),
+          TopicId(1) -> SelectionPriority(2),
+          TopicId(2) -> SelectionPriority(4),
         ),
         student3 -> BiMap(
-          SelectionPriority(-2) -> TopicId(19), // non-existing workshop topic
+          TopicId(19) -> SelectionPriority(-2), // non-existing workshop topic
         ),
       )
       val expectedStudent1MatchingWorkshops: MatchingWorkshops = Map(
@@ -402,24 +402,24 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       val student4 = StudentId(14)
       val studentsSelectedTopics: StudentsSelectedTopics = Map(
         student1 -> BiMap(
-          SelectionPriority(1) -> TopicId(0),
-          SelectionPriority(2) -> TopicId(1),
-          SelectionPriority(3) -> TopicId(2),
+          TopicId(0) -> SelectionPriority(1),
+          TopicId(1) -> SelectionPriority(2),
+          TopicId(2) -> SelectionPriority(3),
         ),
         student2 -> BiMap(
-          SelectionPriority(3) -> TopicId(1),
-          SelectionPriority(5) -> TopicId(3),
-          SelectionPriority(4) -> TopicId(5),
+          TopicId(1) -> SelectionPriority(3),
+          TopicId(3) -> SelectionPriority(5),
+          TopicId(5) -> SelectionPriority(4),
         ),
         student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category nutrition
-          SelectionPriority(1) -> TopicId(0), // nutrition
-          SelectionPriority(2) -> TopicId(3), // nutrition
-          SelectionPriority(3) -> TopicId(6), // nutrition
+          TopicId(0) -> SelectionPriority(1), // nutrition
+          TopicId(3) -> SelectionPriority(2), // nutrition
+          TopicId(6) -> SelectionPriority(3), // nutrition
         ),
         student4 -> BiMap( // no selection priority 1, 2, 3
-          SelectionPriority(6) -> TopicId(1),
-          SelectionPriority(5) -> TopicId(3),
-          SelectionPriority(4) -> TopicId(5),
+          TopicId(1) -> SelectionPriority(6),
+          TopicId(3) -> SelectionPriority(5),
+          TopicId(5) -> SelectionPriority(4),
         ),
       )
       val expectedWsIdCombos1 = Set(
@@ -451,7 +451,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
             .map { workshopId =>
               val workshop = f.workshops(workshopId)
               val category = f.topics(workshop.topicId)
-              val selectionPriority = studentsSelectedTopics(studentId).keyFor(workshop.topicId).get
+              val selectionPriority = studentsSelectedTopics(studentId).valueFor(workshop.topicId).get
               workshopId -> PossibleWorkshop(category, selectionPriority)
             }
             .toMap)
@@ -482,9 +482,9 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         val student1 = StudentId(1)
         val studentWorkshopSelections: StudentsSelectedTopics = Map(
           student1 -> BiMap(
-            SelectionPriority(1) -> TopicId(0),
-            SelectionPriority(2) -> TopicId(1),
-            SelectionPriority(3) -> TopicId(2),
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(3),
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable

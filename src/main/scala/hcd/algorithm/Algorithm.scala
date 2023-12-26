@@ -9,7 +9,7 @@ object Algorithm {
   protected[algorithm] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
     selectedTopics
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
-      .flatMap { case (selectionPriority, topicId) =>
+      .flatMap { case (topicId, selectionPriority) =>
         workshops.collect { case (workshopId, Workshop(`topicId`, _, _)) =>
           workshopId -> selectionPriority
         }
