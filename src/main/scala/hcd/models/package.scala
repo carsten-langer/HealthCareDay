@@ -45,10 +45,13 @@ package object models {
   // Aggregate types
 
   /** All attributes to a concrete workshop. */
-  final case class Workshop(category: Category, topicId: TopicId, timeSlot: TimeSlot, seats: Int)
+  final case class Workshop(topicId: TopicId, timeSlot: TimeSlot, seats: Int)
 
   // Mappings
 
+  /** All topics with their category. */
+  type Topics = Map[TopicId, Category]
+  
   /**
    * Which workshop topic is selected with which priority.
    * BiMap guarantees both selection priority and workshop topic are unique.
