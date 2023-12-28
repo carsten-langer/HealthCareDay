@@ -97,32 +97,46 @@ object Algorithm {
 
   protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, workshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
+    val studentsWorkshopCombosWithMetrics = studentsWorkshopCombos
+      .view
+      .mapValues(workshopCombos =>
+        workshopCombos.map { workshopCombo =>
+          val prioMetric = workshopCombo.map { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }.sum
+          val onlySports = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }.forall(_ == Sports)
+          val metric = Metric(prioMetric + (if (onlySports) 1000 else 0)) // malus if a combo contains only sports category
+          workshopCombo -> metric
+        }
+      )
 
     // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
     // the expected outcome can be pre-calculated.
     // Also leaves the data structures as lists, as during the recursion we prefer these data types which,
     // even if they are less expressive, are slightly faster.
     import Ordering.Implicits._
-    val orderedStudentsWorkshopCombos = studentsWorkshopCombos
-      .view
-      .mapValues(workshopCombos =>
-        workshopCombos
-          .toList
-          .map(workshopCombo =>
-            workshopCombo
-              .toList
-              // Sort workshops within a single combo according to selection priority.
-              // This is a prerequisite to find the order between workshop combos.
-              .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }
-          )
-          // Sort workshop combos by the already ordered list of workshop ids where each list
-          // represents one workshop combo which was already ordered by selection priority.
-          .sortBy(workshopCombo => workshopCombo.map { case (WorkshopId(id), _) => id })
-      )
-      .toList
-      // sort by students
-      .sortBy { case (StudentId(id), _) => id }
-    println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombos.take(2)}")
+    val orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])] =
+      studentsWorkshopCombosWithMetrics
+        .mapValues(workshopCombos =>
+          workshopCombos
+            .toList
+            .map { case (workshopCombo, metric) =>
+              val newWorkshopCombo = workshopCombo
+                .toList
+                // Sort workshops within a single combo according to selection priority.
+                // This is a prerequisite to find the order between workshop combos.
+                .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }
+              (newWorkshopCombo, metric)
+            }
+            // Sort workshop combos by a) the metric and b) the already ordered list of workshop ids where each list
+            // represents one workshop combo which was already ordered by selection priority.
+            .sortBy { case (workshopCombo, Metric(metric)) =>
+              val workshopIds = workshopCombo.map { case (WorkshopId(id), _) => id }
+              (metric, workshopIds)
+            }
+        )
+        .toList
+        // sort by students
+        .sortBy { case (StudentId(id), _) => id }
+    println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
 
     case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
     type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
@@ -144,9 +158,9 @@ object Algorithm {
       }
     }
 
-    def fillWorkshopsAndCalculateMetric(filledWorkshops: FilledWorkshops, studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): (FilledWorkshops, Metric) = {
+    def fillWorkshops(filledWorkshops: FilledWorkshops, studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): FilledWorkshops = {
       countAndPrint(studentId, workshopCombo)
-      val newFilledWorkshops = workshopCombo.foldLeft(filledWorkshops) {
+      workshopCombo.foldLeft(filledWorkshops) {
         case (accFilledWorkshops, (workshopId, _)) =>
           accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshop =>
             filledWorkshop.copy(
@@ -155,13 +169,11 @@ object Algorithm {
             )
           ))
       }
-      val metric = workshopCombo.map { case (_, workshop) => workshop.selectionPriority.prio }.sum
-      (newFilledWorkshops, Metric(metric))
     }
 
     // not tail-recursive, as per student the algorithm collects the results for all workshop combos and then
     // selects those which have the overall minimum metric
-    def recursion(accFilledWorkshops: FilledWorkshops, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[List[(WorkshopId, PossibleWorkshop)]])]): (WorkshopAssignments, Metric) =
+    def recursion(accFilledWorkshops: FilledWorkshops, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])]): (WorkshopAssignments, Metric) =
       studentsWorkshopCombosToDistribute match {
         case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
         case (_, Nil) :: _ =>
@@ -173,14 +185,14 @@ object Algorithm {
           // possible workshop combos. In this case, continue without adding this student to any workshop.
           (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
         case (student, workshopCombos) :: tailStudents =>
-          val resultsThisStudent = workshopCombos.map { workshopCombo =>
-            val (newAccFilledWorkshops, metricOfThisWorkshopCombo) = fillWorkshopsAndCalculateMetric(accFilledWorkshops, student, workshopCombo)
-            recursion(newAccFilledWorkshops, Metric(accMetric.metric + metricOfThisWorkshopCombo.metric), tailStudents)
+          val resultsThisStudent = workshopCombos.map { case (workshopCombo, Metric(metric)) =>
+            val newAccFilledWorkshops = fillWorkshops(accFilledWorkshops, student, workshopCombo)
+            recursion(newAccFilledWorkshops, Metric(accMetric.metric + metric), tailStudents)
           }
-          resultsThisStudent.minBy { case (_, metric) => metric.metric } // works as workshopCombos will not be Nil
+          resultsThisStudent.minBy { case (_, Metric(metric)) => metric } // works as workshopCombos will not be Nil
       }
 
-    recursion(initialFilledWorkshops, Metric(0), orderedStudentsWorkshopCombos)
+    recursion(initialFilledWorkshops, Metric(0), orderedStudentsWorkshopCombosWithMetrics)
   }
 
 }
