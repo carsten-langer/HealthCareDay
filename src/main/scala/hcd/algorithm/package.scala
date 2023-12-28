@@ -34,4 +34,22 @@ package object algorithm {
   // not selected, we have to think which selection priority we assign to such replacement workshops and if we then
   // have to remove the BiMap.
   protected[algorithm] type WorkshopCombo = BiMap[WorkshopId, PossibleWorkshop]
+
+  class CounterPrinter {
+    private var currentN = 0L
+    private val startTime = System.currentTimeMillis()
+
+    // currently takes ca. 6 s to calculate 1 combination for Student 410
+    // i.e. try all combos for students 411, 412, ..., 999
+    // with 90 workshop combos per student
+    def countAndPrint(studentId: StudentId, workshopCombo: Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
+      currentN += 1L
+      if (studentId.id < 411) {
+        val now = System.currentTimeMillis()
+        println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
+      }
+    }
+
+  }
+
 }

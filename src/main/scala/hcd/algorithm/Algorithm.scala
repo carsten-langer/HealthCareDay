@@ -140,19 +140,7 @@ object Algorithm {
         .sortBy { case (StudentId(id), _) => id }
     println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
 
-    var currentN = 0
-    val startTime = System.currentTimeMillis()
-
-    // currently takes ca. 6 s to calculate 1 combination for Student 410
-    // i.e. try all combos for students 411, 412, ..., 999
-    // with 90 workshop combos per student
-    def countAndPrint(studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): Unit = {
-      currentN += 1
-      if (studentId.id < 411) {
-        val now = System.currentTimeMillis()
-        println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
-      }
-    }
+    val counterPrinter = new CounterPrinter
 
     type DistributedStudentsWorkshopCombos = List[(StudentId, Seq[WorkshopId])]
 
@@ -171,7 +159,7 @@ object Algorithm {
           (distributedStudentsWorkshopCombos, accMetric)
         case (studentId, workshopCombos) :: tailStudents =>
           val resultsThisStudent = workshopCombos.map { case (workshopCombo, Metric(metric)) =>
-            countAndPrint(studentId, workshopCombo)
+            counterPrinter.countAndPrint(studentId, workshopCombo)
             val workshopIds = workshopCombo.map { case (id, _) => id }
             val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopIds))
             val newMetric = Metric(accMetric.metric + metric)
