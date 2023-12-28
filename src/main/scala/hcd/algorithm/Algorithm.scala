@@ -3,6 +3,8 @@ package hcd.algorithm
 import hcd.models._
 import io.cvbio.collection.mutable.bimap.BiMap
 
+import scala.annotation.unused
+
 object Algorithm {
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
@@ -95,7 +97,7 @@ object Algorithm {
       .mapValues(generateWorkshopCombos(workshops, topics, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, workshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, @unused workshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = studentsWorkshopCombos
       .view
@@ -138,44 +140,27 @@ object Algorithm {
         .sortBy { case (StudentId(id), _) => id }
     println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
 
-    case class FilledWorkshop(freeSeats: Int, students: Set[StudentId])
-    type FilledWorkshops = Map[WorkshopId, FilledWorkshop]
-    val initialFilledWorkshops = workshops.toMap.map { case (workshopId, _) =>
-      workshopId -> FilledWorkshop(workshopSeats(workshopId).n, Set.empty)
-    }
-
     var currentN = 0
     val startTime = System.currentTimeMillis()
 
-    // currently takes ca. 30 s to calculate 1 combination for Student 411
-    // i.e. try all combos for students 412, 413, ..., 999
+    // currently takes ca. 6 s to calculate 1 combination for Student 410
+    // i.e. try all combos for students 411, 412, ..., 999
     // with 90 workshop combos per student
     def countAndPrint(studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1
-      val now = System.currentTimeMillis()
-      if (studentId.id < 412) {
+      if (studentId.id < 411) {
+        val now = System.currentTimeMillis()
         println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
       }
     }
 
-    def fillWorkshops(filledWorkshops: FilledWorkshops, studentId: StudentId, workshopCombo: List[(WorkshopId, PossibleWorkshop)]): FilledWorkshops = {
-      countAndPrint(studentId, workshopCombo)
-      workshopCombo.foldLeft(filledWorkshops) {
-        case (accFilledWorkshops, (workshopId, _)) =>
-          accFilledWorkshops.updatedWith(workshopId)(_.map(filledWorkshop =>
-            filledWorkshop.copy(
-              freeSeats = filledWorkshop.freeSeats - 1,
-              students = filledWorkshop.students.incl(studentId)
-            )
-          ))
-      }
-    }
+    type DistributedStudentsWorkshopCombos = List[(StudentId, Seq[WorkshopId])]
 
     // not tail-recursive, as per student the algorithm collects the results for all workshop combos and then
     // selects those which have the overall minimum metric
-    def recursion(accFilledWorkshops: FilledWorkshops, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])]): (WorkshopAssignments, Metric) =
+    def recursion(distributedStudentsWorkshopCombos: DistributedStudentsWorkshopCombos, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])]): (DistributedStudentsWorkshopCombos, Metric) =
       studentsWorkshopCombosToDistribute match {
-        case Nil => (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
+        case Nil => (distributedStudentsWorkshopCombos, accMetric)
         case (_, Nil) :: _ =>
           // A student with an empty list of possible workshop combos would only happen if a student has made a
           // selection of workshop topics such that no combinations of workshops are possible.
@@ -183,16 +168,27 @@ object Algorithm {
           // During development with arbitrary random data this situation can happen, as the random input data could
           // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
           // possible workshop combos. In this case, continue without adding this student to any workshop.
-          (accFilledWorkshops.view.mapValues(_.students).toMap, accMetric)
-        case (student, workshopCombos) :: tailStudents =>
+          (distributedStudentsWorkshopCombos, accMetric)
+        case (studentId, workshopCombos) :: tailStudents =>
           val resultsThisStudent = workshopCombos.map { case (workshopCombo, Metric(metric)) =>
-            val newAccFilledWorkshops = fillWorkshops(accFilledWorkshops, student, workshopCombo)
-            recursion(newAccFilledWorkshops, Metric(accMetric.metric + metric), tailStudents)
+            countAndPrint(studentId, workshopCombo)
+            val workshopIds = workshopCombo.map { case (id, _) => id }
+            val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopIds))
+            val newMetric = Metric(accMetric.metric + metric)
+            recursion(newDistributedStudentsWorkshopCombos, newMetric, tailStudents)
           }
           resultsThisStudent.minBy { case (_, Metric(metric)) => metric } // works as workshopCombos will not be Nil
       }
 
-    recursion(initialFilledWorkshops, Metric(0), orderedStudentsWorkshopCombosWithMetrics)
+    val (distributedStudentsWorkshopCombos, metric) = recursion(List.empty, Metric(0), orderedStudentsWorkshopCombosWithMetrics)
+
+    val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap
+    val workshopAssignments = distributedStudentsWorkshopCombos.foldLeft(emptyWorkshopAssignments) { case (accMap1, (studentId, workshopIds)) =>
+      workshopIds.foldLeft(accMap1) { case (accMap2, workshopId) =>
+        accMap2.updatedWith(workshopId)(_.map(students => students.incl(studentId)))
+      }
+    }
+    (workshopAssignments, metric)
   }
 
 }
