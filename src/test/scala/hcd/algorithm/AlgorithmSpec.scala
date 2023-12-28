@@ -109,42 +109,6 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
 
     def fixtureFullDataModel: FixtureFullDataModel = new FixtureFullDataModel {}
 
-    "build test data correctly and optionally print it" in {
-      val f = fixtureFullDataModel
-
-      f.topics(TopicId(0)) shouldEqual Nutrition
-      f.topics(TopicId(1)) shouldEqual Relaxation
-      f.topics(TopicId(2)) shouldEqual Sports
-      f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
-      f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
-      f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)
-      f.workshopSeats(WorkshopId(0)).n shouldEqual 20
-      f.workshopSeats(WorkshopId(149)).n shouldEqual 20
-
-      // print workshops ordered by id
-      //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
-
-      // print students' selected workshop topics ordered by student id
-      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(println)
-
-      // print students' matching workshops from their selected workshop topics for full model
-      @unused // may be unused, depending on whether the model is printed out our not
-      lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)(f.studentsSelectedTopics)
-      //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
-
-      // print students' workshop combos for full model
-      // per student there are 96 possible combos to chose 3 out of 6 workshops
-      // print those for the first 2 students
-      @unused // may be unused, depending on whether the model is printed out our not
-      lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
-      //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
-
-      // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
-      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        println(workshopAssignments, metric)
-    }
-
     "select MatchingWorkshops from SelectedTopics" in {
       val f = fixtureSymmetricWorkshops(4)
       val fut: SelectedTopics => MatchingWorkshops = matchingWorkshopsFromSelectedTopics(f.workshops)
@@ -503,6 +467,42 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
+    }
+
+    "build test data correctly and optionally print it" in {
+      val f = fixtureFullDataModel
+
+      f.topics(TopicId(0)) shouldEqual Nutrition
+      f.topics(TopicId(1)) shouldEqual Relaxation
+      f.topics(TopicId(2)) shouldEqual Sports
+      f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
+      f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
+      f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)
+      f.workshopSeats(WorkshopId(0)).n shouldEqual 20
+      f.workshopSeats(WorkshopId(149)).n shouldEqual 20
+
+      // print workshops ordered by id
+      //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
+
+      // print students' selected workshop topics ordered by student id
+      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(println)
+
+      // print students' matching workshops from their selected workshop topics for full model
+      @unused // may be unused, depending on whether the model is printed out our not
+      lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)(f.studentsSelectedTopics)
+      //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
+
+      // print students' workshop combos for full model
+      // per student there are 96 possible combos to chose 3 out of 6 workshops
+      // print those for the first 2 students
+      @unused // may be unused, depending on whether the model is printed out our not
+      lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
+      //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
+
+      // print distributeStudentsToWorkshops for full model
+      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
+      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
+        println(workshopAssignments, metric)
     }
 
   }
