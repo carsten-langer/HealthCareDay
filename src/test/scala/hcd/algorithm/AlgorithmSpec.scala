@@ -110,7 +110,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     def fixtureFullDataModel: FixtureFullDataModel = new FixtureFullDataModel {}
 
     "select MatchingWorkshops from SelectedTopics" in {
-      val f = fixtureSymmetricWorkshops(4)
+      val f = fixtureSymmetricWorkshops(noTopics = 4)
       val fut: SelectedTopics => MatchingWorkshops = matchingWorkshopsFromSelectedTopics(f.workshops)
 
       val selectedWorkshopTopics1: SelectedTopics = BiMap(
@@ -139,7 +139,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "select StudentsMatchingWorkshops from StudentsSelectedTopics" in {
-      val f = fixtureSymmetricWorkshops(19)
+      val f = fixtureSymmetricWorkshops(noTopics = 19)
       val fut: StudentsSelectedTopics => StudentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)
 
       val student1 = StudentId(5)
@@ -180,7 +180,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter a WorkshopComboCandidate via hasDistinctTopicIds" in {
-      val f = fixtureSymmetricWorkshops(2)
+      val f = fixtureSymmetricWorkshops(noTopics = 2)
 
       val workshopComboCandidate1 = f.workshopComboCandidate(Set(1, 2))
       val workshopComboCandidate2 = f.workshopComboCandidate(Set(0, 2, 3))
@@ -197,7 +197,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter a WorkshopComboCandidate via hasDistinctTimeslots" in {
-      val f = fixtureSymmetricWorkshops(3)
+      val f = fixtureSymmetricWorkshops(noTopics = 3)
 
       val workshopComboCandidate1 = f.workshopComboCandidate(Set(0, 1, 2, 3, 4, 5))
       val workshopComboCandidate2 = f.workshopComboCandidate(Set(0, 1, 5, 7))
@@ -217,7 +217,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter a WorkshopComboCandidate via hasVaryingCategories" in {
-      val f = fixtureSymmetricWorkshops(6)
+      val f = fixtureSymmetricWorkshops(noTopics = 6)
 
       val workshopComboCandidate1 = f.workshopComboCandidate(Set(0))
       val workshopComboCandidate2 = f.workshopComboCandidate(Set(3))
@@ -239,7 +239,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "filter a WorkshopComboCandidate via hasSufficientSelectionPriority" in {
-      val f = fixtureSymmetricWorkshops(4)
+      val f = fixtureSymmetricWorkshops(noTopics = 4)
 
       val workshopComboCandidate1 = f.workshopComboCandidate(BiMap(10 -> 1, 11 -> 2))
       val workshopComboCandidate2 = f.workshopComboCandidate(BiMap(10 -> 2, 11 -> 4))
@@ -255,7 +255,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, with regards to topicId and timeslots" in {
-      val f = fixtureSymmetricWorkshops(3)
+      val f = fixtureSymmetricWorkshops(noTopics = 3)
 
       val matchingWorkshops: MatchingWorkshops = Map(
         WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // TopicId(0)
@@ -317,7 +317,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, also with regards to varying categories" in {
-      val f = fixtureSymmetricWorkshops(4)
+      val f = fixtureSymmetricWorkshops(noTopics = 4)
 
       val matchingWorkshops: MatchingWorkshops = Map(
         WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // TopicId(0) nutrition
@@ -362,7 +362,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     }
 
     "generate all possible combinations of workshops for students from given workshops, comboSize, and the selected workshop topics of the students" in {
-      val f = fixtureSymmetricWorkshops(7)
+      val f = fixtureSymmetricWorkshops(noTopics = 7)
 
       val comboSize = 3
       val student1 = StudentId(11)
@@ -435,7 +435,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
     "provide a method to distribute students to workshops" which {
 
       "yields an empty distribution if no selections were made" in {
-        val f = fixtureSymmetricWorkshops(1)
+        val f = fixtureSymmetricWorkshops(noTopics = 1)
 
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
@@ -445,7 +445,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       }
 
       "yields a valid distribution for a single student" in {
-        val f = fixtureSymmetricWorkshops(4)
+        val f = fixtureSymmetricWorkshops(noTopics = 4)
 
         val comboSize = 3
         val student1 = StudentId(1)
