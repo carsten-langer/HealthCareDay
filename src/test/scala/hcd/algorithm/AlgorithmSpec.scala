@@ -444,7 +444,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
 
-      "yields a valid distribution for a single student" in {
+      "yields a valid distribution for a single student with combo size 3" in {
         val f = fixtureSymmetricWorkshops(noTopics = 4)
 
         val comboSize = 3
@@ -463,6 +463,35 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
           WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
         ), Metric(6))
+
+        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+      }
+
+      "yields a valid distribution for two students with combo size 2" in {
+        val f = fixtureSymmetricWorkshops(noTopics = 4)
+
+        val comboSize = 2
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentWorkshopSelections: StudentsSelectedTopics = Map(
+          student1 -> BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(3),
+          ),
+          student2 -> BiMap(
+            TopicId(0) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(4),
+            TopicId(3) -> SelectionPriority(3),
+          ),
+        )
+        // assumes that the algorithm orders the input so that the result is stable
+        val expectedResult = (Map(
+          WorkshopId(0) -> Set(student1, student2), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+          WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
+          WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
+          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+        ), Metric(9))
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
