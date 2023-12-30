@@ -3,8 +3,6 @@ package hcd.algorithm
 import hcd.models._
 import io.cvbio.collection.mutable.bimap.BiMap
 
-import scala.annotation.unused
-
 object Algorithm {
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
@@ -97,7 +95,12 @@ object Algorithm {
       .mapValues(generateWorkshopCombos(workshops, topics, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, @unused workshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric) = {
+  protected[algorithm] def updateFreeWorkshopSeats(freeWorkshopSeats: WorkshopSeats, workshopIds: Seq[WorkshopId]): WorkshopSeats =
+    workshopIds.foldLeft(freeWorkshopSeats) { case (accFreeWorkshopSeats, workshopId) =>
+      accFreeWorkshopSeats.updatedWith(workshopId)(_.map(seats => Seats(seats.n - 1)))
+    }
+
+  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): (WorkshopAssignments, Metric, WorkshopSeats) = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = studentsWorkshopCombos
       .view
@@ -146,9 +149,13 @@ object Algorithm {
 
     // not tail-recursive, as per student the algorithm collects the results for all workshop combos and then
     // selects those which have the overall minimum metric
-    def recursion(distributedStudentsWorkshopCombos: DistributedStudentsWorkshopCombos, accMetric: Metric, studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])]): (DistributedStudentsWorkshopCombos, Metric) =
+    def recursion(distributedStudentsWorkshopCombos: DistributedStudentsWorkshopCombos,
+                  accMetric: Metric,
+                  freeWorkshopSeats: WorkshopSeats,
+                  studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])],
+                 ): (DistributedStudentsWorkshopCombos, Metric, WorkshopSeats) =
       studentsWorkshopCombosToDistribute match {
-        case Nil => (distributedStudentsWorkshopCombos, accMetric)
+        case Nil => (distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats)
         case (_, Nil) :: _ =>
           // A student with an empty list of possible workshop combos would only happen if a student has made a
           // selection of workshop topics such that no combinations of workshops are possible.
@@ -156,19 +163,20 @@ object Algorithm {
           // During development with arbitrary random data this situation can happen, as the random input data could
           // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
           // possible workshop combos. In this case, continue without adding this student to any workshop.
-          (distributedStudentsWorkshopCombos, accMetric)
+          (distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats)
         case (studentId, workshopCombos) :: tailStudents =>
           val resultsThisStudent = workshopCombos.map { case (workshopCombo, Metric(metric)) =>
             counterPrinter.countAndPrint(studentId, workshopCombo)
             val workshopIds = workshopCombo.map { case (id, _) => id }
             val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopIds))
             val newMetric = Metric(accMetric.metric + metric)
-            recursion(newDistributedStudentsWorkshopCombos, newMetric, tailStudents)
+            val newFreeWorkshopSeats = updateFreeWorkshopSeats(freeWorkshopSeats, workshopIds)
+            recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, tailStudents)
           }
-          resultsThisStudent.minBy { case (_, Metric(metric)) => metric } // works as workshopCombos will not be Nil
+          resultsThisStudent.minBy { case (_, Metric(metric), _) => metric } // works as workshopCombos will not be Nil
       }
 
-    val (distributedStudentsWorkshopCombos, metric) = recursion(List.empty, Metric(0), orderedStudentsWorkshopCombosWithMetrics)
+    val (distributedStudentsWorkshopCombos, metric, leftFreeSeats) = recursion(List.empty, Metric(0), initialFreeWorkshopSeats, orderedStudentsWorkshopCombosWithMetrics)
 
     val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap
     val workshopAssignments = distributedStudentsWorkshopCombos.foldLeft(emptyWorkshopAssignments) { case (accMap1, (studentId, workshopIds)) =>
@@ -176,7 +184,7 @@ object Algorithm {
         accMap2.updatedWith(workshopId)(_.map(students => students.incl(studentId)))
       }
     }
-    (workshopAssignments, metric)
+    (workshopAssignments, metric, leftFreeSeats)
   }
 
 }

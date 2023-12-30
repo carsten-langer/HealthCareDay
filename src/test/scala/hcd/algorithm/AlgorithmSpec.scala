@@ -432,6 +432,24 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       studentsWorkshopCombos should contain theSameElementsAs expectedStudentsWorkshopCombos
     }
 
+    "update free seats" in {
+      val f = fixtureSymmetricWorkshops(2)
+
+      val workshopIds1 = Seq(WorkshopId(1), WorkshopId(3), WorkshopId(5))
+      val workshopIds2 = Seq.empty
+      val expectedFreeWorkshopSeats1 = Map(
+        WorkshopId(0) -> Seats(20), WorkshopId(1) -> Seats(19), WorkshopId(2) -> Seats(20), // TopicId(0)
+        WorkshopId(3) -> Seats(19), WorkshopId(4) -> Seats(20), WorkshopId(5) -> Seats(19), // TopicId(1)
+      )
+      val expectedFreeWorkshopSeats2 = Map(
+        WorkshopId(0) -> Seats(20), WorkshopId(1) -> Seats(20), WorkshopId(2) -> Seats(20), // TopicId(0)
+        WorkshopId(3) -> Seats(20), WorkshopId(4) -> Seats(20), WorkshopId(5) -> Seats(20), // TopicId(1)
+      )
+
+      updateFreeWorkshopSeats(f.workshopSeats, workshopIds1) should contain theSameElementsAs expectedFreeWorkshopSeats1
+      updateFreeWorkshopSeats(f.workshopSeats, workshopIds2) should contain theSameElementsAs expectedFreeWorkshopSeats2
+    }
+
     "provide a method to distribute students to workshops" which {
 
       "yields an empty distribution if no selections were made" in {
@@ -439,7 +457,7 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
 
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
-        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0))
+        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), f.workshopSeats)
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
@@ -457,12 +475,21 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
-        val expectedResult = (Map(
-          WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
-          WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
-          WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
-          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
-        ), Metric(6))
+        val expectedResult = (
+          Map(
+            WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+            WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
+            WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
+            WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+          ),
+          Metric(6),
+          Map(
+            WorkshopId(0) -> Seats(19), WorkshopId(1) -> Seats(20), WorkshopId(2) -> Seats(20), // TopicId(0)
+            WorkshopId(3) -> Seats(20), WorkshopId(4) -> Seats(19), WorkshopId(5) -> Seats(20), // TopicId(1)
+            WorkshopId(6) -> Seats(20), WorkshopId(7) -> Seats(20), WorkshopId(8) -> Seats(19), // TopicId(2)
+            WorkshopId(9) -> Seats(20), WorkshopId(10) -> Seats(20), WorkshopId(11) -> Seats(20), // TopicId(3)
+          )
+        )
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
@@ -486,12 +513,21 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
-        val expectedResult = (Map(
-          WorkshopId(0) -> Set(student1, student2), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
-          WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
-          WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
-          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
-        ), Metric(9))
+        val expectedResult = (
+          Map(
+            WorkshopId(0) -> Set(student1, student2), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+            WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
+            WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
+            WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+          ),
+          Metric(9),
+          Map(
+            WorkshopId(0) -> Seats(18), WorkshopId(1) -> Seats(20), WorkshopId(2) -> Seats(20), // TopicId(0)
+            WorkshopId(3) -> Seats(20), WorkshopId(4) -> Seats(19), WorkshopId(5) -> Seats(20), // TopicId(1)
+            WorkshopId(6) -> Seats(20), WorkshopId(7) -> Seats(19), WorkshopId(8) -> Seats(20), // TopicId(2)
+            WorkshopId(9) -> Seats(20), WorkshopId(10) -> Seats(20), WorkshopId(11) -> Seats(20), // TopicId(3)
+          )
+        )
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
@@ -529,9 +565,9 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
       //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
+      lazy val (workshopAssignments, metric, leftFreeWorkshopSeats) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        println(workshopAssignments, metric)
+        println(workshopAssignments, metric, leftFreeWorkshopSeats)
     }
 
   }
