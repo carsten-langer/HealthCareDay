@@ -532,6 +532,46 @@ class AlgorithmSpec extends AnyWordSpec with Matchers {
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
+      "yields a distribution despite one student having an illegal selection" in {
+        // Such situation should in production be checked and rejected before entering the distribution.
+        // However, during tests with arbitrary input data this could happen and thus the distribution algorithm
+        // must handle it gracefully, i.e. ignore the student with no possible workshop combos.
+        val f = fixtureSymmetricWorkshops(noTopics = 4)
+
+        val comboSize = 2
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentWorkshopSelections: StudentsSelectedTopics = Map(
+          student1 -> BiMap( // actually an illegal choice, as both workshops are of category nutrition
+            TopicId(0) -> SelectionPriority(1), // nutrition
+            TopicId(3) -> SelectionPriority(2), // nutrition
+          ),
+          student2 -> BiMap(
+            TopicId(0) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(4),
+            TopicId(3) -> SelectionPriority(3),
+          ),
+        )
+        // assumes that the algorithm orders the input so that the result is stable
+        val expectedResult = (
+          Map(
+            WorkshopId(0) -> Set(student2), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+            WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
+            WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
+            WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+          ),
+          Metric(6),
+          Map(
+            WorkshopId(0) -> Seats(19), WorkshopId(1) -> Seats(20), WorkshopId(2) -> Seats(20), // TopicId(0)
+            WorkshopId(3) -> Seats(20), WorkshopId(4) -> Seats(20), WorkshopId(5) -> Seats(20), // TopicId(1)
+            WorkshopId(6) -> Seats(20), WorkshopId(7) -> Seats(19), WorkshopId(8) -> Seats(20), // TopicId(2)
+            WorkshopId(9) -> Seats(20), WorkshopId(10) -> Seats(20), WorkshopId(11) -> Seats(20), // TopicId(3)
+          )
+        )
+
+        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+      }
+
     }
 
     "build test data correctly and optionally print it" in {
