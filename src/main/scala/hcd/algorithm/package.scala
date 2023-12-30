@@ -39,7 +39,7 @@ package object algorithm {
     private var currentN = 0L
     private val startTime = System.currentTimeMillis()
 
-    // currently takes ca. 6 s to calculate 1 combination for Student 410
+    // currently takes ca. 44 s to calculate 1 combination for Student 410
     // i.e. try all combos for students 411, 412, ..., 999
     // with 90 workshop combos per student
     def countAndPrint(studentId: StudentId, workshopCombo: Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
