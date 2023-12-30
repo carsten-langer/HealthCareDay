@@ -39,12 +39,13 @@ package object algorithm {
     private var currentN = 0L
     private val startTime = System.currentTimeMillis()
 
-    // currently takes ca. 44 s to calculate 1 combination for Student 410
-    // i.e. try all combos for students 411, 412, ..., 999
-    // with 90 workshop combos per student
+    // currently takes ca. 63 s to calculate 1 combination for Student 995
+    // i.e. try all combos for students 996, 997, 998, 999
+    // with an average of 112 workshop combos per last students
+    // with 161,424,425 calls per 63 s = 2,562,292 calls / s
     def countAndPrint(studentId: StudentId, workshopCombo: Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1L
-      if (studentId.id < 411) {
+      if (studentId.id == 995) {
         val now = System.currentTimeMillis()
         println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
       }

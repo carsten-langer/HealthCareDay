@@ -143,6 +143,31 @@ object Algorithm {
         .sortBy { case (StudentId(id), _) => id }
     println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
 
+    // A student with an empty list of possible workshop combos would only happen if a student has made a selection of
+    // workshop topics such that no combinations of workshops are possible.
+    // During production, there should be a test upfront to not even start the distribution in such case.
+    // During development with arbitrary random data this situation can happen, as the random input data could
+    // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
+    // workshop combos. In this case, remove the student from the list of students so that the following recursion does
+    // not need to handle this situation which would not occur in production.
+    // Also print out the removed students and the total number of left over students.
+    val orderedStudentsNonEmptyWorkshopCombosWithMetrics: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])] = {
+      val filteredStudents = orderedStudentsWorkshopCombosWithMetrics.filter {
+        case (studentId, Nil) =>
+          println(s"$studentId has no possible workshop combos, removing this student!")
+          false
+        case _ => true
+      }
+      val noStudents = math.max(1, filteredStudents.size)
+      println(s"$noStudents students forwarded to recursion.")
+      val lastStudents = 5
+      val averageNoCombosLast10Students = filteredStudents
+        .takeRight(lastStudents)
+        .map { case (_, workshopCombos) => workshopCombos.size }.sum / lastStudents
+      println(s"average number of workshop combos per student for the last $lastStudents students: $averageNoCombosLast10Students")
+      filteredStudents
+    }
+
     val counterPrinter = new CounterPrinter
 
     type DistributedStudentsWorkshopCombos = List[(StudentId, Seq[WorkshopId])]
@@ -156,14 +181,10 @@ object Algorithm {
                  ): (DistributedStudentsWorkshopCombos, Metric, WorkshopSeats) =
       studentsWorkshopCombosToDistribute match {
         case Nil => (distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats)
-        case (_, Nil) :: _ =>
-          // A student with an empty list of possible workshop combos would only happen if a student has made a
-          // selection of workshop topics such that no combinations of workshops are possible.
-          // During production, there should be a test upfront to not even start the distribution in such case.
-          // During development with arbitrary random data this situation can happen, as the random input data could
-          // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
-          // possible workshop combos. In this case, continue without adding this student to any workshop.
-          (distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats)
+        case (studentId, Nil) :: _ =>
+          // The situation that a student has an empty list of possible workshop combos should have been resolved
+          // before entering the recursion.
+          throw new IllegalStateException(s"$studentId has no workshop combos, such situation should have been dealt with before the recursion!")
         case (studentId, workshopCombos) :: tailStudents =>
           val resultsThisStudent = workshopCombos.map { case (workshopCombo, Metric(metric)) =>
             counterPrinter.countAndPrint(studentId, workshopCombo)
@@ -176,7 +197,7 @@ object Algorithm {
           resultsThisStudent.minBy { case (_, Metric(metric), _) => metric } // works as workshopCombos will not be Nil
       }
 
-    val (distributedStudentsWorkshopCombos, metric, leftFreeSeats) = recursion(List.empty, Metric(0), initialFreeWorkshopSeats, orderedStudentsWorkshopCombosWithMetrics)
+    val (distributedStudentsWorkshopCombos, metric, leftFreeSeats) = recursion(List.empty, Metric(0), initialFreeWorkshopSeats, orderedStudentsNonEmptyWorkshopCombosWithMetrics)
 
     val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap
     val workshopAssignments = distributedStudentsWorkshopCombos.foldLeft(emptyWorkshopAssignments) { case (accMap1, (studentId, workshopIds)) =>
