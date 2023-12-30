@@ -3,6 +3,7 @@ package hcd.algorithm
 import hcd.algorithm.Algorithm._
 import hcd.models._
 import io.cvbio.collection.mutable.bimap.BiMap
+import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
@@ -10,7 +11,7 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import scala.annotation.unused
 import scala.util.Random
 
-class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with Matchers {
+class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with Matchers with OptionValues {
 
   "Algorithm" should {
 
@@ -18,6 +19,14 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       def topics: Topics
 
       def workshops: Workshops
+
+      protected def noSeats: Int
+
+      def allSeats: Seats = Seats(noSeats)
+
+      def oneLessSeats: Seats = Seats(noSeats - 1)
+
+      def twoLessSeats: Seats = Seats(noSeats - 2)
 
       def workshopSeats: WorkshopSeats
 
@@ -57,7 +66,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
         )
     }
 
-    def fixtureSymmetricWorkshopsFor(noTopics: Int, noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
+    def fixtureSymmetricWorkshopsFor(noTopics: Int, _noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
       private val categories = Seq(Nutrition, Relaxation, Sports)
@@ -81,6 +90,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           timeSlots(workshopId.id % timeSlots.size)
         )
       ))
+      override protected val noSeats: Int = _noSeats
       override val workshopSeats: WorkshopSeats = workshopIds.map(_ -> Seats(noSeats)).toMap
     }
 
@@ -92,7 +102,14 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       private val noTopics = 50
       private val noStudents = 1000
       private val noSelectionsPerStudent = 6
-      private val noSeats = 20
+      // with noSeats = 20 we get soon a StackOverflowError. We know the recursion is not tail-recursive, thus it seems
+      // that the code change in this commit in the recursion increases the needed stack depth such that the default
+      // settings of the JVM are not enough.
+      // These settings could be changed. However, the purpose of this commit's changes is to experiment with the new
+      // functionality to check if enough seats are available and how this influences the runtime.
+      // Thus, it is for testing enough to set the noSeats to 2, which is so small that no distribution can be found,
+      // and so small that the recursion stops going deep so early that the StackOverflowError will not occur.
+      override protected val noSeats = 2
 
       private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
       override val topics: Topics = underlyingWorkshops.topics
@@ -466,29 +483,31 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       studentsWorkshopCombos should contain theSameElementsAs expectedStudentsWorkshopCombos
     }
 
-    "update free seats" in {
-      val f = fixtureSymmetricWorkshops(2)
+    "check and update free seats" in {
+      val f = fixtureSymmetricWorkshops(noTopics = 2)
       val workshopIds1 = Seq(WorkshopId(1), WorkshopId(3), WorkshopId(5))
       val workshopIds2 = Seq.empty
+      val workshopSeats3 = f.workshopSeats.updated(WorkshopId(1), Seats(0))
       val expectedFreeWorkshopSeats1 = Map(
-        WorkshopId(0) -> Seats(20),
-        WorkshopId(1) -> Seats(19),
-        WorkshopId(2) -> Seats(20),
-        WorkshopId(3) -> Seats(19),
-        WorkshopId(4) -> Seats(20),
-        WorkshopId(5) -> Seats(19),
+        WorkshopId(0) -> f.allSeats,
+        WorkshopId(1) -> f.oneLessSeats,
+        WorkshopId(2) -> f.allSeats,
+        WorkshopId(3) -> f.oneLessSeats,
+        WorkshopId(4) -> f.allSeats,
+        WorkshopId(5) -> f.oneLessSeats,
       )
       val expectedFreeWorkshopSeats2 = Map(
-        WorkshopId(0) -> Seats(20),
-        WorkshopId(1) -> Seats(20),
-        WorkshopId(2) -> Seats(20),
-        WorkshopId(3) -> Seats(20),
-        WorkshopId(4) -> Seats(20),
-        WorkshopId(5) -> Seats(20),
+        WorkshopId(0) -> f.allSeats,
+        WorkshopId(1) -> f.allSeats,
+        WorkshopId(2) -> f.allSeats,
+        WorkshopId(3) -> f.allSeats,
+        WorkshopId(4) -> f.allSeats,
+        WorkshopId(5) -> f.allSeats,
       )
 
-      updateFreeWorkshopSeats(f.workshopSeats, workshopIds1) should contain theSameElementsAs expectedFreeWorkshopSeats1
-      updateFreeWorkshopSeats(f.workshopSeats, workshopIds2) should contain theSameElementsAs expectedFreeWorkshopSeats2
+      checkAndUpdateFreeWorkshopSeats(f.workshopSeats, workshopIds1).value should contain theSameElementsAs expectedFreeWorkshopSeats1
+      checkAndUpdateFreeWorkshopSeats(f.workshopSeats, workshopIds2).value should contain theSameElementsAs expectedFreeWorkshopSeats2
+      checkAndUpdateFreeWorkshopSeats(workshopSeats3, workshopIds1).isEmpty shouldEqual true
     }
 
     "provide a method to distribute students to workshops" which {
@@ -498,7 +517,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
 
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
-        val expectedDistribution = (f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), f.workshopSeats)
+        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), f.workshopSeats))
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
@@ -516,7 +535,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
-        val expectedResult = (
+        val expectedResult = Some((
           Map(
             WorkshopId(0) -> Set(student1),
             WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, WorkshopId(3) -> Set.empty,
@@ -527,20 +546,20 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
           Metric(6),
           Map(
-            WorkshopId(0) -> Seats(19),
-            WorkshopId(1) -> Seats(20),
-            WorkshopId(2) -> Seats(20),
-            WorkshopId(3) -> Seats(20),
-            WorkshopId(4) -> Seats(19),
-            WorkshopId(5) -> Seats(20),
-            WorkshopId(6) -> Seats(20),
-            WorkshopId(7) -> Seats(20),
-            WorkshopId(8) -> Seats(19),
-            WorkshopId(9) -> Seats(20),
-            WorkshopId(10) -> Seats(20),
-            WorkshopId(11) -> Seats(20),
+            WorkshopId(0) -> f.oneLessSeats,
+            WorkshopId(1) -> f.allSeats,
+            WorkshopId(2) -> f.allSeats,
+            WorkshopId(3) -> f.allSeats,
+            WorkshopId(4) -> f.oneLessSeats,
+            WorkshopId(5) -> f.allSeats,
+            WorkshopId(6) -> f.allSeats,
+            WorkshopId(7) -> f.allSeats,
+            WorkshopId(8) -> f.oneLessSeats,
+            WorkshopId(9) -> f.allSeats,
+            WorkshopId(10) -> f.allSeats,
+            WorkshopId(11) -> f.allSeats,
           )
-        )
+        ))
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
@@ -564,7 +583,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
-        val expectedResult = (
+        val expectedResult = Some((
           Map(
             WorkshopId(0) -> Set(student1, student2),
             WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, WorkshopId(3) -> Set.empty,
@@ -575,20 +594,20 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
           Metric(9),
           Map(
-            WorkshopId(0) -> Seats(18),
-            WorkshopId(1) -> Seats(20),
-            WorkshopId(2) -> Seats(20),
-            WorkshopId(3) -> Seats(20),
-            WorkshopId(4) -> Seats(19),
-            WorkshopId(5) -> Seats(20),
-            WorkshopId(6) -> Seats(20),
-            WorkshopId(7) -> Seats(19),
-            WorkshopId(8) -> Seats(20),
-            WorkshopId(9) -> Seats(20),
-            WorkshopId(10) -> Seats(20),
-            WorkshopId(11) -> Seats(20),
+            WorkshopId(0) -> f.twoLessSeats,
+            WorkshopId(1) -> f.allSeats,
+            WorkshopId(2) -> f.allSeats,
+            WorkshopId(3) -> f.allSeats,
+            WorkshopId(4) -> f.oneLessSeats,
+            WorkshopId(5) -> f.allSeats,
+            WorkshopId(6) -> f.allSeats,
+            WorkshopId(7) -> f.oneLessSeats,
+            WorkshopId(8) -> f.allSeats,
+            WorkshopId(9) -> f.allSeats,
+            WorkshopId(10) -> f.allSeats,
+            WorkshopId(11) -> f.allSeats,
           )
-        )
+        ))
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
@@ -614,7 +633,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
-        val expectedResult = (
+        val expectedResult = Some((
           Map(
             WorkshopId(0) -> Set(student2),
             WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, WorkshopId(3) -> Set.empty,
@@ -625,22 +644,103 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
           ),
           Metric(6),
           Map(
-            WorkshopId(0) -> Seats(19),
-            WorkshopId(1) -> Seats(20),
-            WorkshopId(2) -> Seats(20),
-            WorkshopId(3) -> Seats(20),
-            WorkshopId(4) -> Seats(20),
-            WorkshopId(5) -> Seats(20),
-            WorkshopId(6) -> Seats(20),
-            WorkshopId(7) -> Seats(19),
-            WorkshopId(8) -> Seats(20),
-            WorkshopId(9) -> Seats(20),
-            WorkshopId(10) -> Seats(20),
-            WorkshopId(11) -> Seats(20),
+            WorkshopId(0) -> f.oneLessSeats,
+            WorkshopId(1) -> f.allSeats,
+            WorkshopId(2) -> f.allSeats,
+            WorkshopId(3) -> f.allSeats,
+            WorkshopId(4) -> f.allSeats,
+            WorkshopId(5) -> f.allSeats,
+            WorkshopId(6) -> f.allSeats,
+            WorkshopId(7) -> f.oneLessSeats,
+            WorkshopId(8) -> f.allSeats,
+            WorkshopId(9) -> f.allSeats,
+            WorkshopId(10) -> f.allSeats,
+            WorkshopId(11) -> f.allSeats,
           )
-        )
+        ))
 
         distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+      }
+
+      "yields no distribution if there are not enough seats" in {
+        // Such situation should in production be checked and rejected before entering the distribution.
+        val f = fixtureSymmetricWorkshops(noTopics = 2)
+
+        val comboSize = 2
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val student3 = StudentId(3)
+        val student4 = StudentId(4)
+        val studentWorkshopSelections: StudentsSelectedTopics = Map(
+          student1 -> BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+          ),
+          student2 -> BiMap(
+            TopicId(0) -> SelectionPriority(2),
+            TopicId(1) -> SelectionPriority(1),
+          ),
+          student3 -> BiMap(
+            TopicId(0) -> SelectionPriority(3),
+            TopicId(1) -> SelectionPriority(5),
+          ),
+          student4 -> BiMap(
+            TopicId(0) -> SelectionPriority(3),
+            TopicId(1) -> SelectionPriority(6),
+          ),
+        )
+        val notEnoughWorkshopSeats = f.workshopSeats.view.mapValues(_ => Seats(1)).toMap
+        val expectedResult = None
+
+        distributeStudentsToWorkshops(f.workshops, f.topics, notEnoughWorkshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+      }
+
+      "yields a distribution determined by the limited number of seats" in {
+        val f = fixtureSymmetricWorkshops(noTopics = 2)
+
+        val comboSize = 2
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentWorkshopSelections: StudentsSelectedTopics = Map(
+          student1 -> BiMap(
+            TopicId(0) -> SelectionPriority(3),
+            TopicId(1) -> SelectionPriority(5),
+          ),
+          student2 -> BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+          ),
+        )
+        val limitedWorkshopSeats = Map(
+          WorkshopId(0) -> Seats(0),
+          WorkshopId(1) -> Seats(1),
+          WorkshopId(2) -> Seats(1),
+          WorkshopId(3) -> Seats(0),
+          WorkshopId(4) -> Seats(2),
+          WorkshopId(5) -> Seats(2),
+        )
+        // assumes that the algorithm orders the input so that the result is stable
+        val expectedResult = Some((
+          Map(
+            WorkshopId(0) -> Set.empty,
+            WorkshopId(1) -> Set(student1),
+            WorkshopId(2) -> Set(student2),
+            WorkshopId(3) -> Set.empty,
+            WorkshopId(4) -> Set(student2),
+            WorkshopId(5) -> Set(student1),
+          ),
+          Metric(11),
+          Map(
+            WorkshopId(0) -> Seats(0),
+            WorkshopId(1) -> Seats(0),
+            WorkshopId(2) -> Seats(0),
+            WorkshopId(3) -> Seats(0),
+            WorkshopId(4) -> Seats(1),
+            WorkshopId(5) -> Seats(1),
+          )
+        ))
+
+        distributeStudentsToWorkshops(f.workshops, f.topics, limitedWorkshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
     }
@@ -653,8 +753,8 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
       f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
       f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)
-      f.workshopSeats(WorkshopId(0)).n shouldEqual 20
-      f.workshopSeats(WorkshopId(149)).n shouldEqual 20
+      f.workshopSeats(WorkshopId(0)) shouldEqual f.allSeats
+      f.workshopSeats(WorkshopId(149)) shouldEqual f.allSeats
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
@@ -675,7 +775,7 @@ class AlgorithmSpec extends AnyWordSpec with ScalaCheckDrivenPropertyChecks with
       //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val (workshopAssignments, metric, leftFreeWorkshopSeats) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
+      lazy val Some((workshopAssignments, metric, leftFreeWorkshopSeats)) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
         println(workshopAssignments, metric, leftFreeWorkshopSeats)
     }
