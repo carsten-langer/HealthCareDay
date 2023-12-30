@@ -39,13 +39,13 @@ package object algorithm {
     private var currentN = 0L
     private val startTime = System.currentTimeMillis()
 
-    // currently takes ca. 63 s to calculate 1 combination for Student 995
-    // i.e. try all combos for students 996, 997, 998, 999
-    // with an average of 112 workshop combos per last students
-    // with 161,424,425 calls per 63 s = 2,562,292 calls / s
+    // The calculation speed for 1 student is not stable anymore as the free workshop seats are taken into account
+    // which makes it a bit random how deep the recursion has to go down the combination tree before filling up all
+    // workshop seats.
+    // However, some measurements indicate 2,105,123,739 in 205 s, i.e. 10,268,896 calls per second.
     def countAndPrint(studentId: StudentId, workshopCombo: => Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1L
-      if (studentId.id == 995) {
+      if (studentId.id <= 67) {
         val now = System.currentTimeMillis()
         println(s"seconds spent: ${(now - startTime) / 1000}, currentN: $currentN, studentId: $studentId, workshopCombo: $workshopCombo")
       }

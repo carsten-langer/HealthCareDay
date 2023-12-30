@@ -59,4 +59,3 @@ that some form of approximation is needed to find a suboptimal yet sufficiently 
 
 * The current approach still tries a full combinatorial solution, just to see how far we can come. No approximation
   algorithm was yet tried.
-* The number of seats per workshop are not yet taken into account.
