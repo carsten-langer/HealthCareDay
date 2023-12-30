@@ -43,7 +43,7 @@ package object algorithm {
     // i.e. try all combos for students 996, 997, 998, 999
     // with an average of 112 workshop combos per last students
     // with 161,424,425 calls per 63 s = 2,562,292 calls / s
-    def countAndPrint(studentId: StudentId, workshopCombo: Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
+    def countAndPrint(studentId: StudentId, workshopCombo: => Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
       currentN += 1L
       if (studentId.id == 995) {
         val now = System.currentTimeMillis()
