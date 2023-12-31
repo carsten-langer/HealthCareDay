@@ -198,24 +198,32 @@ object Algorithm {
           // The situation that a student has an empty list of possible workshop combos should have been resolved
           // before entering the recursion.
           throw new IllegalStateException(s"$studentId has no workshop combos, such situation should have been dealt with before the recursion!")
-        case (studentId, workshopCombos) :: tailStudents =>
-          // using List flatMap here ...
-          val resultsThisStudent = workshopCombos.flatMap { case (workshopCombo, Metric(metric)) =>
-            counterPrinter.countAndPrint(studentId, workshopCombo)
-            val maybeNewFreeWorkshopSeats = checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopCombo)
-            val maybeResult = maybeNewFreeWorkshopSeats.flatMap { newFreeWorkshopSeats =>
+        case (studentId, workshopCombosWithMetric) :: tailStudents =>
+          val possibleStudentsWorkshopCombosToDistributeFurther = workshopCombosWithMetric
+            .map { case (workshopCombo, metric) =>
+              counterPrinter.countAndPrint(studentId, workshopCombo)
+              (workshopCombo, metric, checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopCombo))
+            }
+            .collect { case (workshopCombo, Metric(metric), Some(newFreeWorkshopSeats)) =>
               val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopCombo))
               val newMetric = Metric(accMetric.metric + metric)
+              (newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats)
+            }
+          // A List.map would materialize all entries, thus call the function (the recursion) on all entries.
+          // But an Iterator.map only wraps the original Iterator and calls the function (the recursion) on each call
+          // of it.next. As find uses the iterator, we can avoid calling recursion unnecessarily by first
+          // converting the List to an Iterator.
+          //println(s"before: $possibleStudentsWorkshopCombosToDistributeFurther")
+          val maybeFirstResult = possibleStudentsWorkshopCombosToDistributeFurther
+            .iterator
+            .map { case (newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats) =>
+              //println(s"inside recursion: $newDistributedStudentsWorkshopCombos")
               recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, tailStudents)
             }
-            // and mapping an Option to a List ...
-            maybeResult.map(List(_)).getOrElse(List.empty)
-          }
-          // and checking the list's emptiness is a poor man's "traverse" which converts a List[Option] to Option[List]
-          if (resultsThisStudent.nonEmpty)
-            Some(resultsThisStudent.minBy { case (_, Metric(metric), _) => metric })
-          else
-            None
+            .find(maybeResult => maybeResult.isDefined)
+            .flatten
+          //println(s"after: $maybeFirstResult")
+          maybeFirstResult
       }
 
     val maybeResult = recursion(List.empty, Metric(0), initialFreeWorkshopSeats, orderedStudentsNonEmptyWorkshopCombosWithMetrics)

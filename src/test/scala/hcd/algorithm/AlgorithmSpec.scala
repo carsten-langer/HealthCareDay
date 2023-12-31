@@ -101,14 +101,9 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
       private val noTopics = 50
       private val noStudents = 1000
       private val noSelectionsPerStudent = 6
-      // with noSeats = 20 we get soon a StackOverflowError. We know the recursion is not tail-recursive, thus it seems
-      // that the code change in this commit in the recursion increases the needed stack depth such that the default
-      // settings of the JVM are not enough.
-      // These settings could be changed. However, the purpose of this commit's changes is to experiment with the new
-      // functionality to check if enough seats are available and how this influences the runtime.
-      // Thus, it is for testing enough to set the noSeats to 2, which is so small that no distribution can be found,
-      // and so small that the recursion stops going deep so early that the StackOverflowError will not occur.
-      override protected val noSeats = 2
+      // combo 50/1000/6/30-25 finds very quick a distribution
+      // combo 50/1000/6/24-20 searches a lot (20 is min.)
+      override protected val noSeats = 25
 
       private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
       override val topics: Topics = underlyingWorkshops.topics
