@@ -118,7 +118,8 @@ object Algorithm {
           val prioMetric = workshopCombo.map { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }.sum
           val onlySports = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }.forall(_ == Sports)
           val metric = Metric(prioMetric + (if (onlySports) 1000 else 0)) // malus if a combo contains only sports category
-          workshopCombo -> metric
+          val workshopIds = workshopCombo.keySet
+          workshopIds -> metric
         }
       )
 
@@ -127,7 +128,7 @@ object Algorithm {
     // Also leaves the data structures as lists, as during the recursion we prefer these data types which,
     // even if they are less expressive, are slightly faster.
     import Ordering.Implicits._
-    val orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])] =
+    val orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])] =
       studentsWorkshopCombosWithMetrics
         .mapValues(workshopCombos =>
           workshopCombos
@@ -135,15 +136,15 @@ object Algorithm {
             .map { case (workshopCombo, metric) =>
               val newWorkshopCombo = workshopCombo
                 .toList
-                // Sort workshops within a single combo according to selection priority.
+                // Sort workshops within a single combo according to workshop id.
                 // This is a prerequisite to find the order between workshop combos.
-                .sortBy { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }
+                .sortBy(_.id)
               (newWorkshopCombo, metric)
             }
             // Sort workshop combos by a) the metric and b) the already ordered list of workshop ids where each list
-            // represents one workshop combo which was already ordered by selection priority.
+            // represents one workshop combo which was already ordered by workshop id.
             .sortBy { case (workshopCombo, Metric(metric)) =>
-              val workshopIds = workshopCombo.map { case (WorkshopId(id), _) => id }
+              val workshopIds = workshopCombo.map(_.id)
               (metric, workshopIds)
             }
         )
@@ -160,7 +161,7 @@ object Algorithm {
     // workshop combos. In this case, remove the student from the list of students so that the following recursion does
     // not need to handle this situation which would not occur in production.
     // Also print out the removed students and the total number of left over students.
-    val orderedStudentsNonEmptyWorkshopCombosWithMetrics: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])] = {
+    val orderedStudentsNonEmptyWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])] = {
       val filteredStudents = orderedStudentsWorkshopCombosWithMetrics.filter {
         case (studentId, Nil) =>
           println(s"$studentId has no possible workshop combos, removing this student!")
@@ -189,7 +190,7 @@ object Algorithm {
     def recursion(distributedStudentsWorkshopCombos: DistributedStudentsWorkshopCombos,
                   accMetric: Metric,
                   freeWorkshopSeats: WorkshopSeats,
-                  studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[(WorkshopId, PossibleWorkshop)], Metric)])],
+                  studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[WorkshopId], Metric)])],
                  ): Option[(DistributedStudentsWorkshopCombos, Metric, WorkshopSeats)] =
       studentsWorkshopCombosToDistribute match {
         case Nil => Some((distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats))
@@ -201,10 +202,9 @@ object Algorithm {
           // using List flatMap here ...
           val resultsThisStudent = workshopCombos.flatMap { case (workshopCombo, Metric(metric)) =>
             counterPrinter.countAndPrint(studentId, workshopCombo)
-            val workshopIds = workshopCombo.map { case (id, _) => id }
-            val maybeNewFreeWorkshopSeats = checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopIds)
+            val maybeNewFreeWorkshopSeats = checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopCombo)
             val maybeResult = maybeNewFreeWorkshopSeats.flatMap { newFreeWorkshopSeats =>
-              val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopIds))
+              val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopCombo))
               val newMetric = Metric(accMetric.metric + metric)
               recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, tailStudents)
             }

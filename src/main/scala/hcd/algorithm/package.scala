@@ -43,7 +43,7 @@ package object algorithm {
     // which makes it a bit random how deep the recursion has to go down the combination tree before filling up all
     // workshop seats.
     // However, some measurements indicate 2,105,123,739 in 205 s, i.e. 10,268,896 calls per second.
-    def countAndPrint(studentId: StudentId, workshopCombo: => Seq[(WorkshopId, PossibleWorkshop)]): Unit = {
+    def countAndPrint(studentId: StudentId, workshopCombo: => Seq[WorkshopId]): Unit = {
       currentN += 1L
       if (studentId.id <= 67) {
         val now = System.currentTimeMillis()
