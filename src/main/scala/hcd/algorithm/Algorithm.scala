@@ -111,6 +111,37 @@ object Algorithm {
       )
       .toMap
 
+  // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
+  // the expected outcome can be pre-calculated.
+  // Also leaves the data structures as lists, as during the recursion we prefer these data types which,
+  // even if they are less expressive, are slightly faster.
+  private def orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics: Map[StudentId, Set[(Set[WorkshopId], Metric)]]): List[(StudentId, List[(List[WorkshopId], Metric)])] = {
+    import Ordering.Implicits._
+    studentsWorkshopCombosWithMetrics
+      .view
+      .mapValues(workshopCombos =>
+        workshopCombos
+          .toList
+          .map { case (workshopCombo, metric) =>
+            val newWorkshopCombo = workshopCombo
+              .toList
+              // Sort workshops within a single combo according to workshop id.
+              // This is a prerequisite to find the order between workshop combos.
+              .sortBy(_.id)
+            (newWorkshopCombo, metric)
+          }
+          // Sort workshop combos by a) the metric and b) the already ordered list of workshop ids where each list
+          // represents one workshop combo which was already ordered by workshop id.
+          .sortBy { case (workshopCombo, Metric(metric)) =>
+            val workshopIds = workshopCombo.map(_.id)
+            (metric, workshopIds)
+          }
+      )
+      .toList
+      // sort by students
+      .sortBy { case (StudentId(id), _) => id }
+  }
+
   /**
    * Checks if the given free workshop seats could still take on the workshopCombo.
    * If so, return a Some of the new free workshop seats, else return a None.
@@ -128,36 +159,7 @@ object Algorithm {
   protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
-
-    // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
-    // the expected outcome can be pre-calculated.
-    // Also leaves the data structures as lists, as during the recursion we prefer these data types which,
-    // even if they are less expressive, are slightly faster.
-    import Ordering.Implicits._
-    val orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])] =
-      studentsWorkshopCombosWithMetrics
-        .view
-        .mapValues(workshopCombos =>
-          workshopCombos
-            .toList
-            .map { case (workshopCombo, metric) =>
-              val newWorkshopCombo = workshopCombo
-                .toList
-                // Sort workshops within a single combo according to workshop id.
-                // This is a prerequisite to find the order between workshop combos.
-                .sortBy(_.id)
-              (newWorkshopCombo, metric)
-            }
-            // Sort workshop combos by a) the metric and b) the already ordered list of workshop ids where each list
-            // represents one workshop combo which was already ordered by workshop id.
-            .sortBy { case (workshopCombo, Metric(metric)) =>
-              val workshopIds = workshopCombo.map(_.id)
-              (metric, workshopIds)
-            }
-        )
-        .toList
-        // sort by students
-        .sortBy { case (StudentId(id), _) => id }
+    val orderedStudentsWorkshopCombosWithMetrics = orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics)
     println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
 
     // A student with an empty list of possible workshop combos would only happen if a student has made a selection of
