@@ -51,6 +51,15 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
             workshopId -> WorkshopCandidate(topicId, timeSlot, category, SelectionPriority(selPrio))
           }
 
+      // create a WorkshopCombo
+      def workshopCombo(wsIdSelPrios: BiMap[Int, Int]): WorkshopCombo =
+        BiMap.from(workshopComboCandidate(wsIdSelPrios)
+          .view
+          .mapValues { case WorkshopCandidate(_, _, category, selectionPriority) =>
+            PossibleWorkshop(category, selectionPriority)
+          }
+        )
+
       // create workshop combos from workshop ids, taking the selection priority from matching workshops
       def workshopCombos(matchingWorkshops: MatchingWorkshops)(wsIdCombos: Set[Set[Int]]): Set[WorkshopCombo] =
         wsIdCombos.map(wsIdCombo =>
@@ -442,6 +451,35 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
       val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize)(studentsSelectedTopics)
 
       studentsWorkshopCombos should contain theSameElementsAs expectedStudentsWorkshopCombos
+    }
+
+    "add metrics to students' workshop combos" in {
+      val f = fixtureSymmetricWorkshops(noTopics = 3)
+
+      val student1 = StudentId(1)
+      val student2 = StudentId(2)
+      val studentsWorkshopCombos = Map(
+        student1 -> Set(
+          f.workshopCombo(BiMap(0 -> 1, 4 -> 2, 8 -> 3)),
+          f.workshopCombo(BiMap(6 -> 100, 7 -> 200, 8 -> 300)), // all sports
+        ),
+        student2 -> Set(
+          f.workshopCombo(BiMap(6 -> 100)), // all sports
+          f.workshopCombo(BiMap.empty), // empty workshop combo gets malus for "all sports"
+        ),
+      )
+      val expectedStudentsWorkshopCombosWithMetrics = Map(
+        student1 -> Set(
+          (Set(WorkshopId(0), WorkshopId(4), WorkshopId(8)), Metric(6)),
+          (Set(WorkshopId(6), WorkshopId(7), WorkshopId(8)), Metric(1600)),
+        ),
+        student2 -> Set(
+          (Set(WorkshopId(6)), Metric(1100)),
+          (Set.empty, Metric(1000)),
+        ),
+      )
+
+      addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos) shouldEqual expectedStudentsWorkshopCombosWithMetrics
     }
 
     "check and update free seats" in {

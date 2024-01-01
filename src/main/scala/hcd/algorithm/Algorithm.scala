@@ -95,6 +95,22 @@ object Algorithm {
       .mapValues(generateWorkshopCombos(workshops, topics, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
+  protected[algorithm] def addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos: Map[StudentId, Set[WorkshopCombo]]): Map[StudentId, Set[(Set[WorkshopId], Metric)]] =
+    studentsWorkshopCombos
+      .view
+      .mapValues(workshopCombos =>
+        workshopCombos.map { workshopCombo =>
+          val prioMetric = workshopCombo.map { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }.sum
+          val onlySports = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }.forall(_ == Sports)
+          val metric = Metric(prioMetric + (if (onlySports) 1000 else 0)) // malus if a combo contains only sports category
+          // BiMap.keySet would return a collection.Set, but we require a collection.immutable.Set, which Map.keySet
+          // provides, thus transform the BiMap back to a Map
+          val workshopIds = workshopCombo.toMap.keySet
+          workshopIds -> metric
+        }
+      )
+      .toMap
+
   /**
    * Checks if the given free workshop seats could still take on the workshopCombo.
    * If so, return a Some of the new free workshop seats, else return a None.
@@ -111,17 +127,7 @@ object Algorithm {
 
   protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
-    val studentsWorkshopCombosWithMetrics = studentsWorkshopCombos
-      .view
-      .mapValues(workshopCombos =>
-        workshopCombos.map { workshopCombo =>
-          val prioMetric = workshopCombo.map { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }.sum
-          val onlySports = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }.forall(_ == Sports)
-          val metric = Metric(prioMetric + (if (onlySports) 1000 else 0)) // malus if a combo contains only sports category
-          val workshopIds = workshopCombo.keySet
-          workshopIds -> metric
-        }
-      )
+    val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
 
     // Orders students and workshop combos, which is needed to yield a stable distribution so that during the unit tests
     // the expected outcome can be pre-calculated.
@@ -130,6 +136,7 @@ object Algorithm {
     import Ordering.Implicits._
     val orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])] =
       studentsWorkshopCombosWithMetrics
+        .view
         .mapValues(workshopCombos =>
           workshopCombos
             .toList
