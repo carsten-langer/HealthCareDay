@@ -142,6 +142,31 @@ object Algorithm {
       .sortBy { case (StudentId(id), _) => id }
   }
 
+  // A student with an empty list of possible workshop combos would only happen if a student has made a selection of
+  // workshop topics such that no combinations of workshops are possible.
+  // During production, there should be a test upfront to not even start the distribution in such case.
+  // During development with arbitrary random data this situation can happen, as the random input data could
+  // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
+  // workshop combos. In this case, remove the student from the list of students so that the following recursion does
+  // not need to handle this situation which would not occur in production.
+  // Also print out the removed students and the total number of left over students.
+  private def removeStudentsWithoutWorkshopCombos(orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])]): List[(StudentId, List[(List[WorkshopId], Metric)])] = {
+    val filteredStudents = orderedStudentsWorkshopCombosWithMetrics.filter {
+      case (studentId, Nil) =>
+        println(s"$studentId has no possible workshop combos, removing this student!")
+        false
+      case _ => true
+    }
+    val noStudents = math.max(1, filteredStudents.size)
+    println(s"$noStudents students forwarded to recursion.")
+    val lastStudents = 5
+    val averageNoCombosLast10Students = filteredStudents
+      .takeRight(lastStudents)
+      .map { case (_, workshopCombos) => workshopCombos.size }.sum / lastStudents
+    println(s"average number of workshop combos per student for the last $lastStudents students: $averageNoCombosLast10Students")
+    filteredStudents
+  }
+
   /**
    * Checks if the given free workshop seats could still take on the workshopCombo.
    * If so, return a Some of the new free workshop seats, else return a None.
@@ -160,32 +185,8 @@ object Algorithm {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
     val orderedStudentsWorkshopCombosWithMetrics = orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics)
-    println(s"ordered input, first 2 students: ${orderedStudentsWorkshopCombosWithMetrics.take(2)}")
-
-    // A student with an empty list of possible workshop combos would only happen if a student has made a selection of
-    // workshop topics such that no combinations of workshops are possible.
-    // During production, there should be a test upfront to not even start the distribution in such case.
-    // During development with arbitrary random data this situation can happen, as the random input data could
-    // be such that the hasVaryingCategories filter filters out all conflicting workshop combos and leaves no
-    // workshop combos. In this case, remove the student from the list of students so that the following recursion does
-    // not need to handle this situation which would not occur in production.
-    // Also print out the removed students and the total number of left over students.
-    val orderedStudentsNonEmptyWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])] = {
-      val filteredStudents = orderedStudentsWorkshopCombosWithMetrics.filter {
-        case (studentId, Nil) =>
-          println(s"$studentId has no possible workshop combos, removing this student!")
-          false
-        case _ => true
-      }
-      val noStudents = math.max(1, filteredStudents.size)
-      println(s"$noStudents students forwarded to recursion.")
-      val lastStudents = 5
-      val averageNoCombosLast10Students = filteredStudents
-        .takeRight(lastStudents)
-        .map { case (_, workshopCombos) => workshopCombos.size }.sum / lastStudents
-      println(s"average number of workshop combos per student for the last $lastStudents students: $averageNoCombosLast10Students")
-      filteredStudents
-    }
+    val orderedStudentsNonEmptyWorkshopCombosWithMetrics = removeStudentsWithoutWorkshopCombos(orderedStudentsWorkshopCombosWithMetrics)
+    println(s"ordered and filtered input, first 2 students: ${orderedStudentsNonEmptyWorkshopCombosWithMetrics.take(2)}")
 
     val counterPrinter = new CounterPrinter
 
