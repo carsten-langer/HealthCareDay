@@ -33,6 +33,12 @@ libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
 // https://www.slf4j.org/manual.html#projectDep
 libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.10"
 
+// https://github.com/scopt/scopt
+libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
+
+// https://github.com/tototoshi/scala-csv
+libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.10"
+
 // https://docs.scala-lang.org/overviews/compiler-options/index.html
 ThisBuild / scalacOptions ++= Seq(
   // Standard Settings
