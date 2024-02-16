@@ -1,3 +1,5 @@
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 // Scala 2.x version https://www.scala-lang.org/download/all.html
