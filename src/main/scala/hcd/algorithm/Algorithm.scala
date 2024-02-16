@@ -1,6 +1,6 @@
 package hcd.algorithm
 
-import hcd.models._
+import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
 object Algorithm {

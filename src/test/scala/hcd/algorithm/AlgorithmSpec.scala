@@ -1,7 +1,7 @@
 package hcd.algorithm
 
 import hcd.algorithm.Algorithm._
-import hcd.models._
+import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
@@ -738,9 +738,12 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
       //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
 
       // print distributeStudentsToWorkshops for full model
-      lazy val Some((workshopAssignments, metric, leftFreeWorkshopSeats)) = distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics)
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        println(workshopAssignments, metric, leftFreeWorkshopSeats)
+        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics) match {
+          case Some((workshopAssignments, metric, leftFreeWorkshopSeats)) =>
+            println((workshopAssignments, metric, leftFreeWorkshopSeats))
+          case None => println("Distribution failed!")
+        }
     }
 
   }
