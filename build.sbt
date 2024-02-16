@@ -6,8 +6,11 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.12"
 
 lazy val root = (project in file("."))
+  .enablePlugins(BuildInfoPlugin)
   .settings(
-    name := "HealthCareDay"
+    name := "HealthCareDay",
+    buildInfoPackage := "hcd",
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
   )
 
 // https://www.scalatest.org/install
