@@ -21,4 +21,4 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.17.0" % "test"
 // https://github.com/clintval/bimap/tree/main
 libraryDependencies += "io.cvbio.collection.mutable" %% "bimap" % "2.0.0"
 
-scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
+ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
