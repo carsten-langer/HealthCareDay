@@ -5,6 +5,15 @@ import io.cvbio.collection.mutable.bimap.BiMap
 
 object Algorithm {
 
+  /** This algorithm's distribution function. */
+  def distributeStudentsToWorkshops: DistributionAlgorithm[(Metric, WorkshopSeats)] =
+    (topics: Topics, workshops: Workshops, initialWorkshopSeats: WorkshopSeats) =>
+      (studentsSelectedTopics: StudentsSelectedTopics) =>
+        distributeStudentsToWorkshops(workshops, topics, initialWorkshopSeats, comboSize = 3)(studentsSelectedTopics)
+          .map {
+            case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
+          }
+
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   protected[algorithm] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
     selectedTopics

@@ -739,8 +739,8 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
 
       // print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize = 3)(f.studentsSelectedTopics) match {
-          case Some((workshopAssignments, metric, leftFreeWorkshopSeats)) =>
+        distributeStudentsToWorkshops(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
+          case Some((workshopAssignments, (metric, leftFreeWorkshopSeats))) =>
             println((workshopAssignments, metric, leftFreeWorkshopSeats))
           case None => println("Distribution failed!")
         }

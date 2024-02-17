@@ -35,4 +35,11 @@ package object model {
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
 
+  /**
+   * An algorithm to distribute students to workshops based on their topic selections.
+   *
+   * Type parameter A: An extra return value, if available. (@tparam does not work for scaladoc)
+   */
+  type DistributionAlgorithm[A] = (Topics, Workshops, WorkshopSeats) => StudentsSelectedTopics => Option[(WorkshopAssignments, A)]
+
 }
