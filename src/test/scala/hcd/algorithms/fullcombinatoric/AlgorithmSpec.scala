@@ -742,9 +742,9 @@ class AlgorithmSpec
       lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
       //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
-      // print distributeStudentsToWorkshops for full model
+      // verify and print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributeStudentsToWorkshops(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
+        distributeStudentsToWorkshopsWithVerification(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
           case Some((workshopAssignments, (metric, leftFreeWorkshopSeats))) =>
             logger.info((workshopAssignments, metric, leftFreeWorkshopSeats).toString)
           case None => logger.error("Distribution failed!")

@@ -1,6 +1,7 @@
 package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.Verification.withVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
@@ -14,6 +15,9 @@ object Algorithm extends StrictLogging {
           .map {
             case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
           }
+
+  def distributeStudentsToWorkshopsWithVerification: DistributionAlgorithm[(Metric, WorkshopSeats)] =
+    withVerification(distributeStudentsToWorkshops)
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   protected[algorithms] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =

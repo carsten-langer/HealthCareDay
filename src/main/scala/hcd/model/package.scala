@@ -35,11 +35,23 @@ package object model {
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
 
+  /** The assignments of workshops to a student. */
+  private type StudentAssignments = Map[StudentId, Set[WorkshopId]]
+
   /**
    * An algorithm to distribute students to workshops based on their topic selections.
    *
    * Type parameter A: An extra return value, if available. (@tparam does not work for scaladoc)
    */
   type DistributionAlgorithm[A] = (Topics, Workshops, WorkshopSeats) => StudentsSelectedTopics => Option[(WorkshopAssignments, A)]
+
+  def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
+    workshopAssignments
+      .toList
+      .flatMap { case (workshopId, students) => students.map(studentId => (studentId, workshopId)) }
+      .groupMap { case (studentId, _) => studentId } { case (_, workshopId) => workshopId }
+      .view
+      .mapValues(_.toSet)
+      .toMap
 
 }
