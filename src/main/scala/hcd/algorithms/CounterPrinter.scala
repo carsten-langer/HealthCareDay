@@ -1,4 +1,4 @@
-package hcd.algorithm
+package hcd.algorithms
 
 import hcd.model.{StudentId, WorkshopId}
 

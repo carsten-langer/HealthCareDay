@@ -1,6 +1,6 @@
-package hcd.algorithm
+package hcd.algorithms
 
-import hcd.algorithm.Algorithm._
+import hcd.algorithms.Algorithm._
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.OptionValues

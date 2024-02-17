@@ -1,4 +1,4 @@
-package hcd.algorithm
+package hcd.algorithms
 
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
@@ -15,7 +15,7 @@ object Algorithm {
           }
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
-  protected[algorithm] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
+  protected[algorithms] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
     selectedTopics
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
       .flatMap { case (topicId, selectionPriority) =>
@@ -25,7 +25,7 @@ object Algorithm {
       }
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
-  protected[algorithm] def studentsMatchingWorkshopsFromStudentSelectedTopics(workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): StudentsMatchingWorkshops =
+  protected[algorithms] def studentsMatchingWorkshopsFromStudentSelectedTopics(workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): StudentsMatchingWorkshops =
     studentsSelectedTopics
       .view
       .mapValues(matchingWorkshopsFromSelectedTopics(workshops))
@@ -41,16 +41,16 @@ object Algorithm {
   private def areDistinct[A](it: Iterable[A]): Boolean = it.nonEmpty && it.groupBy(identity).values.forall(_.size == 1)
 
   // empty workshop combo candidate => false
-  protected[algorithm] def hasDistinctTopicIds: WorkshopComboCandidate => Boolean = extract(_.topicId).andThen(areDistinct)
+  protected[algorithms] def hasDistinctTopicIds: WorkshopComboCandidate => Boolean = extract(_.topicId).andThen(areDistinct)
 
   // empty workshop combo candidate => false
-  protected[algorithm] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
+  protected[algorithms] def hasDistinctTimeslots: WorkshopComboCandidate => Boolean = extract(_.timeSlot).andThen(areDistinct)
 
   // Students are not allowed to get assigned a combo with all workshops of category nutrition,
   // nor a combo with all workshops of category relaxation.
   // They are allowed to get assigned a combo with all workshops of category sports, though.
   // empty workshop combo candidate => false
-  protected[algorithm] def hasVaryingCategories: WorkshopComboCandidate => Boolean = workshopComboCandidate => {
+  protected[algorithms] def hasVaryingCategories: WorkshopComboCandidate => Boolean = workshopComboCandidate => {
     val categories = extract(_.category)(workshopComboCandidate)
     categories.exists(_ != Nutrition) && categories.exists(_ != Relaxation)
   }
@@ -59,7 +59,7 @@ object Algorithm {
   // If this filter is taken as hard boundary, it will reduce a lot the number of combo candidates,
   // but there may be the risk that no distribution could be found.
   // empty workshop combo candidate => false
-  protected[algorithm] def hasSufficientSelectionPriority: WorkshopComboCandidate => Boolean = workshopComboCandidate =>
+  protected[algorithms] def hasSufficientSelectionPriority: WorkshopComboCandidate => Boolean = workshopComboCandidate =>
     workshopComboCandidate.nonEmpty &&
       workshopComboCandidate
         .values
@@ -75,7 +75,7 @@ object Algorithm {
    * @param extraFilterPredicates Select a candidate of a workshop combination only if all extraFilterPredicates are
    *                              true for it.
    */
-  protected[algorithm] def generateWorkshopCombos(workshops: Workshops, topics: Topics, comboSize: Int, extraFilterPredicates: WorkshopComboCandidate => Boolean*)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] = {
+  protected[algorithms] def generateWorkshopCombos(workshops: Workshops, topics: Topics, comboSize: Int, extraFilterPredicates: WorkshopComboCandidate => Boolean*)(matchingWorkshops: MatchingWorkshops): Set[WorkshopCombo] = {
     val extraFilterPredicate: WorkshopComboCandidate => Boolean = workshopComboCandidate =>
       extraFilterPredicates.foldLeft(true) { case (result, predicate) => result && predicate(workshopComboCandidate) }
     matchingWorkshops
@@ -98,13 +98,13 @@ object Algorithm {
       )
   }
 
-  protected[algorithm] def generateStudentsWorkshopCombos(workshops: Workshops, topics: Topics, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Map[StudentId, Set[WorkshopCombo]] =
+  protected[algorithms] def generateStudentsWorkshopCombos(workshops: Workshops, topics: Topics, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Map[StudentId, Set[WorkshopCombo]] =
     studentsMatchingWorkshopsFromStudentSelectedTopics(workshops)(studentsSelectedTopics)
       .view
       .mapValues(generateWorkshopCombos(workshops, topics, comboSize, hasVaryingCategories, hasSufficientSelectionPriority))
       .toMap
 
-  protected[algorithm] def addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos: Map[StudentId, Set[WorkshopCombo]]): Map[StudentId, Set[(Set[WorkshopId], Metric)]] =
+  protected[algorithms] def addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos: Map[StudentId, Set[WorkshopCombo]]): Map[StudentId, Set[(Set[WorkshopId], Metric)]] =
     studentsWorkshopCombos
       .view
       .mapValues(workshopCombos =>
@@ -180,7 +180,7 @@ object Algorithm {
    * Checks if the given free workshop seats could still take on the workshopCombo.
    * If so, return a Some of the new free workshop seats, else return a None.
    */
-  protected[algorithm] def checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats: WorkshopSeats, workshopIds: Seq[WorkshopId]): Option[WorkshopSeats] = {
+  protected[algorithms] def checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats: WorkshopSeats, workshopIds: Seq[WorkshopId]): Option[WorkshopSeats] = {
     val areEnoughFreeSeats = workshopIds.map(freeWorkshopSeats).forall(seats => seats.n > 0)
     Option.when(areEnoughFreeSeats)(
       workshopIds.foldLeft(freeWorkshopSeats) { case (accFreeWorkshopSeats, workshopId) =>
@@ -190,7 +190,7 @@ object Algorithm {
     )
   }
 
-  protected[algorithm] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
+  protected[algorithms] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
     val orderedStudentsWorkshopCombosWithMetrics = orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics)
