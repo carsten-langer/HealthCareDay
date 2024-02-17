@@ -26,6 +26,11 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.17.0" % "test"
 // https://github.com/clintval/bimap/tree/main
 libraryDependencies += "io.cvbio.collection.mutable" %% "bimap" % "2.0.0"
 
+// https://github.com/lightbend-labs/scala-logging
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
+// https://www.slf4j.org/manual.html#projectDep
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.10"
+
 // https://docs.scala-lang.org/overviews/compiler-options/index.html
 ThisBuild / scalacOptions ++= Seq(
   // Standard Settings

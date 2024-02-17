@@ -1,9 +1,10 @@
 package hcd.algorithms.fullcombinatoric
 
+import com.typesafe.scalalogging.StrictLogging
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
-object Algorithm {
+object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
   def distributeStudentsToWorkshops: DistributionAlgorithm[(Metric, WorkshopSeats)] =
@@ -162,16 +163,16 @@ object Algorithm {
   private def removeStudentsWithoutWorkshopCombos(orderedStudentsWorkshopCombosWithMetrics: List[(StudentId, List[(List[WorkshopId], Metric)])]): List[(StudentId, List[(List[WorkshopId], Metric)])] = {
     val filteredStudents = orderedStudentsWorkshopCombosWithMetrics.filter {
       case (studentId, Nil) =>
-        println(s"$studentId has no possible workshop combos, removing this student!")
+        logger.error(s"$studentId has no possible workshop combos, removing this student!")
         false
       case _ => true
     }
-    println(s"${filteredStudents.size} students forwarded to recursion.")
+    logger.debug(s"${filteredStudents.size} students forwarded to recursion.")
     val lastStudents = 5
     val averageNoCombosLast10Students = filteredStudents
       .takeRight(lastStudents)
       .map { case (_, workshopCombos) => workshopCombos.size }.sum / lastStudents
-    println(s"average number of workshop combos per student for the last $lastStudents students: $averageNoCombosLast10Students")
+    logger.debug(s"average number of workshop combos per student for the last $lastStudents students: $averageNoCombosLast10Students")
     filteredStudents
   }
 
@@ -194,9 +195,9 @@ object Algorithm {
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
     val orderedStudentsWorkshopCombosWithMetrics = orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics)
     val orderedStudentsNonEmptyWorkshopCombosWithMetrics = removeStudentsWithoutWorkshopCombos(orderedStudentsWorkshopCombosWithMetrics)
-    println(s"ordered and filtered input, first 2 students: ${orderedStudentsNonEmptyWorkshopCombosWithMetrics.take(2)}")
+    logger.debug(s"ordered and filtered input, first 2 students: ${orderedStudentsNonEmptyWorkshopCombosWithMetrics.take(2)}")
 
-    val counterPrinter = new CounterPrinter
+    val counterLogger = new CounterLogger(s => logger.debug(s)) // eta expansion not possible for macros
 
     type DistributedStudentsWorkshopCombos = List[(StudentId, Seq[WorkshopId])]
 
@@ -219,7 +220,9 @@ object Algorithm {
         case (studentId, workshopCombosWithMetric) :: tailStudents =>
           val possibleStudentsWorkshopCombosToDistributeFurther = workshopCombosWithMetric
             .map { case (workshopCombo, metric) =>
-              counterPrinter.countAndPrint(studentId, workshopCombo)
+              logger.whenDebugEnabled {
+                counterLogger.countAndLog(studentId, workshopCombo)
+              }
               (workshopCombo, metric, checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopCombo))
             }
             .collect { case (workshopCombo, Metric(metric), Some(newFreeWorkshopSeats)) =>
@@ -231,16 +234,16 @@ object Algorithm {
           // But an Iterator.map only wraps the original Iterator and calls the function (the recursion) on each call
           // of it.next. As find uses the iterator, we can avoid calling recursion unnecessarily by first
           // converting the List to an Iterator.
-          //println(s"before: $possibleStudentsWorkshopCombosToDistributeFurther")
+          //logger.trace(s"before: $possibleStudentsWorkshopCombosToDistributeFurther")
           val maybeFirstResult = possibleStudentsWorkshopCombosToDistributeFurther
             .iterator
             .map { case (newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats) =>
-              //println(s"inside recursion: $newDistributedStudentsWorkshopCombos")
+              //logger.trace(s"inside recursion: $newDistributedStudentsWorkshopCombos")
               recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, tailStudents)
             }
             .find(maybeResult => maybeResult.isDefined)
             .flatten
-          //println(s"after: $maybeFirstResult")
+          //logger.trace(s"after: $maybeFirstResult")
           maybeFirstResult
       }
 

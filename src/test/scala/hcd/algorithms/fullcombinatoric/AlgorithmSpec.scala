@@ -1,5 +1,6 @@
 package hcd.algorithms.fullcombinatoric
 
+import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
@@ -10,7 +11,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import scala.annotation.unused
 import scala.util.Random
 
-class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
+class AlgorithmSpec
+  extends AnyWordSpec
+    with Matchers
+    with OptionValues
+    with StrictLogging {
 
   "Algorithm" should {
 
@@ -720,29 +725,29 @@ class AlgorithmSpec extends AnyWordSpec with Matchers with OptionValues {
       f.workshopSeats(WorkshopId(149)) shouldEqual f.allSeats
 
       // print workshops ordered by id
-      //f.workshops.toSeq.sortBy(_._1.id).foreach(println)
+      //f.workshops.toSeq.sortBy(_._1.id).foreach(w => logger.info(w.toString))
 
       // print students' selected workshop topics ordered by student id
-      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(println)
+      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(sst => logger.info(sst.toString))
 
       // print students' matching workshops from their selected workshop topics for full model
       @unused // may be unused, depending on whether the model is printed out our not
       lazy val studentsMatchingWorkshops = studentsMatchingWorkshopsFromStudentSelectedTopics(f.workshops)(f.studentsSelectedTopics)
-      //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => println(t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))))
+      //studentsMatchingWorkshops.toSeq.sortBy(_._1.id).foreach(t => logger.info((t._1, collection.SortedMap.from(t._2)(Ordering.by(_.id))).toString))
 
       // print students' workshop combos for full model
       // per student there are 96 possible combos to chose 3 out of 6 workshops
       // print those for the first 2 students
       @unused // may be unused, depending on whether the model is printed out our not
       lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
-      //println(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap)
+      //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
       // print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
         distributeStudentsToWorkshops(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
           case Some((workshopAssignments, (metric, leftFreeWorkshopSeats))) =>
-            println((workshopAssignments, metric, leftFreeWorkshopSeats))
-          case None => println("Distribution failed!")
+            logger.info((workshopAssignments, metric, leftFreeWorkshopSeats).toString)
+          case None => logger.error("Distribution failed!")
         }
     }
 
