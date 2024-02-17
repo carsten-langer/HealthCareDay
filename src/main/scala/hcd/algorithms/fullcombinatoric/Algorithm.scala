@@ -1,6 +1,7 @@
 package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.Metric._
 import hcd.model.Verification.withVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
@@ -16,8 +17,8 @@ object Algorithm extends StrictLogging {
             case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
           }
 
-  def distributeStudentsToWorkshopsWithVerification: DistributionAlgorithm[(Metric, WorkshopSeats)] =
-    withVerification(distributeStudentsToWorkshops)
+  def distributeStudentsToWorkshopsWithMetricAndVerification: DistributionAlgorithm[(Metric, (Metric, WorkshopSeats))] =
+    withVerification(withMetric(distributeStudentsToWorkshops))
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   protected[algorithms] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
@@ -114,9 +115,9 @@ object Algorithm extends StrictLogging {
       .view
       .mapValues(workshopCombos =>
         workshopCombos.map { workshopCombo =>
-          val prioMetric = workshopCombo.map { case (_, PossibleWorkshop(_, SelectionPriority(prio))) => prio }.sum
-          val onlySports = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }.forall(_ == Sports)
-          val metric = Metric(prioMetric + (if (onlySports) 1000 else 0)) // malus if a combo contains only sports category
+          val prios = workshopCombo.map { case (_, PossibleWorkshop(_, selectionPriority)) => selectionPriority }
+          val categories = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }
+          val metric = add(metricFromSelectionPriorities(prios), metricFromCategories(categories))
           // BiMap.keySet would return a collection.Set, but we require a collection.immutable.Set, which Map.keySet
           // provides, thus transform the BiMap back to a Map
           val workshopIds = workshopCombo.toMap.keySet
@@ -229,9 +230,9 @@ object Algorithm extends StrictLogging {
               }
               (workshopCombo, metric, checkAndUpdateFreeWorkshopSeats(freeWorkshopSeats, workshopCombo))
             }
-            .collect { case (workshopCombo, Metric(metric), Some(newFreeWorkshopSeats)) =>
+            .collect { case (workshopCombo, metric, Some(newFreeWorkshopSeats)) =>
               val newDistributedStudentsWorkshopCombos = distributedStudentsWorkshopCombos.prepended((studentId, workshopCombo))
-              val newMetric = Metric(accMetric.metric + metric)
+              val newMetric = add(accMetric, metric)
               (newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats)
             }
           // A List.map would materialize all entries, thus call the function (the recursion) on all entries.
@@ -251,7 +252,7 @@ object Algorithm extends StrictLogging {
           maybeFirstResult
       }
 
-    val maybeResult = recursion(List.empty, Metric(0), initialFreeWorkshopSeats, orderedStudentsNonEmptyWorkshopCombosWithMetrics)
+    val maybeResult = recursion(List.empty, initialMetric, initialFreeWorkshopSeats, orderedStudentsNonEmptyWorkshopCombosWithMetrics)
     maybeResult map {
       case (distributedStudentsWorkshopCombos, metric, leftFreeSeats) =>
         val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap

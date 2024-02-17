@@ -744,9 +744,9 @@ class AlgorithmSpec
 
       // verify and print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributeStudentsToWorkshopsWithVerification(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
-          case Some((workshopAssignments, (metric, leftFreeWorkshopSeats))) =>
-            logger.info((workshopAssignments, metric, leftFreeWorkshopSeats).toString)
+        distributeStudentsToWorkshopsWithMetricAndVerification(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
+          case Some((workshopAssignments, (aPosterioriMetric, (algoMetric, leftFreeWorkshopSeats)))) =>
+            logger.info((aPosterioriMetric, algoMetric, workshopAssignments, leftFreeWorkshopSeats).toString)
           case None => logger.error("Distribution failed!")
         }
     }
