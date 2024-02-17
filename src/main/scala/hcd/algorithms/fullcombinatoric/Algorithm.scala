@@ -166,8 +166,7 @@ object Algorithm {
         false
       case _ => true
     }
-    val noStudents = math.max(1, filteredStudents.size)
-    println(s"$noStudents students forwarded to recursion.")
+    println(s"${filteredStudents.size} students forwarded to recursion.")
     val lastStudents = 5
     val averageNoCombosLast10Students = filteredStudents
       .takeRight(lastStudents)
