@@ -1,4 +1,4 @@
-package hcd.algorithms
+package hcd.algorithms.fullcombinatoric
 
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap

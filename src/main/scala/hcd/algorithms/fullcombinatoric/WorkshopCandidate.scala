@@ -1,4 +1,4 @@
-package hcd.algorithms
+package hcd.algorithms.fullcombinatoric
 
 import hcd.model.{Category, SelectionPriority, TimeSlot, TopicId}
 

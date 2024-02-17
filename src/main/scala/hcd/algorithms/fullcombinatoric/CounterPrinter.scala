@@ -1,4 +1,4 @@
-package hcd.algorithms
+package hcd.algorithms.fullcombinatoric
 
 import hcd.model.{StudentId, WorkshopId}
 
