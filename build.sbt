@@ -92,3 +92,15 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wunused:imports,privates,locals,implicits", // Not used, as I do not want to use "-Wunused:privates", see above.
   "-Wvalue-discard", // Warn when non-Unit expression results are unused.
 )
+
+onLoadMessage :=
+  """
+    |Health Care Day
+    |
+    |Help:
+    |
+    |~ testQuick                                        > continuously run broken/new tests
+    |testOnly *SomeSpec                                 > only test a subset of test specs
+    |testOnly *SomeSpec -- -z "substring of test name"  > only test a subset of test specs and a subset of tests
+    |
+    |""".stripMargin
