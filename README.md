@@ -21,7 +21,8 @@ They are allowed to give a __selection priority__ to their workshop topic choice
 
 Most workshop topics will be offered in all the three timeslots. That is, behind a workshop topic there are typically
 three actual workshops to which a student could be distributed. But not all workshop topics are offered on all three
-timeslots. Also, the workshops may have a different number of __available seats__.
+timeslots. Also, the workshops may have a different number of __available seats__, not only between different topics,
+but even within one topic between different timeslots.
 
 The challenge is to find a distribution of students to workshops so that:
 

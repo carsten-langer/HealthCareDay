@@ -691,12 +691,17 @@ class AlgorithmSpec
         val limitedWorkshopSeats = Map(
           WorkshopId(0) -> Seats(0),
           WorkshopId(1) -> Seats(1),
-          WorkshopId(2) -> Seats(1),
+          WorkshopId(2) -> Seats(2),
           WorkshopId(3) -> Seats(0),
           WorkshopId(4) -> Seats(2),
-          WorkshopId(5) -> Seats(2),
+          WorkshopId(5) -> Seats(3),
         )
-        // assumes that the algorithm orders the input so that the result is stable
+        // Assumes that the algorithm orders the input so that the result is stable.
+        // With only 2 selections and combo size 2, the metric per combo per student is constant, thus does not affect
+        // the ordering.
+        // student1: metric = 8, combos: ws 1,5 or 2,4
+        // student2: metric = 3, combos: ws 1,5 or 2,4
+        // Order of assignments: student1: ws 1,5, then for student2 only ws 2,4 fits, as ws 1 has seat limitation.
         val expectedResult = Some((
           Map(
             WorkshopId(0) -> Set.empty,
@@ -710,10 +715,10 @@ class AlgorithmSpec
           Map(
             WorkshopId(0) -> Seats(0),
             WorkshopId(1) -> Seats(0),
-            WorkshopId(2) -> Seats(0),
+            WorkshopId(2) -> Seats(1),
             WorkshopId(3) -> Seats(0),
             WorkshopId(4) -> Seats(1),
-            WorkshopId(5) -> Seats(1),
+            WorkshopId(5) -> Seats(2),
           )
         ))
 
