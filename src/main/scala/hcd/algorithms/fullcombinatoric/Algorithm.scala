@@ -206,11 +206,9 @@ object Algorithm extends StrictLogging {
 
     type DistributedStudentsWorkshopCombos = List[(StudentId, Seq[WorkshopId])]
 
-    /**
-     * @return A Some if a combination was found, else a None.
-     */
     // not tail-recursive, as per student the algorithm collects the results for all workshop combos and then
     // selects those which have the overall minimum metric
+    // Returns a Some if a combination was found, else a None.
     def recursion(distributedStudentsWorkshopCombos: DistributedStudentsWorkshopCombos,
                   accMetric: Metric,
                   freeWorkshopSeats: WorkshopSeats,
