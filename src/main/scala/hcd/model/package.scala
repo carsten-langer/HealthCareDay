@@ -18,8 +18,8 @@ package object model {
    */
   type SelectedTopics = BiMap[TopicId, SelectionPriority]
 
-  /** The students' workshop topic selections. */
-  type StudentsSelectedTopics = Map[StudentId, SelectedTopics]
+  /** The students' grade and workshop topic selections. */
+  type StudentsSelectedTopics = Map[StudentId, (Grade, SelectedTopics)]
 
   /**
    * All the concrete workshops.
@@ -30,7 +30,7 @@ package object model {
    * However, as we extend the workshops with other attributes relevant to the distribution algorithms, this would break
    * the the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
    */
-  type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Seats)]
+  type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Set[Grade], Seats)]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]

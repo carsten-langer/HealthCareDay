@@ -17,6 +17,7 @@ object Verification extends StrictLogging {
     workshopsHaveKnownTopic(workshops, topics) &&
       workshopsHaveUniqueTopicTimeslots(workshops) &&
       workshopsHavePositiveSeats(workshops) &&
+      workshopsHaveNonEmptyGrades(workshops) &&
       studentsSelectedTopicsHaveKnownTopic(studentsSelectedTopics, topics) &&
       studentsSelectedTopicsHaveSelectionPrioritiesInRange(studentsSelectedTopics)
 
@@ -25,33 +26,39 @@ object Verification extends StrictLogging {
       studentsHaveAssignments(workshops, studentsSelectedTopics, workshopAssignments)
 
   private def workshopsHaveKnownTopic(workshops: Workshops, topics: Topics): Boolean = {
-    val b = workshops.values.forall { case (topicId, _, _) => topics.contains(topicId) }
+    val b = workshops.values.forall { case (topicId, _, _, _) => topics.contains(topicId) }
     if (!b) logger.error("A workshop contains an unknown topic.")
     b
   }
 
   private def workshopsHaveUniqueTopicTimeslots(workshops: Workshops): Boolean = {
-    val topicIdTimeSlots = workshops.values.map { case (topicId, timeSlot, _) => (topicId, timeSlot) }
+    val topicIdTimeSlots = workshops.values.map { case (topicId, timeSlot, _, _) => (topicId, timeSlot) }
     val b = topicIdTimeSlots.size == topicIdTimeSlots.toSet.size
     if (!b) logger.error("Workshops and topic/timeslot are not mapped one-to-one.")
     b
   }
 
   private def workshopsHavePositiveSeats(workshops: Workshops): Boolean = {
-    val b = workshops.values.forall { case (_, _, Seats(n)) => n > 0 }
+    val b = workshops.values.forall { case (_, _, _, Seats(n)) => n > 0 }
     if (!b) logger.error("A non-positive seats exist.")
     b
   }
 
+  private def workshopsHaveNonEmptyGrades(workshops: Workshops): Boolean = {
+    val b = workshops.values.forall { case (_, _, grades, _) => grades.nonEmpty }
+    if (!b) logger.error("An empty set of grades exist.")
+    b
+  }
+
   private def studentsSelectedTopicsHaveKnownTopic(studentsSelectedTopics: StudentsSelectedTopics, topics: Topics): Boolean = {
-    val b = studentsSelectedTopics.values.flatMap(_.keys).forall(topics.contains)
+    val b = studentsSelectedTopics.values.flatMap { case (_, selectedTopics) => selectedTopics.keys }.forall(topics.contains)
     if (!b) logger.error("A studentsSelectedTopics contains an unknown topic.")
     b
   }
 
   private def studentsSelectedTopicsHaveSelectionPrioritiesInRange(studentsSelectedTopics: StudentsSelectedTopics): Boolean = {
     val validRange = Range.inclusive(1, 6)
-    val b = studentsSelectedTopics.values.flatMap(_.values).map(_.prio).forall(validRange.contains)
+    val b = studentsSelectedTopics.values.flatMap { case (_, selectedTopics) => selectedTopics.values }.map(_.prio).forall(validRange.contains)
     if (!b) logger.error("A studentsSelectedTopics contains a selection priority out of range.")
     b
   }
