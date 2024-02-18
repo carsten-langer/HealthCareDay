@@ -516,9 +516,9 @@ class AlgorithmSpec
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
         val originalWorkshopSeats = f.workshops.view.mapValues { case (_, _, seats) => seats }.toMap
-        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), originalWorkshopSeats))
+        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, (Metric(0), originalWorkshopSeats)))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
+        distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
 
       "yields a valid distribution for a single student with combo size 3" in {
@@ -541,16 +541,18 @@ class AlgorithmSpec
             WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
           ),
-          Metric(6),
-          Map(
-            WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.oneLessSeats, // TopicId(2)
-            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+          (
+            Metric(6),
+            Map(
+              WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.oneLessSeats, // TopicId(2)
+              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+            )
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a valid distribution for two students with combo size 2" in {
@@ -580,17 +582,19 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          Metric(9),
-          Map(
-            WorkshopId(0) -> f.twoLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
-            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
-            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
+          (
+            Metric(9),
+            Map(
+              WorkshopId(0) -> f.twoLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
+              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+              WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
+            )
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a distribution despite one student having an illegal selection" in {
@@ -622,17 +626,19 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          Metric(6),
-          Map(
-            WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
-            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
-            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
+          (
+            Metric(6),
+            Map(
+              WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
+              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+              WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
+            )
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields no distribution if there are not enough seats" in {
@@ -665,7 +671,7 @@ class AlgorithmSpec
         val workshopsWithNotEnoughSeats = f.workshops.view.mapValues { case (topic, timeSlot, _) => (topic, timeSlot, Seats(1)) }.toMap
         val expectedResult = None
 
-        distributeStudentsToWorkshops(workshopsWithNotEnoughSeats, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(comboSize)(f.topics, workshopsWithNotEnoughSeats)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a distribution determined by the limited number of seats" in {
@@ -706,18 +712,20 @@ class AlgorithmSpec
             WorkshopId(4) -> Set(student2),
             WorkshopId(5) -> Set(student1),
           ),
-          Metric(11),
-          Map(
-            WorkshopId(0) -> Seats(0),
-            WorkshopId(1) -> Seats(0),
-            WorkshopId(2) -> Seats(1),
-            WorkshopId(3) -> Seats(0),
-            WorkshopId(4) -> Seats(1),
-            WorkshopId(5) -> Seats(2),
+          (
+            Metric(11),
+            Map(
+              WorkshopId(0) -> Seats(0),
+              WorkshopId(1) -> Seats(0),
+              WorkshopId(2) -> Seats(1),
+              WorkshopId(3) -> Seats(0),
+              WorkshopId(4) -> Seats(1),
+              WorkshopId(5) -> Seats(2),
+            )
           )
         ))
 
-        distributeStudentsToWorkshops(workshopsWithLimitedSeats, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(comboSize)(f.topics, workshopsWithLimitedSeats)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
     }
@@ -753,7 +761,7 @@ class AlgorithmSpec
 
       // verify and print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributeStudentsToWorkshopsWithMetricAndVerification(f.topics, f.workshops)(f.studentsSelectedTopics) match {
+        distributionAlgorithmWithMetricAndVerification(f.topics, f.workshops)(f.studentsSelectedTopics) match {
           case Some((workshopAssignments, (aPosterioriMetric, (algoMetric, leftFreeWorkshopSeats)))) =>
             logger.info((aPosterioriMetric, algoMetric, workshopAssignments, leftFreeWorkshopSeats).toString)
           case None => logger.error("Distribution failed!")

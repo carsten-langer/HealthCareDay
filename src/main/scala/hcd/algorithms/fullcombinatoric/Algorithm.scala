@@ -9,15 +9,11 @@ import io.cvbio.collection.mutable.bimap.BiMap
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributeStudentsToWorkshops: DistributionAlgorithm[(Metric, WorkshopSeats)] =
-    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
-      distributeStudentsToWorkshops(workshops, topics, comboSize = 3)(studentsSelectedTopics)
-        .map {
-          case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
-        }
+  def distributionAlgorithm: DistributionAlgorithm[(Metric, WorkshopSeats)] =
+    distributeStudentsToWorkshops(comboSize = 3)
 
-  def distributeStudentsToWorkshopsWithMetricAndVerification: DistributionAlgorithm[(Metric, (Metric, WorkshopSeats))] =
-    withVerification(withMetric(distributeStudentsToWorkshops))
+  def distributionAlgorithmWithMetricAndVerification: DistributionAlgorithm[(Metric, (Metric, WorkshopSeats))] =
+    withVerification(withMetric(distributionAlgorithm))
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   protected[algorithms] def matchingWorkshopsFromSelectedTopics(workshops: Workshops)(selectedTopics: SelectedTopics): MatchingWorkshops =
@@ -194,7 +190,7 @@ object Algorithm extends StrictLogging {
     )
   }
 
-  protected[algorithms] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
+  protected[algorithms] def distributeStudentsToWorkshops(comboSize: Int)(topics: Topics, workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, (Metric, WorkshopSeats))] = {
     val initialFreeWorkshopSeats = workshops.view.mapValues { case (_, _, seats) => seats }.toMap
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
@@ -261,7 +257,7 @@ object Algorithm extends StrictLogging {
               accWorkshopAssignments2.updated(workshopId, newStudents)
             }
         }
-        (workshopAssignments, metric, leftFreeSeats)
+        (workshopAssignments, (metric, leftFreeSeats))
     }
   }
 
