@@ -1,7 +1,7 @@
 package hcd.model
 
 /** Metric of a combo or distribution. */
-final case class Metric(metric: Int) extends AnyVal
+final case class Metric(m: Int) extends AnyVal
 
 object Metric {
 
@@ -9,7 +9,7 @@ object Metric {
 
   val initialMetric: Metric = neutralMetric
 
-  def add(m: Metric, ms: Metric*): Metric = ms.fold(m) { case (m1, m2) => Metric(m1.metric + m2.metric) }
+  def add(m: Metric, ms: Metric*): Metric = ms.fold(m) { case (m1, m2) => Metric(m1.m + m2.m) }
 
   def withMetric[A](distributionAlgorithm: DistributionAlgorithm[A]): DistributionAlgorithm[(Metric, A)] =
     (topics: Topics, workshops: Workshops, workshopSeats: WorkshopSeats) =>

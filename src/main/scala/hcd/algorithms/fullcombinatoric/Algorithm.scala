@@ -147,9 +147,9 @@ object Algorithm extends StrictLogging {
           }
           // Sort workshop combos by a) the metric and b) the already ordered list of workshop ids where each list
           // represents one workshop combo which was already ordered by workshop id.
-          .sortBy { case (workshopCombo, Metric(metric)) =>
+          .sortBy { case (workshopCombo, Metric(m)) =>
             val workshopIds = workshopCombo.map(_.id)
-            (metric, workshopIds)
+            (m, workshopIds)
           }
       )
       .toList
