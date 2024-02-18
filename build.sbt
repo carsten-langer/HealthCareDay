@@ -1,4 +1,5 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
+maintainer := "Carsten Langer"
 
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
@@ -7,6 +8,7 @@ ThisBuild / scalaVersion := "2.13.12"
 
 lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "HealthCareDay",
     buildInfoPackage := "hcd",
@@ -102,5 +104,8 @@ onLoadMessage :=
     |~ testQuick                                        > continuously run broken/new tests
     |testOnly *SomeSpec                                 > only test a subset of test specs
     |testOnly *SomeSpec -- -z "substring of test name"  > only test a subset of test specs and a subset of tests
+    |
+    |stage                                              > stage artifacts to target/universal/stage
+    |universal:packageBin                               > zip artifacts to target/universal/<program-version>.zip
     |
     |""".stripMargin
