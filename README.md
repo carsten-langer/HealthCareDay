@@ -14,7 +14,7 @@ each timeslot.
 
 A __workshop__ is a concrete activity, at one timeslot, at one place, with one trainer etc. It will be on a certain
 __topic__, like _meditation_, _soccer_, _diving_, _cooking_, ... The workshop topic also belongs to a more coarse
-grained topic __category__ of _nutrition_, _relaxation_, and _sports_.
+grained topic __category__ of _nutrition_, _relaxation_, _sports_, or _other_.
 
 Upfront, the students can choose a certain number of topics from the list of all workshop topics.
 They are allowed to give a __selection priority__ to their workshop topic choices.

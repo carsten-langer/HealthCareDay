@@ -82,7 +82,7 @@ class AlgorithmSpec
     def fixtureSymmetricWorkshopsFor(noTopics: Int, _noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
       // Inputs for model size
       private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
-      private val categories = Seq(Nutrition, Relaxation, Sports)
+      private val categories = Seq(Nutrition, Relaxation, Sports, Other)
       private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available on all timeslots
 
       // Generate all IDs
@@ -93,9 +93,9 @@ class AlgorithmSpec
       // workshop categories are equally distributed among topics
       // each workshop topic exists in all timeslot
       // no limits of workshop seats
-      // categories alter n,n,n, r,r,r, s,s,s, n,n,n, ...
-      // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, ...
-      // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, ...
+      // categories alter n,n,n, r,r,r, s,s,s, o,o,o, n,n,n, ...
+      // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4, ...
+      // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, f,s,t, ...
       override val topics: Topics = topicIds.map(topicId => topicId -> categories(topicId.id % categories.size)).toMap
       override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
         workshopId -> TopicTimeslot(
@@ -245,25 +245,29 @@ class AlgorithmSpec
     }
 
     "filter a WorkshopComboCandidate via hasVaryingCategories" in {
-      val f = fixtureSymmetricWorkshops(noTopics = 6)
+      val f = fixtureSymmetricWorkshops(noTopics = 8)
 
-      val workshopComboCandidate1 = f.workshopComboCandidate(Set(0))
-      val workshopComboCandidate2 = f.workshopComboCandidate(Set(3))
-      val workshopComboCandidate3 = f.workshopComboCandidate(Set(6))
-      val workshopComboCandidate4 = f.workshopComboCandidate(Set(0, 9))
-      val workshopComboCandidate5 = f.workshopComboCandidate(Set(4, 13))
-      val workshopComboCandidate6 = f.workshopComboCandidate(Set(6, 15))
-      val workshopComboCandidate7 = f.workshopComboCandidate(Set(6, 7, 8))
-      val workshopComboCandidate8: WorkshopComboCandidate = BiMap.empty
+      val workshopComboCandidate1 = f.workshopComboCandidate(Set(0)) // nutrition
+      val workshopComboCandidate2 = f.workshopComboCandidate(Set(3)) // relaxation
+      val workshopComboCandidate3 = f.workshopComboCandidate(Set(6)) // sports
+      val workshopComboCandidate4 = f.workshopComboCandidate(Set(9)) // other
+      val workshopComboCandidate5 = f.workshopComboCandidate(Set(0, 12)) // nutrition, nutrition
+      val workshopComboCandidate6 = f.workshopComboCandidate(Set(4, 16)) // relaxation, relaxation
+      val workshopComboCandidate7 = f.workshopComboCandidate(Set(7, 20)) // sports, sports
+      val workshopComboCandidate8 = f.workshopComboCandidate(Set(11, 23)) // other, other
+      val workshopComboCandidate9 = f.workshopComboCandidate(Set(9, 10, 11)) // sports, sports, sports
+      val workshopComboCandidate10: WorkshopComboCandidate = BiMap.empty
 
       hasVaryingCategories(workshopComboCandidate1) shouldEqual false
       hasVaryingCategories(workshopComboCandidate2) shouldEqual false
       hasVaryingCategories(workshopComboCandidate3) shouldEqual true
-      hasVaryingCategories(workshopComboCandidate4) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate4) shouldEqual true
       hasVaryingCategories(workshopComboCandidate5) shouldEqual false
-      hasVaryingCategories(workshopComboCandidate6) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate6) shouldEqual false
       hasVaryingCategories(workshopComboCandidate7) shouldEqual true
-      hasVaryingCategories(workshopComboCandidate8) shouldEqual false
+      hasVaryingCategories(workshopComboCandidate8) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate9) shouldEqual true
+      hasVaryingCategories(workshopComboCandidate10) shouldEqual false
     }
 
     "filter a WorkshopComboCandidate via hasSufficientSelectionPriority" in {
@@ -345,12 +349,12 @@ class AlgorithmSpec
     }
 
     "generate all possible combinations of workshops from given workshops, comboSize, and matching workshops, also with regards to varying categories" in {
-      val f = fixtureSymmetricWorkshops(noTopics = 4)
+      val f = fixtureSymmetricWorkshops(noTopics = 6)
 
       val matchingWorkshops: MatchingWorkshops = Map(
         WorkshopId(0) -> SelectionPriority(1), WorkshopId(1) -> SelectionPriority(1), WorkshopId(2) -> SelectionPriority(1), // TopicId(0) nutrition
         WorkshopId(3) -> SelectionPriority(2), WorkshopId(4) -> SelectionPriority(2), WorkshopId(5) -> SelectionPriority(2), // TopicId(1) relaxation
-        WorkshopId(9) -> SelectionPriority(3), WorkshopId(10) -> SelectionPriority(3), WorkshopId(11) -> SelectionPriority(3), // TopicId(3) nutrition again
+        WorkshopId(12) -> SelectionPriority(3), WorkshopId(13) -> SelectionPriority(3), WorkshopId(14) -> SelectionPriority(3), // TopicId(4) nutrition again
       )
       val genCombos: Set[Set[Int]] => Set[WorkshopCombo] = f.workshopCombos(matchingWorkshops)
       val expectedCombos1 = Set.empty // because with a combo size of 1 there is no variance in categories
@@ -361,20 +365,20 @@ class AlgorithmSpec
         Set(1, 5),
         Set(2, 3),
         Set(2, 4),
-        Set(3, 10),
-        Set(3, 11),
-        Set(4, 9),
-        Set(4, 11),
-        Set(5, 9),
-        Set(5, 10),
+        Set(3, 13),
+        Set(3, 14),
+        Set(4, 12),
+        Set(4, 14),
+        Set(5, 12),
+        Set(5, 13),
       ))
       val expectedCombos3 = genCombos(Set(
-        Set(0, 4, 11),
-        Set(0, 5, 10),
-        Set(1, 3, 11),
-        Set(1, 5, 9),
-        Set(2, 3, 10),
-        Set(2, 4, 9),
+        Set(0, 4, 14),
+        Set(0, 5, 13),
+        Set(1, 3, 14),
+        Set(1, 5, 12),
+        Set(2, 3, 13),
+        Set(2, 4, 12),
       ))
       val expectedCombos4 = Seq.empty // because a combo of 4 will always overlap on timeslots
 
@@ -390,7 +394,7 @@ class AlgorithmSpec
     }
 
     "generate all possible combinations of workshops for students from given workshops, comboSize, and the selected workshop topics of the students" in {
-      val f = fixtureSymmetricWorkshops(noTopics = 7)
+      val f = fixtureSymmetricWorkshops(noTopics = 9)
 
       val comboSize = 3
       val student1 = StudentId(11)
@@ -410,8 +414,8 @@ class AlgorithmSpec
         ),
         student3 -> BiMap( // actually an illegal choice, as all 3 workshops are of category nutrition
           TopicId(0) -> SelectionPriority(1), // nutrition
-          TopicId(3) -> SelectionPriority(2), // nutrition
-          TopicId(6) -> SelectionPriority(3), // nutrition
+          TopicId(4) -> SelectionPriority(2), // nutrition
+          TopicId(8) -> SelectionPriority(3), // nutrition
         ),
         student4 -> BiMap( // no selection priority 1, 2, 3
           TopicId(1) -> SelectionPriority(6),
@@ -461,7 +465,7 @@ class AlgorithmSpec
     }
 
     "add metrics to students' workshop combos" in {
-      val f = fixtureSymmetricWorkshops(noTopics = 3)
+      val f = fixtureSymmetricWorkshops(noTopics = 4)
 
       val student1 = StudentId(1)
       val student2 = StudentId(2)
@@ -554,7 +558,7 @@ class AlgorithmSpec
       }
 
       "yields a valid distribution for two students with combo size 2" in {
-        val f = fixtureSymmetricWorkshops(noTopics = 4)
+        val f = fixtureSymmetricWorkshops(noTopics = 5)
 
         val comboSize = 2
         val student1 = StudentId(1)
@@ -566,9 +570,9 @@ class AlgorithmSpec
             TopicId(2) -> SelectionPriority(3),
           ),
           student2 -> BiMap(
-            TopicId(0) -> SelectionPriority(2),
+            TopicId(0) -> SelectionPriority(2), // nutrition
             TopicId(2) -> SelectionPriority(4),
-            TopicId(3) -> SelectionPriority(3),
+            TopicId(4) -> SelectionPriority(3), // again nutrition, thus topic 0 and 4 cannot be assigned together at combo size 2
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
@@ -578,6 +582,7 @@ class AlgorithmSpec
             WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
             WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+            WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
           Metric(9),
           Map(
@@ -585,6 +590,7 @@ class AlgorithmSpec
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
             WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
             WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
           )
         ))
 
@@ -595,7 +601,7 @@ class AlgorithmSpec
         // Such situation should in production be checked and rejected before entering the distribution.
         // However, during tests with arbitrary input data this could happen and thus the distribution algorithm
         // must handle it gracefully, i.e. ignore the student with no possible workshop combos.
-        val f = fixtureSymmetricWorkshops(noTopics = 4)
+        val f = fixtureSymmetricWorkshops(noTopics = 5)
 
         val comboSize = 2
         val student1 = StudentId(1)
@@ -603,12 +609,12 @@ class AlgorithmSpec
         val studentWorkshopSelections: StudentsSelectedTopics = Map(
           student1 -> BiMap( // actually an illegal choice, as both workshops are of category nutrition
             TopicId(0) -> SelectionPriority(1), // nutrition
-            TopicId(3) -> SelectionPriority(2), // nutrition
+            TopicId(4) -> SelectionPriority(2), // nutrition
           ),
           student2 -> BiMap(
-            TopicId(0) -> SelectionPriority(2),
+            TopicId(0) -> SelectionPriority(2), // nutrition
             TopicId(2) -> SelectionPriority(4),
-            TopicId(3) -> SelectionPriority(3),
+            TopicId(4) -> SelectionPriority(3), // again nutrition, thus topic 0 and 4 cannot be assigned together at combo size 2
           ),
         )
         // assumes that the algorithm orders the input so that the result is stable
@@ -618,6 +624,7 @@ class AlgorithmSpec
             WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
             WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set(student2), WorkshopId(8) -> Set.empty, // TopicId(2)
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
+            WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
           Metric(6),
           Map(
@@ -625,6 +632,7 @@ class AlgorithmSpec
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
             WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
             WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
           )
         ))
 
@@ -720,6 +728,7 @@ class AlgorithmSpec
       f.topics(TopicId(0)) shouldEqual Nutrition
       f.topics(TopicId(1)) shouldEqual Relaxation
       f.topics(TopicId(2)) shouldEqual Sports
+      f.topics(TopicId(3)) shouldEqual Other
       f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
       f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
       f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)

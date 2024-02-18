@@ -54,7 +54,7 @@ object Algorithm extends StrictLogging {
 
   // Students are not allowed to get assigned a combo with all workshops of category nutrition,
   // nor a combo with all workshops of category relaxation.
-  // They are allowed to get assigned a combo with all workshops of category sports, though.
+  // They are allowed to get assigned a combo with all workshops of category other or sports, though.
   // empty workshop combo candidate => false
   protected[algorithms] def hasVaryingCategories: WorkshopComboCandidate => Boolean = workshopComboCandidate => {
     val categories = extract(_.category)(workshopComboCandidate)
