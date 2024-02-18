@@ -32,15 +32,13 @@ class AlgorithmSpec
 
       def twoLessSeats: Seats = Seats(noSeats - 2)
 
-      def workshopSeats: WorkshopSeats
-
       // create a WorkshopComboCandidate from workshop ids with random SelectionPriority
       def workshopComboCandidate(wsIds: Set[Int]): WorkshopComboCandidate =
         BiMap.from(
           wsIds
             .map(WorkshopId)
             .map { workshopId =>
-              val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+              val (topicId, timeSlot, _) = workshops(workshopId)
               val category = topics(topicId)
               workshopId -> WorkshopCandidate(topicId, timeSlot, category, SelectionPriority(Random.nextInt()))
             }
@@ -51,7 +49,7 @@ class AlgorithmSpec
         wsIdSelPrios
           .map { case (wsId, selPrio) =>
             val workshopId = WorkshopId(wsId)
-            val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+            val (topicId, timeSlot, _) = workshops(workshopId)
             val category = topics(topicId)
             workshopId -> WorkshopCandidate(topicId, timeSlot, category, SelectionPriority(selPrio))
           }
@@ -72,7 +70,8 @@ class AlgorithmSpec
             wsIdCombo
               .map(WorkshopId)
               .map { workshopId =>
-                val category = topics(workshops(workshopId).topicId)
+                val (topicId, _, _) = workshops(workshopId)
+                val category = topics(topicId)
                 val selectionPriority = matchingWorkshops(workshopId)
                 workshopId -> PossibleWorkshop(category, selectionPriority)
               })
@@ -97,14 +96,10 @@ class AlgorithmSpec
       // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4, ...
       // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, f,s,t, ...
       override val topics: Topics = topicIds.map(topicId => topicId -> categories(topicId.id % categories.size)).toMap
-      override val workshops: Workshops = BiMap.from(workshopIds.map(workshopId =>
-        workshopId -> TopicTimeslot(
-          TopicId(workshopId.id / timeSlots.size),
-          timeSlots(workshopId.id % timeSlots.size)
-        )
-      ))
       override protected val noSeats: Int = _noSeats
-      override val workshopSeats: WorkshopSeats = workshopIds.map(_ -> Seats(noSeats)).toMap
+      override val workshops: Workshops = workshopIds.map(workshopId =>
+        workshopId -> (TopicId(workshopId.id / timeSlots.size), timeSlots(workshopId.id % timeSlots.size), Seats(noSeats))
+      ).toMap
     }
 
     def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshops =
@@ -124,7 +119,6 @@ class AlgorithmSpec
       private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
       override val topics: Topics = underlyingWorkshops.topics
       override val workshops: Workshops = underlyingWorkshops.workshops
-      override val workshopSeats: WorkshopSeats = underlyingWorkshops.workshopSeats
       private lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
       private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 
@@ -450,9 +444,9 @@ class AlgorithmSpec
           expectedWsIdCombo
             .map(WorkshopId)
             .map { workshopId =>
-              val workshop = f.workshops(workshopId)
-              val category = f.topics(workshop.topicId)
-              val selectionPriority = studentsSelectedTopics(studentId).valueFor(workshop.topicId).get
+              val (topicId, _, _) = f.workshops(workshopId)
+              val category = f.topics(topicId)
+              val selectionPriority = studentsSelectedTopics(studentId).valueFor(topicId).get
               workshopId -> PossibleWorkshop(category, selectionPriority)
             }
             .toMap)
@@ -498,7 +492,8 @@ class AlgorithmSpec
 
       val workshopIds1 = Seq(WorkshopId(1), WorkshopId(3), WorkshopId(5))
       val workshopIds2 = Seq.empty
-      val workshopSeats3 = f.workshopSeats.updated(WorkshopId(1), Seats(0))
+      val originalWorkshopSeats = f.workshops.view.mapValues { case (_, _, seats) => seats }.toMap
+      val workshopSeats3 = originalWorkshopSeats.updated(WorkshopId(1), Seats(0))
       val expectedFreeWorkshopSeats1 = Map(
         WorkshopId(0) -> f.allSeats, WorkshopId(1) -> f.oneLessSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
         WorkshopId(3) -> f.oneLessSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.oneLessSeats, // TopicId(1)
@@ -508,8 +503,8 @@ class AlgorithmSpec
         WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
       )
 
-      checkAndUpdateFreeWorkshopSeats(f.workshopSeats, workshopIds1).value should contain theSameElementsAs expectedFreeWorkshopSeats1
-      checkAndUpdateFreeWorkshopSeats(f.workshopSeats, workshopIds2).value should contain theSameElementsAs expectedFreeWorkshopSeats2
+      checkAndUpdateFreeWorkshopSeats(originalWorkshopSeats, workshopIds1).value should contain theSameElementsAs expectedFreeWorkshopSeats1
+      checkAndUpdateFreeWorkshopSeats(originalWorkshopSeats, workshopIds2).value should contain theSameElementsAs expectedFreeWorkshopSeats2
       checkAndUpdateFreeWorkshopSeats(workshopSeats3, workshopIds1).isEmpty shouldEqual true
     }
 
@@ -520,9 +515,10 @@ class AlgorithmSpec
 
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
-        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), f.workshopSeats))
+        val originalWorkshopSeats = f.workshops.view.mapValues { case (_, _, seats) => seats }.toMap
+        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), originalWorkshopSeats))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
+        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
 
       "yields a valid distribution for a single student with combo size 3" in {
@@ -554,7 +550,7 @@ class AlgorithmSpec
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a valid distribution for two students with combo size 2" in {
@@ -594,7 +590,7 @@ class AlgorithmSpec
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a distribution despite one student having an illegal selection" in {
@@ -636,7 +632,7 @@ class AlgorithmSpec
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, f.workshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(f.workshops, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields no distribution if there are not enough seats" in {
@@ -666,10 +662,10 @@ class AlgorithmSpec
             TopicId(1) -> SelectionPriority(6),
           ),
         )
-        val notEnoughWorkshopSeats = f.workshopSeats.view.mapValues(_ => Seats(1)).toMap
+        val workshopsWithNotEnoughSeats = f.workshops.view.mapValues { case (topic, timeSlot, _) => (topic, timeSlot, Seats(1)) }.toMap
         val expectedResult = None
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, notEnoughWorkshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(workshopsWithNotEnoughSeats, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
       "yields a distribution determined by the limited number of seats" in {
@@ -688,14 +684,13 @@ class AlgorithmSpec
             TopicId(1) -> SelectionPriority(2),
           ),
         )
-        val limitedWorkshopSeats = Map(
-          WorkshopId(0) -> Seats(0),
-          WorkshopId(1) -> Seats(1),
-          WorkshopId(2) -> Seats(2),
-          WorkshopId(3) -> Seats(0),
-          WorkshopId(4) -> Seats(2),
-          WorkshopId(5) -> Seats(3),
-        )
+        val workshopsWithLimitedSeats = f.workshops
+          .updatedWith(WorkshopId(0))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(0)) })
+          .updatedWith(WorkshopId(1))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(1)) })
+          .updatedWith(WorkshopId(2))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(2)) })
+          .updatedWith(WorkshopId(3))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(0)) })
+          .updatedWith(WorkshopId(4))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(2)) })
+          .updatedWith(WorkshopId(5))(_.map { case (topic, timeSlot, _) => (topic, timeSlot, Seats(3)) })
         // Assumes that the algorithm orders the input so that the result is stable.
         // With only 2 selections and combo size 2, the metric per combo per student is constant, thus does not affect
         // the ordering.
@@ -722,7 +717,7 @@ class AlgorithmSpec
           )
         ))
 
-        distributeStudentsToWorkshops(f.workshops, f.topics, limitedWorkshopSeats, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
+        distributeStudentsToWorkshops(workshopsWithLimitedSeats, f.topics, comboSize)(studentWorkshopSelections) shouldEqual expectedResult
       }
 
     }
@@ -734,11 +729,9 @@ class AlgorithmSpec
       f.topics(TopicId(1)) shouldEqual Relaxation
       f.topics(TopicId(2)) shouldEqual Sports
       f.topics(TopicId(3)) shouldEqual Other
-      f.workshops(WorkshopId(0)) shouldEqual TopicTimeslot(TopicId(0), FirstTimeSlot)
-      f.workshops(WorkshopId(4)) shouldEqual TopicTimeslot(TopicId(1), SecondTimeSlot)
-      f.workshops(WorkshopId(8)) shouldEqual TopicTimeslot(TopicId(2), ThirdTimeSlot)
-      f.workshopSeats(WorkshopId(0)) shouldEqual f.allSeats
-      f.workshopSeats(WorkshopId(149)) shouldEqual f.allSeats
+      f.workshops(WorkshopId(0)) shouldEqual(TopicId(0), FirstTimeSlot, f.allSeats)
+      f.workshops(WorkshopId(4)) shouldEqual(TopicId(1), SecondTimeSlot, f.allSeats)
+      f.workshops(WorkshopId(8)) shouldEqual(TopicId(2), ThirdTimeSlot, f.allSeats)
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(w => logger.info(w.toString))
@@ -760,7 +753,7 @@ class AlgorithmSpec
 
       // verify and print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributeStudentsToWorkshopsWithMetricAndVerification(f.topics, f.workshops, f.workshopSeats)(f.studentsSelectedTopics) match {
+        distributeStudentsToWorkshopsWithMetricAndVerification(f.topics, f.workshops)(f.studentsSelectedTopics) match {
           case Some((workshopAssignments, (aPosterioriMetric, (algoMetric, leftFreeWorkshopSeats)))) =>
             logger.info((aPosterioriMetric, algoMetric, workshopAssignments, leftFreeWorkshopSeats).toString)
           case None => logger.error("Distribution failed!")

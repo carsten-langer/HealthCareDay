@@ -5,19 +5,18 @@ import com.typesafe.scalalogging.StrictLogging
 object Verification extends StrictLogging {
 
   def withVerification[A](distributionAlgorithm: DistributionAlgorithm[A]): DistributionAlgorithm[A] =
-    (topics: Topics, workshops: Workshops, workshopSeats: WorkshopSeats) =>
-      (studentsSelectedTopics: StudentsSelectedTopics) =>
-        if (isValidInput(topics, workshops, workshopSeats, studentsSelectedTopics))
-          distributionAlgorithm(topics, workshops, workshopSeats)(studentsSelectedTopics) match {
-            case result@Some((workshopAssignments, _)) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
-            case _ => None
-          }
-        else None
+    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
+      if (isValidInput(topics, workshops, studentsSelectedTopics))
+        distributionAlgorithm(topics, workshops)(studentsSelectedTopics) match {
+          case result@Some((workshopAssignments, _)) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
+          case _ => None
+        }
+      else None
 
-  private def isValidInput(topics: Topics, workshops: Workshops, workshopSeats: WorkshopSeats, studentsSelectedTopics: StudentsSelectedTopics): Boolean =
+  private def isValidInput(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics): Boolean =
     workshopsHaveKnownTopic(workshops, topics) &&
-      workshopsHaveKnownSeats(workshops, workshopSeats) &&
-      seatsArePositive(workshopSeats) &&
+      workshopsHaveUniqueTopicTimeslots(workshops) &&
+      workshopsHavePositiveSeats(workshops) &&
       studentsSelectedTopicsHaveKnownTopic(studentsSelectedTopics, topics) &&
       studentsSelectedTopicsHaveSelectionPrioritiesInRange(studentsSelectedTopics)
 
@@ -26,19 +25,20 @@ object Verification extends StrictLogging {
       studentsHaveAssignments(workshops, studentsSelectedTopics, workshopAssignments)
 
   private def workshopsHaveKnownTopic(workshops: Workshops, topics: Topics): Boolean = {
-    val b = workshops.values.map(_.topicId).forall(topics.contains)
+    val b = workshops.values.forall { case (topicId, _, _) => topics.contains(topicId) }
     if (!b) logger.error("A workshop contains an unknown topic.")
     b
   }
 
-  private def workshopsHaveKnownSeats(workshops: Workshops, workshopSeats: WorkshopSeats): Boolean = {
-    val b = workshops.keys.forall(workshopSeats.contains)
-    if (!b) logger.error("A workshop does not have a seats information.")
+  private def workshopsHaveUniqueTopicTimeslots(workshops: Workshops): Boolean = {
+    val topicIdTimeSlots = workshops.values.map { case (topicId, timeSlot, _) => (topicId, timeSlot) }
+    val b = topicIdTimeSlots.size == topicIdTimeSlots.toSet.size
+    if (!b) logger.error("Workshops and topic/timeslot are not mapped one-to-one.")
     b
   }
 
-  private def seatsArePositive(workshopSeats: WorkshopSeats): Boolean = {
-    val b = workshopSeats.forall { case (_, Seats(n)) => n > 0 }
+  private def workshopsHavePositiveSeats(workshops: Workshops): Boolean = {
+    val b = workshops.values.forall { case (_, _, Seats(n)) => n > 0 }
     if (!b) logger.error("A non-positive seats exist.")
     b
   }

@@ -10,12 +10,11 @@ object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
   def distributeStudentsToWorkshops: DistributionAlgorithm[(Metric, WorkshopSeats)] =
-    (topics: Topics, workshops: Workshops, initialWorkshopSeats: WorkshopSeats) =>
-      (studentsSelectedTopics: StudentsSelectedTopics) =>
-        distributeStudentsToWorkshops(workshops, topics, initialWorkshopSeats, comboSize = 3)(studentsSelectedTopics)
-          .map {
-            case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
-          }
+    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
+      distributeStudentsToWorkshops(workshops, topics, comboSize = 3)(studentsSelectedTopics)
+        .map {
+          case (workshopAssignments, metric, remainingWorkshopSeats) => (workshopAssignments, (metric, remainingWorkshopSeats))
+        }
 
   def distributeStudentsToWorkshopsWithMetricAndVerification: DistributionAlgorithm[(Metric, (Metric, WorkshopSeats))] =
     withVerification(withMetric(distributeStudentsToWorkshops))
@@ -25,7 +24,7 @@ object Algorithm extends StrictLogging {
     selectedTopics
       .toMap // transform back from BiMap to Map, so that several workshops can have the same selection priority
       .flatMap { case (topicId, selectionPriority) =>
-        workshops.collect { case (workshopId, TopicTimeslot(`topicId`, _)) =>
+        workshops.collect { case (workshopId, (`topicId`, _, _)) =>
           workshopId -> selectionPriority
         }
       }
@@ -86,7 +85,7 @@ object Algorithm extends StrictLogging {
       extraFilterPredicates.foldLeft(true) { case (result, predicate) => result && predicate(workshopComboCandidate) }
     matchingWorkshops
       .map { case (workshopId, selectionPriority) =>
-        val TopicTimeslot(topicId, timeSlot) = workshops(workshopId)
+        val (topicId, timeSlot, _) = workshops(workshopId)
         val category = topics(topicId)
         workshopId -> WorkshopCandidate(topicId, timeSlot, category, selectionPriority)
       }
@@ -195,7 +194,8 @@ object Algorithm extends StrictLogging {
     )
   }
 
-  protected[algorithms] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, initialFreeWorkshopSeats: WorkshopSeats, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
+  protected[algorithms] def distributeStudentsToWorkshops(workshops: Workshops, topics: Topics, comboSize: Int)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
+    val initialFreeWorkshopSeats = workshops.view.mapValues { case (_, _, seats) => seats }.toMap
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
     val orderedStudentsWorkshopCombosWithMetrics = orderStudentsWorkshopCombosWithMetrics(studentsWorkshopCombosWithMetrics)

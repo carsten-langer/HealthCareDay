@@ -23,14 +23,14 @@ package object model {
 
   /**
    * All the concrete workshops.
-   * BiMap guarantees both workshop id and combination of topic id and timeslot is unique.
+   * The relation between WorkshopId and Topic/TimeSlot is actually a BiMap, i.e. both workshop id and combination of
+   * topic id and timeslot is unique within this map.
    * That is: each topic can only exist once per timeslot, and such topic/timeslot combination is a unique concrete
    * workshop.
+   * However, as we extend the workshops with other attributes relevant to the distribution algorithms, this would break
+   * the the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
    */
-  type Workshops = BiMap[WorkshopId, TopicTimeslot]
-
-  /** The seats that each workshop has. */
-  type WorkshopSeats = Map[WorkshopId, Seats]
+  type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Seats)]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
@@ -43,7 +43,7 @@ package object model {
    *
    * Type parameter A: An extra return value, if available. (@tparam does not work for scaladoc)
    */
-  type DistributionAlgorithm[A] = (Topics, Workshops, WorkshopSeats) => StudentsSelectedTopics => Option[(WorkshopAssignments, A)]
+  type DistributionAlgorithm[A] = (Topics, Workshops) => StudentsSelectedTopics => Option[(WorkshopAssignments, A)]
 
   def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
     workshopAssignments

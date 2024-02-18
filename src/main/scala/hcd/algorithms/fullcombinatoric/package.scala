@@ -5,6 +5,9 @@ import io.cvbio.collection.mutable.bimap.BiMap
 
 package object fullcombinatoric {
 
+  /** The seats that each workshop has. */
+  private[fullcombinatoric] type WorkshopSeats = Map[WorkshopId, Seats]
+
   // Concrete workshops which generally match to selected workshop topics, with the selection priority.
   private[fullcombinatoric] type MatchingWorkshops = Map[WorkshopId, SelectionPriority]
 
