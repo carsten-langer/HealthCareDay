@@ -34,12 +34,12 @@ The challenge is to find a distribution of students to workshops so that:
 While this combinatorial challenge is probably completely solvable for small numbers, our challenge is to find a
 solution for about these numbers:
 
-* Ca. 1,000 students.
+* Ca. 600 students.
 * Ca. 50 workshop topics to choose from.
 * Therefore, ca. 150 actual workshops, the majority of workshop topics are backed by three workshops, one in each
   timeslot, but not all of them.
-* In average ca. 20 seats per workshop, but this largely depends on the workshop and may differ wildly from e.g. as low
-  as 5 to as many as 50 seats.
+* In average, min. 12 seats per workshop to provide one seat per student per workshop (50 * 12 = 600), but this largely
+  depends on the workshop and may differ wildly from e.g. as low as 5 to as many as 50 seats.
 * Students are allowed to pick 6 out of the 50 workshop topics and give them their selection priority from 1 (most
   wanted) to 6 (least wanted).
 

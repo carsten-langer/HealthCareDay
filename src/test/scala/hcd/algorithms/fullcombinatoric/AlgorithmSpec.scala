@@ -108,16 +108,18 @@ class AlgorithmSpec
     }
 
     def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshops =
-      fixtureSymmetricWorkshopsFor(noTopics, 20)
+      fixtureSymmetricWorkshopsFor(noTopics, 12)
 
     trait FixtureFullDataModel extends FixtureWorkshops {
       // Inputs for model size
       private val noTopics = 50
-      private val noStudents = 1000
+      private val noStudents = 600
       private val noSelectionsPerStudent = 6
       // combo 50/1000/6/30-25 finds very quick a distribution
       // combo 50/1000/6/24-20 searches a lot (20 is min.)
-      override protected val noSeats = 25
+      // combo 50/600/6/16 finds very quick a distribution
+      // combo 50/600/6/15 searches a lot (12 is min.)
+      override protected val noSeats = 16
 
       private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
       override val topics: Topics = underlyingWorkshops.topics
