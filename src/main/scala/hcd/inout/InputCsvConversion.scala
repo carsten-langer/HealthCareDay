@@ -3,6 +3,7 @@ package hcd.inout
 import com.github.tototoshi.csv.{CSVReader, DefaultCSVFormat}
 import com.typesafe.scalalogging.StrictLogging
 import hcd.model._
+import io.cvbio.collection.mutable.bimap.BiMap
 
 import scala.util.Using
 
@@ -16,8 +17,6 @@ object InputCsvConversion extends StrictLogging {
       override val delimiter: Char = config.wDelimiter
     }
 
-    def topicId(topicIdStr: String): TopicId = TopicId(topicIdStr.trim.toInt)
-
     def category(categoryStr: String): Category = categoryStr.trim match {
       case "Bewegung" => Sports
       case "Entspannung" => Relaxation
@@ -27,7 +26,7 @@ object InputCsvConversion extends StrictLogging {
 
     def maybeGrades(grades: String): Option[Set[Grade]] = {
       val grades1: Set[String] = grades.trim.split(',').toSet.filterNot(_.isEmpty) // deal with trailing ','
-      val grades2: Set[Grade] = grades1.map(_.toInt).map(Grade)
+      val grades2: Set[Grade] = grades1.map(to(Grade))
       Some(grades2).filterNot(_.isEmpty)
     }
 
@@ -41,7 +40,7 @@ object InputCsvConversion extends StrictLogging {
       for {
         seats <- maybeSeats(seatsStr)
         grades <- maybeGrades(gradesStr)
-      } yield Workshop(topicId(topicIdStr), timeSlot, category(categoryStr), grades, seats)
+      } yield Workshop(to(TopicId)(topicIdStr), timeSlot, category(categoryStr), grades, seats)
 
     val _ = Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
       reader.all().slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics).map { columns =>
@@ -64,5 +63,31 @@ object InputCsvConversion extends StrictLogging {
     }
 
   }
+
+  def readHcdStudentTopicSelection(config: InputConfig): Unit = {
+
+    val csvFormat = new DefaultCSVFormat {
+      override val delimiter: Char = config.sDelimiter
+    }
+
+    val studentsSelectedTopics = Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
+      reader.all().slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents).map { columns =>
+        val studentId = to(StudentId)(columns(config.sColStudentId - 1))
+        val grade = to(Grade)(columns(config.sColGrade - 1))
+        val selectedTopics = BiMap.from(Range.inclusive(1, 6)
+          .map { prio =>
+            val topicId = to(TopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
+            val selectionPriority = SelectionPriority(prio)
+            topicId -> selectionPriority
+          })
+        logger.info(s"$studentId, $grade, $selectedTopics")
+        studentId -> (grade, selectedTopics)
+      }.toMap
+    }
+    logger.debug(studentsSelectedTopics.toString)
+
+  }
+
+  private def to[A](f: Int => A)(s: String): A = f(s.trim.toInt)
 
 }

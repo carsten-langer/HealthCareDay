@@ -5,6 +5,7 @@ import java.io.File
 package object inout {
 
   val DefaultInputConfig: InputConfig = InputConfig(
+    // workshop planning CSV file
     wFile = new File(""),
     wDelimiter = ';',
     wRowsToSkip = 5,
@@ -18,6 +19,15 @@ package object inout {
     wColSeats2 = 19,
     wColGrades3 = 20,
     wColSeats3 = 21,
+
+    // student topic selection CSV file
+    sFile = new File(""),
+    sDelimiter = ';',
+    sRowsToSkip = 27,
+    sNoStudents = 570,
+    sColStudentId = 29,
+    sColGrade = 28,
+    sColFirstSelection = 22,
   )
 
 }

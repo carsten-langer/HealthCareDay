@@ -21,6 +21,7 @@ object CmdLineParser {
       note("General options:"),
       help("help").text("Prints this usage text"),
       version("version").text("Prints the program version"), // actually displays the header text
+
       note("Options for reading in the HCD workshop planning CSV file:"),
       opt[Char]("wDelimiter")
         .valueName("<char>")
@@ -74,6 +75,36 @@ object CmdLineParser {
         .required()
         .action((x, c) => c.copy(wFile = x))
         .text("The HealthCareDay workshop planning CSV export file, required"),
+
+      note("Options for reading in the HCD student topic selection CSV file:"),
+      opt[Char]("sDelimiter")
+        .valueName("<char>")
+        .action((x, c) => c.copy(sDelimiter = x))
+        .text(s"The column separating character, default: ${d.sDelimiter}"),
+      opt[Int]("sRowsToSkip")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sRowsToSkip = x))
+        .text(s"How many rows to skip before the student topic selections start, default: ${d.sRowsToSkip}"),
+      opt[Int]("sNoStudents")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sNoStudents = x))
+        .text(s"How many students exist, default: ${d.sNoStudents}"),
+      opt[Int]("sColStudentId")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColStudentId = x))
+        .text(s"The column of the student id (1-based, A = 1, B = 2, ...), default: ${d.sColStudentId}"),
+      opt[Int]("sColGrade")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColGrade = x))
+        .text(s"The column of the student's grade (1-based, A = 1, B = 2, ...), default: ${d.sColGrade}"),
+      opt[Int]("sColFirstSelection")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColFirstSelection = x))
+        .text(s"The column of the first workshop selection, the other 5 columns are expected to follow (1-based, A = 1, B = 2, ...), default: ${d.sColFirstSelection}"),
+      arg[File]("<hcd-student-topic-selection-file.csv>")
+        .required()
+        .action((x, c) => c.copy(sFile = x))
+        .text("The HealthCareDay student topic selection CSV export file, required"),
     )
   }
 

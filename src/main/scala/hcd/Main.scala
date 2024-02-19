@@ -2,7 +2,7 @@ package hcd
 
 import hcd.inout.CmdLineParser.parser
 import hcd.inout.DefaultInputConfig
-import hcd.inout.InputCsvConversion.readHcdWorkshopPlanning
+import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
 import scopt.OParser
 
 object Main {
@@ -13,6 +13,8 @@ object Main {
         println(BuildInfo)
         println(config)
         readHcdWorkshopPlanning(config)
+        readHcdStudentTopicSelection(config)
+
       case _ => println("failure") // arguments are bad, error message will have been displayed, nothing more to do
     }
 

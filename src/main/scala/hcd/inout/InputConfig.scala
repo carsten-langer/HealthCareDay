@@ -3,6 +3,7 @@ package hcd.inout
 import java.io.File
 
 case class InputConfig(
+                        // workshop planning CSV file
                         wFile: File,
                         wDelimiter: Char,
                         wRowsToSkip: Int,
@@ -16,4 +17,13 @@ case class InputConfig(
                         wColSeats2: Int,
                         wColGrades3: Int,
                         wColSeats3: Int,
+
+                        // student topic selection CSV file
+                        sFile: File,
+                        sDelimiter: Char,
+                        sRowsToSkip: Int,
+                        sNoStudents: Int,
+                        sColStudentId: Int,
+                        sColGrade: Int,
+                        sColFirstSelection: Int,
                       )
