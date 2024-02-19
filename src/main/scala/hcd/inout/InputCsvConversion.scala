@@ -5,19 +5,17 @@ import com.typesafe.scalalogging.StrictLogging
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
-import scala.util.Using
+import scala.util.{Try, Using}
 
 object InputCsvConversion extends StrictLogging {
 
-  private final case class Workshop(topicId: TopicId, timeSflot: TimeSlot, category: Category, grades: Set[Grade], seats: Seats)
-
-  def readHcdWorkshopPlanning(config: InputConfig): Unit = {
+  def readHcdWorkshopPlanning(config: InputConfig): Try[(Topics, Workshops)] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.wDelimiter
     }
 
-    def category(categoryStr: String): Category = categoryStr.trim match {
+    def toCategory(categoryStr: String): Category = categoryStr.trim match {
       case "Bewegung" => Sports
       case "Entspannung" => Relaxation
       case "Ernährung" => Nutrition
@@ -36,16 +34,16 @@ object InputCsvConversion extends StrictLogging {
       seats2.map(Seats)
     }
 
-    def maybeWorkshop(topicIdStr: String, timeSlot: TimeSlot, categoryStr: String, gradesStr: String, seatsStr: String): Option[Workshop] =
+    def maybeWorkshop(topicId: TopicId, timeSlot: TimeSlot, gradesStr: String, seatsStr: String): Option[(TopicId, TimeSlot, Set[Grade], Seats)] =
       for {
-        seats <- maybeSeats(seatsStr)
         grades <- maybeGrades(gradesStr)
-      } yield Workshop(to(TopicId)(topicIdStr), timeSlot, category(categoryStr), grades, seats)
+        seats <- maybeSeats(seatsStr)
+      } yield (topicId, timeSlot, grades, seats)
 
-    val _ = Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
-      reader.all().slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics).map { columns =>
-        val topicId = columns(config.wColTopicId - 1)
-        val category = columns(config.wColCategory - 1)
+    Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
+      val topicsWorkshops = reader.all().slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics).map { columns =>
+        val topicId = to(TopicId)(columns(config.wColTopicId - 1))
+        val category = toCategory(columns(config.wColCategory - 1))
         val name = columns(config.wColName - 1)
         val grades1 = columns(config.wColGrades1 - 1)
         val seats1 = columns(config.wColSeats1 - 1)
@@ -53,25 +51,35 @@ object InputCsvConversion extends StrictLogging {
         val seats2 = columns(config.wColSeats2 - 1)
         val grades3 = columns(config.wColGrades3 - 1)
         val seats3 = columns(config.wColSeats3 - 1)
-        val ws1 = maybeWorkshop(topicId, FirstTimeSlot, category, grades1, seats1)
-        val ws2 = maybeWorkshop(topicId, SecondTimeSlot, category, grades2, seats2)
-        val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, category, grades3, seats3)
+        val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
+        val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
+        val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-        logger.info(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+        logger.debug(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
         logger.debug(s"$ws1, $ws2, $ws3")
+
+        val workshops = Seq(ws1, ws2, ws3)
+          .zipWithIndex
+          .collect {
+            case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
+          }
+        ((topicId, category), workshops)
       }
+      val topics = topicsWorkshops.map { case (topic, _) => topic }.toMap
+      val workshops = topicsWorkshops.flatMap { case (_, workshops) => workshops }.toMap
+      (topics, workshops)
     }
 
   }
 
-  def readHcdStudentTopicSelection(config: InputConfig): Unit = {
+  def readHcdStudentTopicSelection(config: InputConfig): Try[StudentsSelectedTopics] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.sDelimiter
     }
 
-    val studentsSelectedTopics = Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
-      reader.all().slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents).map { columns =>
+    Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
+      val studentsSelectedTopics = reader.all().slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents).map { columns =>
         val studentId = to(StudentId)(columns(config.sColStudentId - 1))
         val grade = to(Grade)(columns(config.sColGrade - 1))
         val selectedTopics = BiMap.from(Range.inclusive(1, 6)
@@ -80,11 +88,12 @@ object InputCsvConversion extends StrictLogging {
             val selectionPriority = SelectionPriority(prio)
             topicId -> selectionPriority
           })
-        logger.info(s"$studentId, $grade, $selectedTopics")
+        logger.debug(s"$studentId, $grade, $selectedTopics")
         studentId -> (grade, selectedTopics)
       }.toMap
+      logger.debug(studentsSelectedTopics.toString)
+      studentsSelectedTopics
     }
-    logger.debug(studentsSelectedTopics.toString)
 
   }
 
