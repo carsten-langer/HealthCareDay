@@ -19,6 +19,7 @@ package object inout {
     wColSeats2 = 19,
     wColGrades3 = 20,
     wColSeats3 = 21,
+    wFullDayTopics = Seq(9, 45, 46),
 
     // student topic selection CSV file
     sFile = new File(""),

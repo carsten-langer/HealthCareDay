@@ -17,6 +17,7 @@ case class InputConfig(
                         wColSeats2: Int,
                         wColGrades3: Int,
                         wColSeats3: Int,
+                        wFullDayTopics: Seq[Int],
 
                         // student topic selection CSV file
                         sFile: File,

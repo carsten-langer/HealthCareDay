@@ -41,29 +41,38 @@ object InputCsvConversion extends StrictLogging {
       } yield (topicId, timeSlot, grades, seats)
 
     Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
-      val topicsWorkshops = reader.all().slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics).map { columns =>
-        val topicId = to(TopicId)(columns(config.wColTopicId - 1))
-        val category = toCategory(columns(config.wColCategory - 1))
-        val name = columns(config.wColName - 1)
-        val grades1 = columns(config.wColGrades1 - 1)
-        val seats1 = columns(config.wColSeats1 - 1)
-        val grades2 = columns(config.wColGrades2 - 1)
-        val seats2 = columns(config.wColSeats2 - 1)
-        val grades3 = columns(config.wColGrades3 - 1)
-        val seats3 = columns(config.wColSeats3 - 1)
-        val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
-        val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
-        val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
+      val allTopicsWorkshops = reader
+        .all()
+        .slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics)
+        .map { columns =>
+          val topicId = to(TopicId)(columns(config.wColTopicId - 1))
+          val category = toCategory(columns(config.wColCategory - 1))
+          val name = columns(config.wColName - 1)
+          val grades1 = columns(config.wColGrades1 - 1)
+          val seats1 = columns(config.wColSeats1 - 1)
+          val grades2 = columns(config.wColGrades2 - 1)
+          val seats2 = columns(config.wColSeats2 - 1)
+          val grades3 = columns(config.wColGrades3 - 1)
+          val seats3 = columns(config.wColSeats3 - 1)
+          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
+          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
+          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-        logger.debug(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
-        logger.debug(s"$ws1, $ws2, $ws3")
+          logger.debug(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.debug(s"$ws1, $ws2, $ws3")
 
-        val workshops = Seq(ws1, ws2, ws3)
-          .zipWithIndex
-          .collect {
-            case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
-          }
-        ((topicId, category), workshops)
+          val workshops = Seq(ws1, ws2, ws3)
+            .zipWithIndex
+            .collect {
+              case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
+            }
+          ((topicId, category), workshops)
+        }
+      val topicsWorkshops = allTopicsWorkshops.filter {
+        case ((topicId, _), _) if excludedTopics(config).contains(topicId) =>
+          logger.debug(s"Excluding full-day topic $topicId from the distribution.")
+          false
+        case _ => true
       }
       val topics = topicsWorkshops.map { case (topic, _) => topic }.toMap
       val workshops = topicsWorkshops.flatMap { case (_, workshops) => workshops }.toMap
@@ -79,23 +88,34 @@ object InputCsvConversion extends StrictLogging {
     }
 
     Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
-      val studentsSelectedTopics = reader.all().slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents).map { columns =>
-        val studentId = to(StudentId)(columns(config.sColStudentId - 1))
-        val grade = to(Grade)(columns(config.sColGrade - 1))
-        val selectedTopics = BiMap.from(Range.inclusive(1, 6)
-          .map { prio =>
-            val topicId = to(TopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
-            val selectionPriority = SelectionPriority(prio)
-            topicId -> selectionPriority
-          })
-        logger.debug(s"$studentId, $grade, $selectedTopics")
-        studentId -> (grade, selectedTopics)
-      }.toMap
+      val allStudentsSelectedTopics = reader
+        .all()
+        .slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents)
+        .map { columns =>
+          val studentId = to(StudentId)(columns(config.sColStudentId - 1))
+          val grade = to(Grade)(columns(config.sColGrade - 1))
+          val selectedTopics = BiMap.from(Range.inclusive(1, 6)
+            .map { prio =>
+              val topicId = to(TopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
+              val selectionPriority = SelectionPriority(prio)
+              topicId -> selectionPriority
+            })
+          logger.debug(s"$studentId, $grade, $selectedTopics")
+          studentId -> (grade, selectedTopics)
+        }.toMap
+      val studentsSelectedTopics = allStudentsSelectedTopics.filter {
+        case (studentId, (_, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
+          logger.debug(s"Removing student $studentId from distribution, as student chose a full-day topic.")
+          false
+        case _ => true
+      }
       logger.debug(studentsSelectedTopics.toString)
       studentsSelectedTopics
     }
 
   }
+
+  private def excludedTopics(config: InputConfig): Set[TopicId] = config.wFullDayTopics.map(TopicId).toSet
 
   private def to[A](f: Int => A)(s: String): A = f(s.trim.toInt)
 
