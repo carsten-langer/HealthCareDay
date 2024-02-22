@@ -2,6 +2,8 @@ package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
+import hcd.model.Metric.withMetric
+import hcd.model.Verification.withInputVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.OptionValues
@@ -813,9 +815,9 @@ class AlgorithmSpec
       lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
       //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
-      // verify and print distributeStudentsToWorkshops for full model
+      // verify input (but not result) and print distributeStudentsToWorkshops for full model
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        distributionAlgorithmWithMetricAndVerification(f.topics, f.workshops)(f.studentsSelectedTopics) match {
+        withInputVerification(withMetric(distributionAlgorithm))(f.topics, f.workshops)(f.studentsSelectedTopics) match {
           case Some((workshopAssignments, (aPosterioriMetric, (algoMetric, leftFreeWorkshopSeats)))) =>
             logger.info((aPosterioriMetric, algoMetric, workshopAssignments, leftFreeWorkshopSeats).toString)
           case None => logger.error("Distribution failed!")

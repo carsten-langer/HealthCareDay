@@ -2,18 +2,13 @@ package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
 import hcd.model.Metric._
-import hcd.model.Verification.withVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributionAlgorithm: DistributionAlgorithm[(Metric, WorkshopSeats)] =
-    distributeStudentsToWorkshops(comboSize = 3)
-
-  def distributionAlgorithmWithMetricAndVerification: DistributionAlgorithm[(Metric, (Metric, WorkshopSeats))] =
-    withVerification(withMetric(distributionAlgorithm))
+  def distributionAlgorithm: DistributionAlgorithm[(Metric, WorkshopSeats)] = distributeStudentsToWorkshops(comboSize = 3)
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   // Only workshops eligible for the grade are selected.

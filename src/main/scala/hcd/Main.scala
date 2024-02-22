@@ -4,6 +4,8 @@ import hcd.algorithms.fullcombinatoric.Algorithm._
 import hcd.inout.CmdLineParser.parser
 import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
+import hcd.model.Metric.withMetric
+import hcd.model.Verification.withInputVerification
 import scopt.OParser
 
 object Main {
@@ -18,7 +20,7 @@ object Main {
           //println(topics)
           //println(workshops)
           //println(studentsSelectedTopics)
-          distributionAlgorithm(topics, workshops)(studentsSelectedTopics)
+          withMetric(withInputVerification(distributionAlgorithm))(topics, workshops)(studentsSelectedTopics)
         }
 
       case _ =>
