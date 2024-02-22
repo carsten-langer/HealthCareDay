@@ -58,8 +58,8 @@ object InputCsvConversion extends StrictLogging {
           val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
           val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-          logger.debug(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
-          logger.debug(s"$ws1, $ws2, $ws3")
+          logger.trace(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
             .zipWithIndex
@@ -100,7 +100,7 @@ object InputCsvConversion extends StrictLogging {
               val selectionPriority = SelectionPriority(prio)
               topicId -> selectionPriority
             })
-          logger.debug(s"$studentId, $grade, $selectedTopics")
+          logger.trace(s"$studentId, $grade, $selectedTopics")
           studentId -> (grade, selectedTopics)
         }.toMap
       val studentsSelectedTopics = allStudentsSelectedTopics.filter {
@@ -109,7 +109,6 @@ object InputCsvConversion extends StrictLogging {
           false
         case _ => true
       }
-      logger.debug(studentsSelectedTopics.toString)
       studentsSelectedTopics
     }
 
