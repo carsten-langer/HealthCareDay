@@ -103,11 +103,16 @@ object InputCsvConversion extends StrictLogging {
           logger.trace(s"$studentId, $grade, $selectedTopics")
           studentId -> (grade, selectedTopics)
         }.toMap
-      val studentsSelectedTopics = allStudentsSelectedTopics.filter {
+      val unselectedTopicId = TopicId(0)
+      val studentsSelectedTopics = allStudentsSelectedTopics.flatMap {
         case (studentId, (_, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
           logger.debug(s"Removing student $studentId from distribution, as student chose a full-day topic.")
-          false
-        case _ => true
+          None
+        case (studentId, (grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
+          val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
+          logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
+          Some((studentId, (grade, remainingTopics)))
+        case valid => Some(valid)
       }
       studentsSelectedTopics
     }
