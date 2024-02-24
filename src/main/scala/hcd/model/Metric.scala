@@ -26,7 +26,7 @@ object Metric {
             studentId -> add(metricPrios, metricCategories)
           }
           val metric = studentMetrics.values.toList match {
-            case head :: tail => add(head, tail: _*)
+            case ::(head, next) => add(head, next: _*)
             case Nil => neutralMetric
           }
           workshopAssignments -> (metric, a)

@@ -208,11 +208,11 @@ object Algorithm extends StrictLogging {
                  ): Option[(DistributedStudentsWorkshopCombos, Metric, WorkshopSeats)] =
       studentsWorkshopCombosToDistribute match {
         case Nil => Some((distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats))
-        case (studentId, Nil) :: _ =>
+        case ::((studentId, Nil), _) =>
           // The situation that a student has an empty list of possible workshop combos should have been resolved
           // before entering the recursion.
           throw new IllegalStateException(s"$studentId has no workshop combos, such situation should have been dealt with before the recursion!")
-        case (studentId, workshopCombosWithMetric) :: tailStudents =>
+        case ::((studentId, workshopCombosWithMetric), nextStudents) =>
           val possibleStudentsWorkshopCombosToDistributeFurther = workshopCombosWithMetric
             .map { case (workshopCombo, metric) =>
               logger.whenDebugEnabled {
@@ -234,7 +234,7 @@ object Algorithm extends StrictLogging {
             .iterator
             .map { case (newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats) =>
               //logger.trace(s"inside recursion: $newDistributedStudentsWorkshopCombos")
-              recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, tailStudents)
+              recursion(newDistributedStudentsWorkshopCombos, newMetric, newFreeWorkshopSeats, nextStudents)
             }
             .find(maybeResult => maybeResult.isDefined)
             .flatten
