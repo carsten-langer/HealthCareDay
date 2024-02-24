@@ -19,7 +19,7 @@ object Metric {
           val studentMetrics = studentAssignments.map { case (studentId, workshopIds) =>
             val assignedTopicsIds = workshopIds.map(workshops).toList.map { case (topicId, _, _, _) => topicId } // .toList is redundant to business logic
             val (_, selectedTopics) = studentsSelectedTopics(studentId)
-            val selectionPriorities = assignedTopicsIds.map(selectedTopics)
+            val selectionPriorities = assignedTopicsIds.map(selectedTopics.get).map(_.getOrElse(SelectionPriority(7)))
             val categories = assignedTopicsIds.map(topics)
             val metricPrios = metricFromSelectionPriorities(selectionPriorities)
             val metricCategories = metricFromCategories(categories)
