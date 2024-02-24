@@ -1,10 +1,14 @@
 package hcd
 
+import hcd.algorithms._
+
 import java.io.File
 
 package object inout {
 
   val DefaultInputConfig: InputConfig = InputConfig(
+    algorithm = Algorithm.FullCombinatoric,
+
     // workshop planning CSV file
     wFile = new File(""),
     wDelimiter = ';',

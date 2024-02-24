@@ -39,6 +39,9 @@ libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
 // https://github.com/tototoshi/scala-csv
 libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.10"
 
+// https://github.com/lloydmeta/enumeratum
+libraryDependencies += "com.beachape" %% "enumeratum" % "1.7.3"
+
 // https://docs.scala-lang.org/overviews/compiler-options/index.html
 ThisBuild / scalacOptions ++= Seq(
   // Standard Settings

@@ -1,10 +1,9 @@
 package hcd
 
-import hcd.algorithms.fullcombinatoric.Algorithm._
 import hcd.inout.CmdLineParser.parser
 import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
-import hcd.model.Metric.withMetric
+import hcd.model.Metric.metric
 import hcd.model.Verification.withInputVerification
 import scopt.OParser
 
@@ -20,7 +19,11 @@ object Main {
           //println(topics)
           //println(workshops)
           //println(studentsSelectedTopics)
-          withMetric(withInputVerification(distributionAlgorithm))(topics, workshops)(studentsSelectedTopics)
+          val algorithm = withInputVerification(config.algorithm.distributionAlgorithm)
+          val maybeWorkshopAssignments = algorithm(topics, workshops)(studentsSelectedTopics)
+          println(s"maybeWorkshopAssignments: $maybeWorkshopAssignments")
+          val maybeMetric = maybeWorkshopAssignments.map(metric(topics, workshops, studentsSelectedTopics))
+          println(s"maybeMetric: $maybeMetric")
         }
 
       case _ =>

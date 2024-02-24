@@ -8,7 +8,11 @@ import io.cvbio.collection.mutable.bimap.BiMap
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributionAlgorithm: DistributionAlgorithm[(Metric, WorkshopSeats)] = distributeStudentsToWorkshops(comboSize = 3)
+  def distributionAlgorithm: DistributionAlgorithm =
+    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
+      distributeStudentsToWorkshops(comboSize = 3)(topics, workshops)(studentsSelectedTopics) map {
+        case (workshopAssignments, _, _) => workshopAssignments
+      }
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   // Only workshops eligible for the grade are selected.
@@ -186,7 +190,7 @@ object Algorithm extends StrictLogging {
     )
   }
 
-  protected[algorithms] def distributeStudentsToWorkshops(comboSize: Int)(topics: Topics, workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, (Metric, WorkshopSeats))] = {
+  protected[algorithms] def distributeStudentsToWorkshops(comboSize: Int)(topics: Topics, workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
     val initialFreeWorkshopSeats = workshops.view.mapValues { case (_, _, _, seats) => seats }.toMap
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
@@ -253,7 +257,7 @@ object Algorithm extends StrictLogging {
               accWorkshopAssignments2.updated(workshopId, newStudents)
             }
         }
-        (workshopAssignments, (metric, leftFreeSeats))
+        (workshopAssignments, metric, leftFreeSeats)
     }
   }
 

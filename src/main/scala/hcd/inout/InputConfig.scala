@@ -1,8 +1,12 @@
 package hcd.inout
 
+import hcd.algorithms.Algorithm
+
 import java.io.File
 
 case class InputConfig(
+                        algorithm: Algorithm,
+
                         // workshop planning CSV file
                         wFile: File,
                         wDelimiter: Char,

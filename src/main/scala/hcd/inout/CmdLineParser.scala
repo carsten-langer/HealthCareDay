@@ -1,6 +1,7 @@
 package hcd.inout
 
 import hcd.BuildInfo
+import hcd.algorithms.Algorithm
 import scopt.OParser
 
 import java.io.File
@@ -21,6 +22,12 @@ object CmdLineParser {
       note("General options:"),
       help("help").text("Prints this usage text"),
       version("version").text("Prints the program version"), // actually displays the header text
+
+      note("Options for the distribution algorithm:"),
+      opt[Algorithm]("algorithm")
+        .valueName(s"<${Algorithm.values.map(_.entryName).mkString("|")}>")
+        .action((x, c) => c.copy(algorithm = x))
+        .text(s"The distribution algorithm, default: ${d.algorithm.entryName}"),
 
       note("Options for reading in the HCD workshop planning CSV file:"),
       opt[Char]("wDelimiter")

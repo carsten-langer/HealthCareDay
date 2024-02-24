@@ -2,7 +2,7 @@ package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
-import hcd.model.Metric.withMetric
+import hcd.model.Metric.metric
 import hcd.model.Verification.withInputVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
@@ -536,7 +536,7 @@ class AlgorithmSpec
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
         val originalWorkshopSeats = f.workshops.view.mapValues { case (_, _, _, seats) => seats }.toMap
-        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, (Metric(0), originalWorkshopSeats)))
+        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), originalWorkshopSeats))
 
         distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
@@ -561,14 +561,12 @@ class AlgorithmSpec
             WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
           ),
-          (
-            Metric(6),
-            Map(
-              WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.oneLessSeats, // TopicId(2)
-              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
-            )
+          Metric(6),
+          Map(
+            WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.oneLessSeats, // TopicId(2)
+            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
           )
         ))
 
@@ -602,15 +600,13 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          (
-            Metric(9),
-            Map(
-              WorkshopId(0) -> f.twoLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
-              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
-              WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
-            )
+          Metric(9),
+          Map(
+            WorkshopId(0) -> f.twoLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
+            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
           )
         ))
 
@@ -646,15 +642,13 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          (
-            Metric(6),
-            Map(
-              WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
-              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
-              WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
-              WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
-              WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
-            )
+          Metric(6),
+          Map(
+            WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
+            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
+            WorkshopId(6) -> f.allSeats, WorkshopId(7) -> f.oneLessSeats, WorkshopId(8) -> f.allSeats, // TopicId(2)
+            WorkshopId(9) -> f.allSeats, WorkshopId(10) -> f.allSeats, WorkshopId(11) -> f.allSeats, // TopicId(3)
+            WorkshopId(12) -> f.allSeats, WorkshopId(13) -> f.allSeats, WorkshopId(14) -> f.allSeats, // TopicId(4)
           )
         ))
 
@@ -684,13 +678,11 @@ class AlgorithmSpec
             WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty,
             WorkshopId(6) -> Set(student1), WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty,
           ),
-          (
-            Metric(1001),
-            Map(
-              WorkshopId(0) -> f.allSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats,
-              WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats,
-              WorkshopId(6) -> f.oneLessSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.allSeats,
-            )
+          Metric(1001),
+          Map(
+            WorkshopId(0) -> f.allSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats,
+            WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats,
+            WorkshopId(6) -> f.oneLessSeats, WorkshopId(7) -> f.allSeats, WorkshopId(8) -> f.allSeats,
           )
         ))
 
@@ -768,16 +760,14 @@ class AlgorithmSpec
             WorkshopId(4) -> Set(student2),
             WorkshopId(5) -> Set(student1),
           ),
-          (
-            Metric(11),
-            Map(
-              WorkshopId(0) -> Seats(0),
-              WorkshopId(1) -> Seats(0),
-              WorkshopId(2) -> Seats(1),
-              WorkshopId(3) -> Seats(0),
-              WorkshopId(4) -> Seats(1),
-              WorkshopId(5) -> Seats(2),
-            )
+          Metric(11),
+          Map(
+            WorkshopId(0) -> Seats(0),
+            WorkshopId(1) -> Seats(0),
+            WorkshopId(2) -> Seats(1),
+            WorkshopId(3) -> Seats(0),
+            WorkshopId(4) -> Seats(1),
+            WorkshopId(5) -> Seats(2),
           )
         ))
 
@@ -816,12 +806,14 @@ class AlgorithmSpec
       //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
       // verify input (but not result) and print distributeStudentsToWorkshops for full model
-      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-        withInputVerification(withMetric(distributionAlgorithm))(f.topics, f.workshops)(f.studentsSelectedTopics) match {
-          case Some((workshopAssignments, (aPosterioriMetric, (algoMetric, leftFreeWorkshopSeats)))) =>
-            logger.info((aPosterioriMetric, algoMetric, workshopAssignments, leftFreeWorkshopSeats).toString)
+      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false)) {
+        withInputVerification(distributionAlgorithm)(f.topics, f.workshops)(f.studentsSelectedTopics) match {
+          case Some(workshopAssignments) =>
+            val aPosterioriMetric = metric(f.topics, f.workshops, f.studentsSelectedTopics)(workshopAssignments)
+            logger.info((aPosterioriMetric, workshopAssignments).toString)
           case None => logger.error("Distribution failed!")
         }
+      }
     }
 
   }

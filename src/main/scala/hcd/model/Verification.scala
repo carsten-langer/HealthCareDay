@@ -4,22 +4,22 @@ import com.typesafe.scalalogging.StrictLogging
 
 object Verification extends StrictLogging {
 
-  def withInputVerification[A](distributionAlgorithm: DistributionAlgorithm[A]): DistributionAlgorithm[A] =
+  def withInputVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
     (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
       if (isValidInput(topics, workshops, studentsSelectedTopics))
         distributionAlgorithm(topics, workshops)(studentsSelectedTopics)
       else None
 
   //noinspection ScalaWeakerAccess
-  def withResultVerification[A](distributionAlgorithm: DistributionAlgorithm[A]): DistributionAlgorithm[A] =
+  def withResultVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
     (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
       distributionAlgorithm(topics, workshops)(studentsSelectedTopics) match {
-        case result@Some((workshopAssignments, _)) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
+        case result@Some(workshopAssignments) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
         case _ => None
       }
 
   //noinspection ScalaUnusedSymbol
-  def withVerification[A](distributionAlgorithm: DistributionAlgorithm[A]): DistributionAlgorithm[A] =
+  def withVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
     withResultVerification(withInputVerification(distributionAlgorithm))
 
   private def isValidInput(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics): Boolean =
