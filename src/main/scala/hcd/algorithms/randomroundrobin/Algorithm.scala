@@ -11,9 +11,9 @@ object Algorithm extends StrictLogging {
   def distributionAlgorithm: DistributionAlgorithm =
     (_: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) => {
 
-      final case class Student()
+      final case class Student(studentId: StudentId)
 
-      val students = studentsSelectedTopics.toList.map(_ => Student())
+      val students = studentsSelectedTopics.toList.map { case (studentId, _) => Student(studentId) }
 
       @tailrec
       def recursion(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
@@ -21,16 +21,19 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("end of recursion")
             Some(workshopAssignments)
-          case _ =>
-            val updatedWorkshopAssignments = workshopAssignments.updated(WorkshopId(0), Set(StudentId(1)))
-            recursion(updatedWorkshopAssignments, List.empty)
+          case ::(Student(studentId), nextStudents) =>
+            val updatedWorkshopAssignments = workshopAssignments
+              .updatedWith(WorkshopId(0))(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+            recursion(updatedWorkshopAssignments, nextStudents)
         }
 
-      val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap
-
-      val maybeWorkshopAssignments = recursion(emptyWorkshopAssignments, remainingStudents = students)
+      val maybeWorkshopAssignments = recursion(workshopAssignments = Map.empty, remainingStudents = students)
       logger.debug(s"maybeWorkshopAssignments: $maybeWorkshopAssignments")
-      maybeWorkshopAssignments
+
+      // fill in empty assignments for workshop which were not assigned before
+      maybeWorkshopAssignments.map(workshopAssignments =>
+        workshops.map { case (workshopId, _) => workshopId -> workshopAssignments.getOrElse(workshopId, Set.empty) }
+      )
 
     }
 
