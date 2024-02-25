@@ -2,6 +2,7 @@ package hcd.algorithms.fullcombinatoric
 
 import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
+import hcd.algorithms.{FixtureWorkshops, fixtureSymmetricWorkshopsFor}
 import hcd.model.Metric.metric
 import hcd.model.Verification.withInputVerification
 import hcd.model._
@@ -21,19 +22,7 @@ class AlgorithmSpec
 
   "Algorithm" should {
 
-    trait FixtureWorkshops {
-      def topics: Topics
-
-      def workshops: Workshops
-
-      def grade: Grade = Grade(0) // a test grade for all students, included in the workshops, the value 0 has no further meaning
-
-      def gradeNotInWorkshops: Grade = Grade(1) // a test grade not included in any workshop
-
-      def grades: Set[Grade] = Set(grade) // set of grades for all workshops
-
-      protected def noSeats: Int
-
+    trait FixtureWorkshopsFC extends FixtureWorkshops {
       def allSeats: Seats = Seats(noSeats)
 
       def oneLessSeats: Seats = Seats(noSeats - 1)
@@ -86,39 +75,14 @@ class AlgorithmSpec
         )
     }
 
-    def fixtureSymmetricWorkshopsFor(noTopics: Int, _noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
-      // Inputs for model size
-      private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
-      private val categories = Seq(Nutrition, Relaxation, Sports, Other)
-      private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available on all timeslots
-
-      // Generate all IDs
-      private val topicIds = Range(0, noTopics).map(TopicId)
-      private val workshopIds = Range(0, noWorkshops).map(WorkshopId)
-
-      // Generate symmetric workshops:
-      // workshop categories are equally distributed among topics
-      // each workshop topic exists in all timeslot
-      // no limits of workshop seats
-      // categories alter n,n,n, r,r,r, s,s,s, o,o,o, n,n,n, ...
-      // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4, ...
-      // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, f,s,t, ...
-      override val topics: Topics = topicIds.map(topicId => topicId -> categories(topicId.id % categories.size)).toMap
-      override protected val noSeats: Int = _noSeats
-      override val workshops: Workshops = workshopIds.map(workshopId =>
-        workshopId -> (
-          TopicId(workshopId.id / timeSlots.size),
-          timeSlots(workshopId.id % timeSlots.size),
-          grades,
-          Seats(noSeats),
-        )
-      ).toMap
+    def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshopsFC = new FixtureWorkshopsFC {
+      override val noSeats = 12
+      private val underlyingFixtureWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
+      override val topics: Topics = underlyingFixtureWorkshops.topics
+      override val workshops: Workshops = underlyingFixtureWorkshops.workshops
     }
 
-    def fixtureSymmetricWorkshops(noTopics: Int): FixtureWorkshops =
-      fixtureSymmetricWorkshopsFor(noTopics, 12)
-
-    trait FixtureFullDataModel extends FixtureWorkshops {
+    trait FixtureFullDataModel extends FixtureWorkshopsFC {
       // Inputs for model size
       private val noTopics = 50
       private val noStudents = 600
@@ -127,11 +91,10 @@ class AlgorithmSpec
       // combo 50/1000/6/24-20 searches a lot (20 is min.)
       // combo 50/600/6/16 finds very quick a distribution
       // combo 50/600/6/15 searches a lot (12 is min.)
-      override protected val noSeats = 16
-
-      private val underlyingWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
-      override val topics: Topics = underlyingWorkshops.topics
-      override val workshops: Workshops = underlyingWorkshops.workshops
+      override val noSeats = 16
+      private val underlyingFixtureWorkshops: FixtureWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
+      override val topics: Topics = underlyingFixtureWorkshops.topics
+      override val workshops: Workshops = underlyingFixtureWorkshops.workshops
       private lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
       private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
 

@@ -7,7 +7,7 @@ object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
   def distributionAlgorithm: DistributionAlgorithm =
-    (_: Topics, _: Workshops) => (_: StudentsSelectedTopics) => {
+    (_: Topics, workshops: Workshops) => (_: StudentsSelectedTopics) => {
 
       final case class Student()
 
@@ -19,7 +19,9 @@ object Algorithm extends StrictLogging {
           case _ => ???
         }
 
-      val maybeWorkshopAssignments = recursion(workshopAssignments = Map.empty, remainingStudents = List.empty)
+      val emptyWorkshopAssignments = workshops.view.mapValues(_ => Set.empty[StudentId]).toMap
+
+      val maybeWorkshopAssignments = recursion(emptyWorkshopAssignments, remainingStudents = List.empty)
       logger.debug(s"maybeWorkshopAssignments: $maybeWorkshopAssignments")
       maybeWorkshopAssignments
 
