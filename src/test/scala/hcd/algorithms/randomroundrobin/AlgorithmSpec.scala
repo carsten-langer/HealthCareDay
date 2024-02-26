@@ -98,6 +98,20 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
+      "finds a distribution for workshops for 2 topics and 1 student selecting 2 topics" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 2)
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(TopicId(1) -> SelectionPriority(11), TopicId(0) -> SelectionPriority(12))),
+        )
+        val expectedWorkshopAssignments = Map(
+          WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+          WorkshopId(3) -> Set(student1), WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
+        )
+
+        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
     }
 
   }

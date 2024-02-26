@@ -20,14 +20,21 @@ object Algorithm extends StrictLogging {
         case (studentId, (_, selectedTopics)) => Student(studentId, selectedTopics.keySet.toSet)
       }
 
-      def findWorkshopId(student: Student): Option[WorkshopId] = {
+      // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
+      // for the need for a holder to avoid deprecation message on (scala/bug#6675)
+      case class Holder[T](_1: T) extends Product1[T]
+
+      def findWorkshopId(student: Student): Option[(WorkshopId, TopicId)] = {
         object ExtractorWorkshopForTopic {
-          def unapply(topicId: TopicId): Option[WorkshopId] = orderedWorkshops.collectFirst {
-            case (workshopId, (`topicId`, _, _, _)) => workshopId
-          }
+          def unapply(topicId: TopicId): Option[Holder[(WorkshopId, TopicId)]] =
+            orderedWorkshops.collectFirst {
+              case (workshopId, (`topicId`, _, _, _)) => Holder((workshopId, topicId))
+            }
         }
 
-        student.selectedTopicIds.collectFirst { case ExtractorWorkshopForTopic(workshopId) => workshopId }
+        student.selectedTopicIds.collectFirst {
+          case ExtractorWorkshopForTopic(Holder((workshopId, topicId))) => (workshopId, topicId)
+        }
       }
 
       @tailrec
@@ -36,15 +43,18 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion.")
             Some(workshopAssignments)
-          case ::(headStudent@Student(studentId, _), nextStudents) =>
+          case ::(headStudent@Student(studentId, selectedTopicIds), nextStudents) =>
             findWorkshopId(headStudent) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from the left-overs
                 recursion(workshopAssignments, nextStudents)
-              case Some(workshopId) =>
+              case Some((foundWorkshopId, foundTopicId)) =>
                 val updatedWorkshopAssignments = workshopAssignments
-                  .updatedWith(workshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                recursion(updatedWorkshopAssignments, nextStudents)
+                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                val updatedSelectedTopics = selectedTopicIds - foundTopicId
+                val updatedStudent = headStudent.copy(selectedTopicIds = updatedSelectedTopics)
+                val updatedStudents = updatedStudent :: nextStudents
+                recursion(updatedWorkshopAssignments, updatedStudents)
             }
         }
 
