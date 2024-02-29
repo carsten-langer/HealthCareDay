@@ -11,29 +11,47 @@ object Algorithm extends StrictLogging {
   def distributionAlgorithm: DistributionAlgorithm =
     (_: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) => {
 
-      final case class Student(studentId: StudentId, selectedTopicIds: Set[TopicId])
+      // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result, thus
+      // we need a new data type. Ordering makes most sense by selection priority, thus we use the flipped order of
+      // values compared to SelectedTopics
+      final case class TopicSelection(selectionPriority: SelectionPriority, topicId: TopicId)
+
+      final case class Student(
+                                studentId: StudentId,
+                                topicSelections: List[TopicSelection],
+                                unassignedTimeSlots: Set[TimeSlot],
+                              )
 
       // ordering of workshops is necessary for the unit tests to know the expected result
       val orderedWorkshops = workshops.toList.sortBy { case (workshopId, _) => workshopId.id }
 
+      val allTimeSlots = Set[TimeSlot](FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
+
+      // ordering the topic selections per student is necessary for the unit tests to know the expected result
       val students = studentsSelectedTopics.toList.map {
-        case (studentId, (_, selectedTopics)) => Student(studentId, selectedTopics.keySet.toSet)
+        case (studentId, (_, selectedTopics)) =>
+          val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
+          val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
+          Student(studentId, orderedTopicSelection, allTimeSlots)
       }
 
       // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
       // for the need for a holder to avoid deprecation message on (scala/bug#6675)
       case class Holder[T](_1: T) extends Product1[T]
 
-      def findWorkshopId(student: Student): Option[(WorkshopId, TopicId)] = {
+      def findWorkshopId(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = {
         object ExtractorWorkshopForTopic {
-          def unapply(topicId: TopicId): Option[Holder[(WorkshopId, TopicId)]] =
+          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, TimeSlot)]] =
             orderedWorkshops.collectFirst {
-              case (workshopId, (`topicId`, _, _, _)) => Holder((workshopId, topicId))
+              case (workshopId, (topicId, timeSlot, _, _))
+                if topicId == topicSelection.topicId &&
+                  student.unassignedTimeSlots.contains(timeSlot) =>
+                Holder((workshopId, topicId, timeSlot))
             }
         }
 
-        student.selectedTopicIds.collectFirst {
-          case ExtractorWorkshopForTopic(Holder((workshopId, topicId))) => (workshopId, topicId)
+        student.topicSelections.collectFirst {
+          case ExtractorWorkshopForTopic(Holder((workshopId, topicId, timeSlot))) => (workshopId, topicId, timeSlot)
         }
       }
 
@@ -43,16 +61,20 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion.")
             Some(workshopAssignments)
-          case ::(headStudent@Student(studentId, selectedTopicIds), nextStudents) =>
+          case ::(headStudent@Student(studentId, topicSelections, unassignedTimeSlots), nextStudents) =>
             findWorkshopId(headStudent) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from the left-overs
                 recursion(workshopAssignments, nextStudents)
-              case Some((foundWorkshopId, foundTopicId)) =>
+              case Some((foundWorkshopId, foundTopicId, foundTimeSlot)) =>
                 val updatedWorkshopAssignments = workshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                val updatedSelectedTopics = selectedTopicIds - foundTopicId
-                val updatedStudent = headStudent.copy(selectedTopicIds = updatedSelectedTopics)
+                val updatedTopicSelections = topicSelections.filterNot(_.topicId == foundTopicId)
+                val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
+                val updatedStudent = headStudent.copy(
+                  topicSelections = updatedTopicSelections,
+                  unassignedTimeSlots = updatedTimeSlots,
+                )
                 val updatedStudents = updatedStudent :: nextStudents
                 recursion(updatedWorkshopAssignments, updatedStudents)
             }
