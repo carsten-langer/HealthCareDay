@@ -304,6 +304,81 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
       }
 
+      "finds a distribution which avoids that all 3 workshops shall are of category sports" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 12)
+        // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, so that only topics 2, 6, 10, 11 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(2, 6, 10, 11).contains(id) }
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(2) -> SelectionPriority(1), // sports
+            TopicId(6) -> SelectionPriority(2), // sports
+            TopicId(10) -> SelectionPriority(3), // sports
+          )),
+          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+        )
+        // student 1 can be assigned topic 2 and topic 6. She could also be assigned topic 10, if really needed, but
+        // this is avoided if possible. As topics 0, 1, 3, 4, 5, 7, 8, 9 do not exist, but topic 11 exists,
+        // it serves as a replacement, i.e. the assignment is 2, 6, 11.
+        // student 2 has no selection, thus would get assigned topics 0, 1, 2 if they existed. As some do not exist,
+        // she would get assigned 2, 6, 10, but this is 3 times sports, which should be avoided if possible.
+        // As topic 11 exists, it serves as a replacement, i.e. the assignment is 2, 6, 11.
+        val expectedWorkshopAssignments = Map(
+          // workshops for topics 0, 1 do not exist
+          WorkshopId(6) -> Set(student1, student2), WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty, // TopicId(2)
+          // workshops for topics 3, 4, 5 do not exist
+          WorkshopId(18) -> Set.empty, WorkshopId(19) -> Set(student1, student2), WorkshopId(20) -> Set.empty, // TopicId(6)
+          // workshops for topics 7, 8, 9 do not exist
+          WorkshopId(30) -> Set.empty, WorkshopId(31) -> Set.empty, WorkshopId(32) -> Set.empty, // TopicId(10)
+          WorkshopId(33) -> Set.empty, WorkshopId(34) -> Set.empty, WorkshopId(35) -> Set(student1, student2), // TopicId(11)
+        )
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
+      "finds a distribution which assigns all 3 workshops having category sports if no alternative exists" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 15)
+        // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13 so that only topics 2, 6, 10, 14 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(2, 6, 10, 14).contains(id) }
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(2) -> SelectionPriority(1), // sports
+            TopicId(6) -> SelectionPriority(2), // sports
+            TopicId(14) -> SelectionPriority(3), // sports
+          )),
+          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+        )
+        // student 1 can be assigned topic 2 and topic 6. She could also be assigned topic 10 or 14, if really needed, but
+        // this is avoided if possible. As topics 0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13 do not exist, and also no topic 15
+        // exists, there is no non-sports replacement, thus actually either topic 10 or 14 must be assigned.
+        // todo optimize distribution algorithm in case finally 3 times sports shall be assigned and student selected 3 times sport
+        // The ideal assignment would be topic 14, as this is what the student selected. However, the current algorithm,
+        // at the point in time when finally 3-sports shall be assigned as last rescue, has already forgotten about the
+        // student's selection and will therefore select the next possible workshop, here from topic 10, even though this
+        // topic 10 was not originally selected by the student, i.e. the assignment is 2, 6, 10.
+        // This test case documents the current outcome and must be changed if the distribution algorithm is optimized for
+        // this case.
+        // student 2 has no selection, thus would get assigned topics 0, 1, 2 if they existed. As some do not exist,
+        // she would get assigned 2, 6, and 10 or 14, but this is 3 times sports, which should be avoided if possible.
+        // As no replacement topic exists, actually topic 10 must be assigned, i.e. the assignment is 2, 6, 10.
+        // The topic selection for student 2 would not change if the topic selection for student 1 was optimized.
+        val expectedWorkshopAssignments = Map(
+          // workshops for topics 0, 1 do not exist
+          WorkshopId(6) -> Set(student1, student2), WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty, // TopicId(2)
+          // workshops for topics 3, 4, 5 do not exist
+          WorkshopId(18) -> Set.empty, WorkshopId(19) -> Set(student1, student2), WorkshopId(20) -> Set.empty, // TopicId(6)
+          // workshops for topics 7, 8, 9 do not exist
+          WorkshopId(30) -> Set.empty, WorkshopId(31) -> Set.empty, WorkshopId(32) -> Set(student1, student2), // TopicId(10)
+          // workshops for topics 11, 12, 13 do not exist
+          WorkshopId(42) -> Set.empty, WorkshopId(43) -> Set.empty, WorkshopId(44) -> Set.empty, // TopicId(14)
+        )
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
     }
 
   }
