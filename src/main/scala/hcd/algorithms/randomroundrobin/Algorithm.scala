@@ -42,19 +42,19 @@ object Algorithm extends StrictLogging {
 
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
-      def findWorkshopId1(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = {
+      def findWorkshopId1(student: Student): Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)] = {
         object ExtractorWorkshopForTopic {
-          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, TimeSlot)]] =
+          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
             orderedWorkshops.collectFirst {
-              case (workshopId, (topicId, timeSlot, _, _))
-                if topicId == topicSelection.topicId &&
-                  student.unassignedTimeSlots.contains(timeSlot) =>
-                Holder((workshopId, topicId, timeSlot))
+              case (workshopId, (topicSelection.topicId, timeSlot, _, _))
+                if student.unassignedTimeSlots.contains(timeSlot) =>
+                Holder((workshopId, topicSelection.topicId, topicSelection.selectionPriority, timeSlot))
             }
         }
 
         student.topicSelections.collectFirst {
-          case ExtractorWorkshopForTopic(Holder((workshopId, topicId, timeSlot))) => (workshopId, topicId, timeSlot)
+          case ExtractorWorkshopForTopic(Holder((workshopId, topicId, selectionPriority, timeSlot))) =>
+            (workshopId, topicId, selectionPriority, timeSlot)
         }
       }
 
@@ -76,7 +76,7 @@ object Algorithm extends StrictLogging {
                 // skip this student as no workshops could be found now, the student will get assigned workshops from 2nd round.
                 val updatedUndistributableStudents = undistributableStudents :+ headStudent
                 recursion1(workshopAssignments, updatedUndistributableStudents, nextStudents)
-              case Some((foundWorkshopId, foundTopicId, foundTimeSlot)) =>
+              case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
                 val updatedWorkshopAssignments = workshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
@@ -84,7 +84,7 @@ object Algorithm extends StrictLogging {
                   if (updatedTimeSlots.isEmpty)
                     nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
                   else {
-                    val updatedTopicSelections = topicSelections.filterNot(_.topicId == foundTopicId)
+                    val (_, updatedTopicSelections) = topicSelections.span(_.selectionPriority.prio <= prio)
                     val updatedAssignedTopics = assignedTopics + foundTopicId
                     val updatedStudent = headStudent.copy(
                       topicSelections = updatedTopicSelections,
