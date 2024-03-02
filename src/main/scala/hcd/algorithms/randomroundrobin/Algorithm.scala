@@ -36,9 +36,16 @@ object Algorithm extends StrictLogging {
           Student(studentId, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
       }
 
-      def haveVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
+      def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         topicCandidates.toList.map(topics).count(_ == Nutrition) < 3 &&
           topicCandidates.toList.map(topics).count(_ == Relaxation) < 3
+
+      def haveMaxVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
+        haveMinVaryingCategories(topicCandidates) &&
+          topicCandidates.toList.map(topics).count(_ == Sports) < 3
+
+      type FindWorkshopId12 = Student => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
+      type FindWorkshopId23 = Student => Option[(WorkshopId, TopicId, TimeSlot)]
 
       // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
       // for the need for a holder to avoid deprecation message on (scala/bug#6675)
@@ -46,13 +53,13 @@ object Algorithm extends StrictLogging {
 
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
-      def findWorkshopId1(student: Student): Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)] = {
+      def findWorkshopId1: FindWorkshopId12 = (student: Student) => {
         object ExtractorWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
             orderedWorkshops.collectFirst {
               case (workshopId, (topicSelection.topicId, timeSlot, _, _))
                 if student.unassignedTimeSlots.contains(timeSlot) &&
-                  haveVaryingCategories(student.assignedTopics + topicSelection.topicId) =>
+                  haveMaxVaryingCategories(student.assignedTopics + topicSelection.topicId) =>
                 logger.trace(s"found1: $workshopId at $timeSlot for $student.")
                 Holder((workshopId, topicSelection.topicId, topicSelection.selectionPriority, timeSlot))
             }
@@ -64,24 +71,25 @@ object Algorithm extends StrictLogging {
         }
       }
 
-      // First round of distribution: For each student, select the next workshop being part of her selection and which
-      // otherwise fulfils all criteria.
+      // First and second round of distribution:
+      // For each student, select the next workshop which fulfills the criteria given in findWorkshopId function.
+      // If no workshop can be found, skip the student and leave the distribution to the next round.
       @tailrec
-      def recursion1(
-                      workshopAssignments: WorkshopAssignments,
-                      undistributableStudents: List[Student],
-                      studentsToDistribute: List[Student],
-                    ): Option[(WorkshopAssignments, List[Student])] =
+      def recursion12(findWorkshopId: FindWorkshopId12)(
+        workshopAssignments: WorkshopAssignments,
+        undistributableStudents: List[Student],
+        studentsToDistribute: List[Student],
+      ): Option[(WorkshopAssignments, List[Student])] =
         studentsToDistribute match {
           case Nil =>
-            logger.debug("Successful end of recursion1.")
+            logger.debug("Successful end of recursion12.")
             Some((workshopAssignments, undistributableStudents))
           case ::(headStudent@Student(studentId, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId1(headStudent) match {
+            findWorkshopId(headStudent) match {
               case None =>
-                // skip this student as no workshops could be found now, the student will get assigned workshops from 2nd round.
+                // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
                 val updatedUndistributableStudents = undistributableStudents :+ headStudent
-                recursion1(workshopAssignments, updatedUndistributableStudents, nextStudents)
+                recursion12(findWorkshopId)(workshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
                 val updatedWorkshopAssignments = workshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
@@ -99,36 +107,63 @@ object Algorithm extends StrictLogging {
                     )
                     updatedStudent :: nextStudents
                   }
-                recursion1(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
+                recursion12(findWorkshopId)(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
             }
         }
 
-      val maybeDistribution1 = recursion1(workshopAssignments = Map.empty, undistributableStudents = List.empty, studentsToDistribute = students)
+      val maybeDistribution1 = recursion12(findWorkshopId1)(
+        workshopAssignments = Map.empty,
+        undistributableStudents = List.empty,
+        studentsToDistribute = students
+      )
       logger.debug(s"maybeDistribution1: $maybeDistribution1")
 
-      // Second round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
-      // of her selection.
-      def findWorkshopId2(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = orderedWorkshops.collectFirst {
-        case (workshopId, (topicId, timeSlot, _, _))
-          if student.unassignedTimeSlots.contains(timeSlot) &&
-            !student.assignedTopics.contains(topicId) &&
-            haveVaryingCategories(student.assignedTopics + topicId) =>
-          logger.trace(s"found2: $workshopId at $timeSlot for $student.")
-          (workshopId, topicId, timeSlot)
-      }
+      // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
+      // criteria and all criteria by the given function hasVaryingCategories, regardless of the student's selection.
+      def findWorkshopId23(haveVaryingCategories: Set[TopicId] => Boolean): FindWorkshopId23 = (student: Student) =>
+        orderedWorkshops.collectFirst {
+          case (workshopId, (topicId, timeSlot, _, _))
+            if student.unassignedTimeSlots.contains(timeSlot) &&
+              !student.assignedTopics.contains(topicId) &&
+              haveVaryingCategories(student.assignedTopics + topicId) =>
+            logger.trace(s"found23: $workshopId at $timeSlot for $student.")
+            (workshopId, topicId, timeSlot)
+        }
+
+      // Second round of distribution: adopt findWorkshopId23 to the signature needed in recursion12.
+      def findWorkshopId2: FindWorkshopId12 = findWorkshopId23(haveMaxVaryingCategories).andThen(_.map {
+        case (workshopId, topicId, timeSlot) =>
+          (workshopId, topicId, SelectionPriority(Int.MaxValue), timeSlot)
+      })
 
       // Second round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
       // of her selection.
+      val maybeDistribution2 = maybeDistribution1.flatMap { case (workshopAssignments, notYetDistributedStudents) =>
+        recursion12(findWorkshopId2)(
+          workshopAssignments,
+          undistributableStudents = List.empty,
+          studentsToDistribute = notYetDistributedStudents
+        )
+      }
+      logger.debug(s"maybeDistribution2: $maybeDistribution2")
+
+      // Third round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
+      // of her selection, with the exception of the criteria that no 3 workshops of category sports shall be assigned.
+      def findWorkshopId3: FindWorkshopId23 = findWorkshopId23(haveMinVaryingCategories)
+
+      // Third round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
+      // of her selection, with the exception of the criteria that no 3 workshops of category sports shall be assigned.
+      // If no workshop can be found, the distribution fails.
       @tailrec
-      def recursion2(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
+      def recursion3(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
         remainingStudents match {
           case Nil =>
             logger.debug("Successful end of recursion2.")
             Some(workshopAssignments)
           case ::(headStudent@Student(studentId, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId2(headStudent) match {
+            findWorkshopId3(headStudent) match {
               case None =>
-                logger.debug(s"Unsuccessful end of recursion2. No suitable workshop found for student $headStudent.")
+                logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")
                 None
               case Some((foundWorkshopId, foundTopicId, foundTimeSlot)) =>
                 val updatedWorkshopAssignments = workshopAssignments
@@ -145,15 +180,15 @@ object Algorithm extends StrictLogging {
                     )
                     updatedStudent :: nextStudents
                   }
-                recursion2(updatedWorkshopAssignments, updatedStudents)
+                recursion3(updatedWorkshopAssignments, updatedStudents)
             }
         }
 
-      val maybeWorkshopAssignments2 = maybeDistribution1.flatMap((recursion2 _).tupled)
-      logger.debug(s"maybeWorkshopAssignments2: $maybeWorkshopAssignments2")
+      val maybeWorkshopAssignments3 = maybeDistribution2.flatMap((recursion3 _).tupled)
+      logger.debug(s"maybeWorkshopAssignments3: $maybeWorkshopAssignments3")
 
       // make sure each workshop has a set of students. If not yet the case, add an empty set.
-      maybeWorkshopAssignments2.map(workshopAssignments =>
+      maybeWorkshopAssignments3.map(workshopAssignments =>
         workshops.map { case (workshopId, _) =>
           workshopId -> workshopAssignments.getOrElse(workshopId, Set.empty)
         }
