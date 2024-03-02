@@ -37,7 +37,8 @@ object Algorithm extends StrictLogging {
       }
 
       def haveVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
-        topicCandidates.toList.map(topics).count(_ == Nutrition) < 3
+        topicCandidates.toList.map(topics).count(_ == Nutrition) < 3 &&
+          topicCandidates.toList.map(topics).count(_ == Relaxation) < 3
 
       // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
       // for the need for a holder to avoid deprecation message on (scala/bug#6675)

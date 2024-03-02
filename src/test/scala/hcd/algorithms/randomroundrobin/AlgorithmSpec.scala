@@ -259,6 +259,51 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
       }
 
+      "finds a distribution which respects that not all 3 workshops shall be of category relaxation" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 11)
+        // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9, 10 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(1, 5, 9, 10).contains(id) }
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(1) -> SelectionPriority(1), // relaxation
+            TopicId(5) -> SelectionPriority(2), // relaxation
+            TopicId(9) -> SelectionPriority(3), // relaxation
+          )),
+          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+        )
+        // student 1 can be assigned topic 1 and topic 5, but not topic 9, as this would be the 3rd relaxation.
+        // As topic 0, 2, 3, 4, 6, 7, 8 do not exist, topic 10 is the replacement, i.e. the assignment is 1, 5, 10.
+        // student 2 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
+        // As some do not exist, she would get assigned 1, 5, 9, but this is 3 times relaxation,
+        // thus the assignment is 1, 5, 10.
+        val expectedWorkshopAssignments = Map(
+          // workshops for topic 0 does not exist
+          WorkshopId(3) -> Set(student1, student2), WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
+          // workshops for topics 2, 3, 4 do not exist
+          WorkshopId(15) -> Set.empty, WorkshopId(16) -> Set(student1, student2), WorkshopId(17) -> Set.empty, // TopicId(5)
+          // workshops for topics 6, 7, 8 do not exist
+          WorkshopId(27) -> Set.empty, WorkshopId(28) -> Set.empty, WorkshopId(29) -> Set.empty, // TopicId(9)
+          WorkshopId(30) -> Set.empty, WorkshopId(31) -> Set.empty, WorkshopId(32) -> Set(student1, student2), // TopicId(10)
+        )
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
+      "fails the distribution if the rule no-3-relaxation cannot be fulfilled" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
+        // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(1, 5, 9).contains(id) }
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
+        // As some do not exist, she would get assigned 1, 5, 9, but this is 3 times relaxation.
+        // As no topic 10 exists, the distribution fails.
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
+      }
+
     }
 
   }
