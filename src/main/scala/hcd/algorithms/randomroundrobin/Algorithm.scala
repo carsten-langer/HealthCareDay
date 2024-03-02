@@ -20,6 +20,7 @@ object Algorithm extends StrictLogging {
                                 studentId: StudentId,
                                 topicSelections: List[TopicSelection],
                                 unassignedTimeSlots: Set[TimeSlot],
+                                assignedTopics: Set[TopicId],
                               )
 
       // ordering of workshops is necessary for the unit tests to know the expected result
@@ -32,14 +33,16 @@ object Algorithm extends StrictLogging {
         case (studentId, (_, selectedTopics)) =>
           val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
           val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-          Student(studentId, orderedTopicSelection, allTimeSlots)
+          Student(studentId, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
       }
 
       // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
       // for the need for a holder to avoid deprecation message on (scala/bug#6675)
       case class Holder[T](_1: T) extends Product1[T]
 
-      def findWorkshopId(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = {
+      // First round of distribution: For a student, select the next workshop being part of her selection and which
+      // otherwise fulfils all criteria.
+      def findWorkshopId1(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = {
         object ExtractorWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, TimeSlot)]] =
             orderedWorkshops.collectFirst {
@@ -55,46 +58,99 @@ object Algorithm extends StrictLogging {
         }
       }
 
+      // First round of distribution: For each student, select the next workshop being part of her selection and which
+      // otherwise fulfils all criteria.
       @tailrec
-      def recursion(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
-        remainingStudents match {
+      def recursion1(
+                      workshopAssignments: WorkshopAssignments,
+                      undistributableStudents: List[Student],
+                      studentsToDistribute: List[Student],
+                    ): Option[(WorkshopAssignments, List[Student])] =
+        studentsToDistribute match {
           case Nil =>
-            logger.debug("Successful end of recursion.")
-            Some(workshopAssignments)
-          case ::(headStudent@Student(studentId, topicSelections, unassignedTimeSlots), nextStudents) =>
-            findWorkshopId(headStudent) match {
+            logger.debug("Successful end of recursion1.")
+            Some((workshopAssignments, undistributableStudents))
+          case ::(headStudent@Student(studentId, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            findWorkshopId1(headStudent) match {
               case None =>
-                // skip this student as no workshops could be found now, the student will get assigned workshops from the left-overs
-                recursion(workshopAssignments, nextStudents)
+                // skip this student as no workshops could be found now, the student will get assigned workshops from 2nd round.
+                val updatedUndistributableStudents = undistributableStudents :+ headStudent
+                recursion1(workshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, foundTimeSlot)) =>
                 val updatedWorkshopAssignments = workshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                val updatedTopicSelections = topicSelections.filterNot(_.topicId == foundTopicId)
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
-                val updatedStudent = headStudent.copy(
-                  topicSelections = updatedTopicSelections,
-                  unassignedTimeSlots = updatedTimeSlots,
-                )
-                val updatedStudents = updatedStudent :: nextStudents
-                recursion(updatedWorkshopAssignments, updatedStudents)
+                val updatedStudents =
+                  if (updatedTimeSlots.isEmpty)
+                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
+                  else {
+                    val updatedTopicSelections = topicSelections.filterNot(_.topicId == foundTopicId)
+                    val updatedAssignedTopics = assignedTopics + foundTopicId
+                    val updatedStudent = headStudent.copy(
+                      topicSelections = updatedTopicSelections,
+                      unassignedTimeSlots = updatedTimeSlots,
+                      assignedTopics = updatedAssignedTopics,
+                    )
+                    updatedStudent :: nextStudents
+                  }
+                recursion1(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
             }
         }
 
-      val maybeWorkshopAssignments = recursion(workshopAssignments = Map.empty, remainingStudents = students)
-      logger.debug(s"maybeWorkshopAssignments: $maybeWorkshopAssignments")
+      val maybeDistribution1 = recursion1(workshopAssignments = Map.empty, undistributableStudents = List.empty, studentsToDistribute = students)
+      logger.debug(s"maybeDistribution1: $maybeDistribution1")
 
-      // fill in empty assignments for workshop which were not assigned before
-      maybeWorkshopAssignments.map { workshopAssignments =>
-        val unassignedStudents = students.filterNot(student => workshopAssignments.exists {
-          case (_, studentIds) => studentIds.contains(student.studentId)
-        }).map(_.studentId)
-        // assign all unassigned students to workshop 0
-        val workshopAssignmentsInclUnassignedStudents = workshopAssignments
-          .updatedWith(WorkshopId(0))(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) ++ unassignedStudents))
-        workshops.map { case (workshopId, _) =>
-          workshopId -> workshopAssignmentsInclUnassignedStudents.getOrElse(workshopId, Set.empty)
-        }
+      // Second round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
+      // of her selection.
+      def findWorkshopId2(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = orderedWorkshops.collectFirst {
+        case (workshopId, (topicId, timeSlot, _, _))
+          if student.unassignedTimeSlots.contains(timeSlot) &&
+            !student.assignedTopics.contains(topicId) =>
+          logger.trace(s"found $workshopId at $timeSlot for $student.")
+          (workshopId, topicId, timeSlot)
       }
+
+      // Second round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
+      // of her selection.
+      @tailrec
+      def recursion2(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
+        remainingStudents match {
+          case Nil =>
+            logger.debug("Successful end of recursion2.")
+            Some(workshopAssignments)
+          case ::(headStudent@Student(studentId, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            findWorkshopId2(headStudent) match {
+              case None =>
+                logger.debug(s"Unsuccessful end of recursion2. No suitable workshop found for student $headStudent.")
+                None
+              case Some((foundWorkshopId, foundTopicId, foundTimeSlot)) =>
+                val updatedWorkshopAssignments = workshopAssignments
+                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
+                val updatedStudents =
+                  if (updatedTimeSlots.isEmpty)
+                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
+                  else {
+                    val updatedAssignedTopics = assignedTopics + foundTopicId
+                    val updatedStudent = headStudent.copy(
+                      unassignedTimeSlots = updatedTimeSlots,
+                      assignedTopics = updatedAssignedTopics,
+                    )
+                    updatedStudent :: nextStudents
+                  }
+                recursion2(updatedWorkshopAssignments, updatedStudents)
+            }
+        }
+
+      val maybeWorkshopAssignments2 = maybeDistribution1.flatMap((recursion2 _).tupled)
+      logger.debug(s"maybeWorkshopAssignments2: $maybeWorkshopAssignments2")
+
+      // make sure each workshop has a set of students. If not yet the case, add an empty set.
+      maybeWorkshopAssignments2.map(workshopAssignments =>
+        workshops.map { case (workshopId, _) =>
+          workshopId -> workshopAssignments.getOrElse(workshopId, Set.empty)
+        }
+      )
 
     }
 
