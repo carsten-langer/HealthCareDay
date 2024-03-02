@@ -215,6 +215,50 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
+      "finds a distribution which respects that not all 3 workshops shall be of category nutrition" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
+        // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8, 9 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(0, 4, 8, 9).contains(id) }
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(1), // nutrition
+            TopicId(4) -> SelectionPriority(2), // nutrition
+            TopicId(8) -> SelectionPriority(3), // nutrition
+          )),
+          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+        )
+        // student 1 can be assigned topic 0 and topic 4, but not topic 8, as this would be the 3rd nutrition.
+        // As topic 1, 2, 3, 5, 6, 7, do not exist, topic 9 is the replacement, i.e. the assignment is 0, 4, 9.
+        // student 2 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
+        // As some do not exist, she would get assigned 0, 4, 8, but this is 3 times nutrition,
+        // thus the assignment is 0, 4, 9.
+        val expectedWorkshopAssignments = Map(
+          WorkshopId(0) -> Set(student1, student2), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
+          // workshops for topics 1, 2, 3 do not exist
+          WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set(student1, student2), WorkshopId(14) -> Set.empty, // TopicId(4)
+          // workshops for topics 5, 6, 7 do not exist
+          WorkshopId(24) -> Set.empty, WorkshopId(25) -> Set.empty, WorkshopId(26) -> Set.empty, // TopicId(8)
+          WorkshopId(27) -> Set.empty, WorkshopId(28) -> Set.empty, WorkshopId(29) -> Set(student1, student2), // TopicId(9)
+        )
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
+      "fails the distribution if the rule no-3-nutrition cannot be fulfilled" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 9)
+        // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8 are left
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(0, 4, 8).contains(id) }
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
+        // As some do not exist, she would get assigned 0, 4, 8, but this is 3 times nutrition.
+        // As no topic 9 exists, the distribution fails.
+
+        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
+      }
+
     }
 
   }

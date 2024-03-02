@@ -9,7 +9,7 @@ object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
   def distributionAlgorithm: DistributionAlgorithm =
-    (_: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) => {
+    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) => {
 
       // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result, thus
       // we need a new data type. Ordering makes most sense by selection priority, thus we use the flipped order of
@@ -36,6 +36,9 @@ object Algorithm extends StrictLogging {
           Student(studentId, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
       }
 
+      def haveVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
+        topicCandidates.toList.map(topics).count(_ == Nutrition) < 3
+
       // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
       // for the need for a holder to avoid deprecation message on (scala/bug#6675)
       case class Holder[T](_1: T) extends Product1[T]
@@ -47,7 +50,9 @@ object Algorithm extends StrictLogging {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
             orderedWorkshops.collectFirst {
               case (workshopId, (topicSelection.topicId, timeSlot, _, _))
-                if student.unassignedTimeSlots.contains(timeSlot) =>
+                if student.unassignedTimeSlots.contains(timeSlot) &&
+                  haveVaryingCategories(student.assignedTopics + topicSelection.topicId) =>
+                logger.trace(s"found1: $workshopId at $timeSlot for $student.")
                 Holder((workshopId, topicSelection.topicId, topicSelection.selectionPriority, timeSlot))
             }
         }
@@ -105,8 +110,9 @@ object Algorithm extends StrictLogging {
       def findWorkshopId2(student: Student): Option[(WorkshopId, TopicId, TimeSlot)] = orderedWorkshops.collectFirst {
         case (workshopId, (topicId, timeSlot, _, _))
           if student.unassignedTimeSlots.contains(timeSlot) &&
-            !student.assignedTopics.contains(topicId) =>
-          logger.trace(s"found $workshopId at $timeSlot for $student.")
+            !student.assignedTopics.contains(topicId) &&
+            haveVaryingCategories(student.assignedTopics + topicId) =>
+          logger.trace(s"found2: $workshopId at $timeSlot for $student.")
           (workshopId, topicId, timeSlot)
       }
 
