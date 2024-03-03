@@ -451,6 +451,59 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
       }
 
+      "distributes 1 workshop per student at a time, prioritizing students with worse assignments for the next recursion round" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 4, _noSeats = 1)
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val student3 = StudentId(3)
+        val student4 = StudentId(4)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(3),
+          )),
+          student2 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(4),
+            TopicId(1) -> SelectionPriority(5),
+            TopicId(2) -> SelectionPriority(6),
+          )),
+          student3 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(2),
+            TopicId(1) -> SelectionPriority(3),
+            TopicId(2) -> SelectionPriority(4),
+          )),
+          student4 -> (f.grade, BiMap(
+            TopicId(1) -> SelectionPriority(6),
+          )),
+        )
+        // order of assignments:
+        // first round:
+        // s1 -> p0 -> t0 -> w0, prio of s1 += 5 (6 - 1) = 6
+        // s2 -> p4 -> t0 -> w1, prio of s2 += 2 (6 - 4) = 3
+        // s3 -> p2 -> t0 -> w2, prio of s3 += 4 (6 - 2) = 5
+        // s4 -> p6 -> t1 -> w3, s4 pushed to 2nd round
+        // s2 -> p5 -> t1 -> w5, prio of s2 += 1 (6 - 5) = 4
+        // s2 -> p6 -> t2 -> w6, s2 finished
+        // s3 -> p3 -> t1 -> w4, prio of s3 += 1 (6 - 5) = 6
+        // s1 -> p2 -> t1 -> not available, p3 -> t2 -> w7, prio of s1 += 3 (6 - 3) = 9
+        // s3 -> p4 -> t2 -> not available, s3 pushed to 2nd round
+        // s1 -> no more prios, s1 pushed to 2nd round
+        // second round, starts with this list: s4, s3, s1
+        // s4 -> w8
+        // s4 -> w10
+        // s3 -> w9
+        // s1 -> w11
+        val expectedWorkshopAssignments = Map(
+          WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set(student2), WorkshopId(2) -> Set(student3), // TopicId(0)
+          WorkshopId(3) -> Set(student4), WorkshopId(4) -> Set(student3), WorkshopId(5) -> Set(student2), // TopicId(1)
+          WorkshopId(6) -> Set(student2), WorkshopId(7) -> Set(student1), WorkshopId(8) -> Set(student4), // TopicId(2)
+          WorkshopId(9) -> Set(student3), WorkshopId(10) -> Set(student4), WorkshopId(11) -> Set(student1), // TopicId(3)
+        )
+
+        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
     }
 
   }

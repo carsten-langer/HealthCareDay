@@ -17,6 +17,7 @@ object Algorithm extends StrictLogging {
       final case class TopicSelection(selectionPriority: SelectionPriority, topicId: TopicId)
 
       final case class Student(
+                                algoPrio: Int,
                                 studentId: StudentId,
                                 grade: Grade,
                                 topicSelections: List[TopicSelection],
@@ -29,14 +30,16 @@ object Algorithm extends StrictLogging {
 
       val allTimeSlots = Set[TimeSlot](FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
 
+      def orderStudents(students: List[Student]): List[Student] = students.sortBy(s => (s.algoPrio, s.studentId.id))
+
       // ordering both the students and the topic selections per student is necessary for the unit tests
       // to know the expected result
-      val orderedStudents = studentsSelectedTopics.toList.map {
+      val orderedStudents = orderStudents(studentsSelectedTopics.toList.map {
         case (studentId, (grade, selectedTopics)) =>
           val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
           val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-          Student(studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
-      }.sortBy(_.studentId.id)
+          Student(algoPrio = 1, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
+      })
 
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         topicCandidates.toList.map(topics).count(_ == Nutrition) < 3 &&
@@ -88,7 +91,7 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion12.")
             Some((workshopAssignments, undistributableStudents))
-          case ::(headStudent@Student(studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+          case ::(headStudent@Student(algoPrio, studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId(headStudent, workshopAssignments) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
@@ -105,11 +108,18 @@ object Algorithm extends StrictLogging {
                     val (_, updatedTopicSelections) = topicSelections.span(_.selectionPriority.prio <= prio)
                     val updatedAssignedTopics = assignedTopics + foundTopicId
                     val updatedStudent = headStudent.copy(
+                      algoPrio = algoPrio + 6 - prio,
                       topicSelections = updatedTopicSelections,
                       unassignedTimeSlots = updatedTimeSlots,
                       assignedTopics = updatedAssignedTopics,
                     )
-                    updatedStudent :: nextStudents
+                    // While it does not make a difference for the resulting total order if we write
+                    // orderStudents(updatedStudent :: nextStudents) or
+                    // orderStudents(nextStudents :+ updatedStudent)
+                    // the latter expresses better that students just assigned go the back of the list
+                    // It may also have a performance improvement if the uses sorting algorithm handles nearly-sorted
+                    // lists well.
+                    orderStudents(nextStudents :+ updatedStudent)
                   }
                 recursion12(findWorkshopId)(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
             }
@@ -167,7 +177,7 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion2.")
             Some(workshopAssignments)
-          case ::(headStudent@Student(studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
+          case ::(headStudent@Student(_, studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId3(headStudent, workshopAssignments) match {
               case None =>
                 logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")
