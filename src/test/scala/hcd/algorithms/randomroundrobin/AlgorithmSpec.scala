@@ -413,6 +413,44 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
       }
 
+      "finds a distribution which respects the seats per workshop" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 4, _noSeats = 1)
+        val student1 = StudentId(1)
+        val student2 = StudentId(2)
+        val student3 = StudentId(3)
+        val student4 = StudentId(4)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(3),
+          )),
+          student2 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(1),
+            TopicId(1) -> SelectionPriority(2),
+            TopicId(2) -> SelectionPriority(3),
+          )),
+          student3 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student4 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+        )
+        val expectedWorkshopAssignments = Map(
+          WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set(student2), WorkshopId(2) -> Set(student3), // TopicId(0)
+          WorkshopId(3) -> Set(student2), WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set(student4), // TopicId(1)
+          WorkshopId(6) -> Set(student3), WorkshopId(7) -> Set(student4), WorkshopId(8) -> Set(student1), // TopicId(2)
+          WorkshopId(9) -> Set(student4), WorkshopId(10) -> Set(student3), WorkshopId(11) -> Set(student2), // TopicId(3)
+        )
+
+        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
+      "fails the distribution if no workshop with enough seats can be found" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 3, _noSeats = 0)
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+
+        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
+      }
+
     }
 
   }
