@@ -18,6 +18,7 @@ object Algorithm extends StrictLogging {
 
       final case class Student(
                                 studentId: StudentId,
+                                grade: Grade,
                                 topicSelections: List[TopicSelection],
                                 unassignedTimeSlots: Set[TimeSlot],
                                 assignedTopics: Set[TopicId],
@@ -30,10 +31,10 @@ object Algorithm extends StrictLogging {
 
       // ordering the topic selections per student is necessary for the unit tests to know the expected result
       val students = studentsSelectedTopics.toList.map {
-        case (studentId, (_, selectedTopics)) =>
+        case (studentId, (grade, selectedTopics)) =>
           val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
           val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-          Student(studentId, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
+          Student(studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
       }
 
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
@@ -57,8 +58,9 @@ object Algorithm extends StrictLogging {
         object ExtractorWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
             orderedWorkshops.collectFirst {
-              case (workshopId, (topicSelection.topicId, timeSlot, _, _))
+              case (workshopId, (topicSelection.topicId, timeSlot, grades, _))
                 if student.unassignedTimeSlots.contains(timeSlot) &&
+                  grades.contains(student.grade) &&
                   haveMaxVaryingCategories(student.assignedTopics + topicSelection.topicId) =>
                 logger.trace(s"found1: $workshopId at $timeSlot for $student.")
                 Holder((workshopId, topicSelection.topicId, topicSelection.selectionPriority, timeSlot))
@@ -84,7 +86,7 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion12.")
             Some((workshopAssignments, undistributableStudents))
-          case ::(headStudent@Student(studentId, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+          case ::(headStudent@Student(studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId(headStudent) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
@@ -122,9 +124,10 @@ object Algorithm extends StrictLogging {
       // criteria and all criteria by the given function hasVaryingCategories, regardless of the student's selection.
       def findWorkshopId23(haveVaryingCategories: Set[TopicId] => Boolean): FindWorkshopId23 = (student: Student) =>
         orderedWorkshops.collectFirst {
-          case (workshopId, (topicId, timeSlot, _, _))
+          case (workshopId, (topicId, timeSlot, grades, _))
             if student.unassignedTimeSlots.contains(timeSlot) &&
               !student.assignedTopics.contains(topicId) &&
+              grades.contains(student.grade) &&
               haveVaryingCategories(student.assignedTopics + topicId) =>
             logger.trace(s"found23: $workshopId at $timeSlot for $student.")
             (workshopId, topicId, timeSlot)
@@ -160,7 +163,7 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion2.")
             Some(workshopAssignments)
-          case ::(headStudent@Student(studentId, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
+          case ::(headStudent@Student(studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId3(headStudent) match {
               case None =>
                 logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")

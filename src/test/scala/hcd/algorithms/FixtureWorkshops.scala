@@ -11,7 +11,7 @@ trait FixtureWorkshops {
 
   def grade: Grade = Grade(0) // a test grade for all students, included in the workshops, the value 0 has no further meaning
 
-  def gradeNotInWorkshops: Grade = Grade(1) // a test grade not included in any workshop
+  def gradeNonMatching: Grade = Grade(1) // a test grade not matching normal grade
 
   def grades: Set[Grade] = Set(grade) // set of grades for all workshops
 }
