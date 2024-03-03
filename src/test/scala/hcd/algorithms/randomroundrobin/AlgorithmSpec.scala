@@ -379,6 +379,40 @@ class AlgorithmSpec
         distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
+      "finds a distribution which respects the grade of a student and workshop" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 4)
+        // reset grades of workshops 0, 6, 7, 8 to non-matching grades
+        val workshopsGradesChanged = Set(0, 7, 8).foldLeft(f.workshops) { case (workshops, id) =>
+          workshops.updatedWith(WorkshopId(id))(_.map {
+            case (topicId, timeSlot, _, seats) => (topicId, timeSlot, Set(f.gradeNonMatching), seats)
+          })
+        }
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(
+          student1 -> (f.grade, BiMap(
+            TopicId(0) -> SelectionPriority(1), // for student's grade only available in 2nd and 3rd timeslot
+            TopicId(1) -> SelectionPriority(2), // available for student's grade in all 3 timeslots
+            TopicId(2) -> SelectionPriority(3), // not at all available for student's grade
+          )),
+        )
+        val expectedWorkshopAssignments = Map(
+          WorkshopId(0) -> Set.empty, WorkshopId(1) -> Set(student1), WorkshopId(2) -> Set.empty, // TopicId(0)
+          WorkshopId(3) -> Set(student1), WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
+          WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty, // TopicId(2)
+          WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set(student1), // TopicId(3)
+        )
+
+        distributionAlgorithm(f.topics, workshopsGradesChanged)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+      }
+
+      "fails the distribution if no workshop with the right grade can be found" in {
+        val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
+        val student1 = StudentId(1)
+        val studentsSelectedTopics = Map(student1 -> (f.gradeNonMatching, BiMap.empty[TopicId, SelectionPriority]))
+
+        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
+      }
+
     }
 
   }

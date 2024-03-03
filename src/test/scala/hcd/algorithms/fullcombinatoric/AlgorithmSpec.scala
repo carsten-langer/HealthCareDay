@@ -134,7 +134,7 @@ class AlgorithmSpec
       fut(f.grade, selectedWorkshopTopics1) should contain theSameElementsAs expectedMatchingWorkshops1
       fut(f.grade, selectedWorkshopTopics2) should contain theSameElementsAs expectedMatchingWorkshops2
       fut(f.grade, selectedWorkshopTopics3) shouldBe empty
-      fut(f.gradeNotInWorkshops, selectedWorkshopTopics1) shouldBe empty // wrong grade
+      fut(f.gradeNonMatching, selectedWorkshopTopics1) shouldBe empty // wrong grade
     }
 
     "select StudentsMatchingWorkshops from StudentsSelectedTopics" in {
@@ -159,7 +159,7 @@ class AlgorithmSpec
         student3 -> (f.grade, BiMap(
           TopicId(19) -> SelectionPriority(-2), // non-existing workshop topic
         )),
-        student4 -> (f.gradeNotInWorkshops, BiMap( // student has wrong grade for any workshop
+        student4 -> (f.gradeNonMatching, BiMap( // student has wrong grade for any workshop
           TopicId(0) -> SelectionPriority(1),
         )),
       )
@@ -630,7 +630,7 @@ class AlgorithmSpec
           student1 -> (f.grade, BiMap(
             TopicId(2) -> SelectionPriority(1), // sports
           )),
-          student2 -> (f.gradeNotInWorkshops, BiMap(
+          student2 -> (f.gradeNonMatching, BiMap(
             TopicId(2) -> SelectionPriority(1), // sports
           )),
         )
