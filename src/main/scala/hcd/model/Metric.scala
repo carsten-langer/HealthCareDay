@@ -9,7 +9,9 @@ object Metric {
 
   val initialMetric: Metric = neutralMetric
 
-  def add(m: Metric, ms: Metric*): Metric = ms.fold(m) { case (m1, m2) => Metric(m1.m + m2.m) }
+  def add(m1: Metric, m2: Metric): Metric = Metric(m1.m + m2.m)
+
+  def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
 
   def metric(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric = {
     val studentAssignments = studentAssignmentsFrom(workshopAssignments)
@@ -23,7 +25,7 @@ object Metric {
       studentId -> add(metricPrios, metricCategories)
     }
     studentMetrics.values.toList match {
-      case ::(head, next) => add(head, next: _*)
+      case ::(head, next) => add(head, next)
       case Nil => neutralMetric
     }
   }
