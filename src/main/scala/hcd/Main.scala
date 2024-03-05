@@ -3,7 +3,7 @@ package hcd
 import hcd.inout.CmdLineParser.parser
 import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
-import hcd.model.Metric.metric
+import hcd.model.Metric.metricGlobal
 import hcd.model.Verification.withInputVerification
 import scopt.OParser
 
@@ -22,7 +22,7 @@ object Main {
           val algorithm = withInputVerification(config.algorithm.distributionAlgorithm)
           val maybeWorkshopAssignments = algorithm(topics, workshops)(studentsSelectedTopics)
           println(s"maybeWorkshopAssignments: $maybeWorkshopAssignments")
-          val maybeMetric = maybeWorkshopAssignments.map(metric(topics, workshops, studentsSelectedTopics))
+          val maybeMetric = maybeWorkshopAssignments.map(metricGlobal(topics, workshops, studentsSelectedTopics))
           println(s"maybeMetric: $maybeMetric")
         }
 
