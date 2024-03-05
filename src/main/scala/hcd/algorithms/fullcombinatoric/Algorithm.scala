@@ -112,7 +112,7 @@ object Algorithm extends StrictLogging {
         workshopCombos.map { workshopCombo =>
           val prios = workshopCombo.map { case (_, PossibleWorkshop(_, selectionPriority)) => selectionPriority }
           val categories = workshopCombo.map { case (_, PossibleWorkshop(category, _)) => category }
-          val metric = add(metricFromSelectionPriorities(prios), metricFromCategories(categories))
+          val metric = add(metricFromCategories(categories), prios.map(metricFromSelectionPriority))
           // BiMap.keySet would return a collection.Set, but we require a collection.immutable.Set, which Map.keySet
           // provides, thus transform the BiMap back to a Map
           val workshopIds = workshopCombo.toMap.keySet
