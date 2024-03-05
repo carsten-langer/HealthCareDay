@@ -20,9 +20,9 @@ object Metric {
       val (_, selectedTopics) = studentsSelectedTopics(studentId)
       val selectionPriorities = assignedTopicsIds.map(selectedTopics.get).map(_.getOrElse(SelectionPriority(7)))
       val categories = assignedTopicsIds.map(topics)
-      val metricPrios = metricFromSelectionPriorities(selectionPriorities)
+      val metricsPrios = selectionPriorities.map(metricFromSelectionPriority)
       val metricCategories = metricFromCategories(categories)
-      studentId -> add(metricPrios, metricCategories)
+      studentId -> add(metricCategories, metricsPrios)
     }
     studentMetrics.values.toList match {
       case ::(head, next) => add(head, next)
@@ -30,8 +30,8 @@ object Metric {
     }
   }
 
-  /** Simple linear metric on priorities. */
-  def metricFromSelectionPriorities(prios: Iterable[SelectionPriority]): Metric = Metric(prios.map(_.prio).sum)
+  /** Simple linear metric from selection priority. */
+  def metricFromSelectionPriority(selectionPriority: SelectionPriority): Metric = Metric(selectionPriority.prio)
 
   /** Malus if a combo contains only sports category. */
   def metricFromCategories(categories: Iterable[Category]): Metric =
