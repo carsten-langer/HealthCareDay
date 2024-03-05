@@ -50,4 +50,6 @@ package object model {
       .mapValues(_.toSet)
       .toMap
 
+  val allTimeSlots: Set[TimeSlot] = Set[TimeSlot](FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
+
 }

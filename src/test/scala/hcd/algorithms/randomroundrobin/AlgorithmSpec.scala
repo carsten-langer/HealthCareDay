@@ -2,7 +2,8 @@ package hcd.algorithms.randomroundrobin
 
 import hcd.algorithms.fixtureSymmetricWorkshopsFor
 import hcd.algorithms.randomroundrobin.Algorithm.distributionAlgorithm
-import hcd.model.{SelectionPriority, StudentId, TopicId, WorkshopId}
+import hcd.model.Metric.metricGlobal
+import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
@@ -375,8 +376,11 @@ class AlgorithmSpec
           // workshops for topics 11, 12, 13 do not exist
           WorkshopId(42) -> Set.empty, WorkshopId(43) -> Set.empty, WorkshopId(44) -> Set.empty, // TopicId(14)
         )
+        val expectedMetric = Metric((1 + 2 + 7 - 6 + 1000) + (0 + 1000))
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        val workshopAssignments = distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value
+        workshopAssignments shouldEqual expectedWorkshopAssignments
+        metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
       }
 
       "finds a distribution which respects the grade of a student and workshop" in {
@@ -475,6 +479,8 @@ class AlgorithmSpec
           )),
           student4 -> (f.grade, BiMap(
             TopicId(1) -> SelectionPriority(6),
+            TopicId(4) -> SelectionPriority(7), // not existing topic to force assignment of an unwanted topic
+            TopicId(5) -> SelectionPriority(8), // not existing topic to force assignment of an unwanted topic
           )),
         )
         // order of assignments:
@@ -482,7 +488,8 @@ class AlgorithmSpec
         // s1 -> p0 -> t0 -> w0, prio of s1 += 5 (6 - 1) = 6
         // s2 -> p4 -> t0 -> w1, prio of s2 += 2 (6 - 4) = 3
         // s3 -> p2 -> t0 -> w2, prio of s3 += 4 (6 - 2) = 5
-        // s4 -> p6 -> t1 -> w3, s4 pushed to 2nd round
+        // s4 -> p6 -> t1 -> w3, prio of s4 += 0 (6 - 6) = 1
+        // s4 -> p7 -> t4 (does not exist), p8 -> t5 (does not exist), s4 pushed to 2nd round
         // s2 -> p5 -> t1 -> w5, prio of s2 += 1 (6 - 5) = 4
         // s2 -> p6 -> t2 -> w6, s2 finished
         // s3 -> p3 -> t1 -> w4, prio of s3 += 1 (6 - 5) = 6
@@ -500,8 +507,10 @@ class AlgorithmSpec
           WorkshopId(6) -> Set(student2), WorkshopId(7) -> Set(student1), WorkshopId(8) -> Set(student4), // TopicId(2)
           WorkshopId(9) -> Set(student3), WorkshopId(10) -> Set(student4), WorkshopId(11) -> Set(student1), // TopicId(3)
         )
-
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        val expectedMetric = Metric((1 + 3 + 7 - 6) + (4 + 5 + 6 - 6) + (2 + 3 + 7 - 6) + (6 + 7 + 7 - 6))
+        val workshopAssignments = distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value
+        workshopAssignments shouldEqual expectedWorkshopAssignments
+        metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
       }
 
     }

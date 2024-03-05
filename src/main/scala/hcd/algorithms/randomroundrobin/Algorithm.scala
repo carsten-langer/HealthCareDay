@@ -1,6 +1,7 @@
 package hcd.algorithms.randomroundrobin
 
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.SelectionPriority.worstPrio
 import hcd.model._
 
 import scala.annotation.tailrec
@@ -27,8 +28,6 @@ object Algorithm extends StrictLogging {
 
       // ordering of workshops is necessary for the unit tests to know the expected result
       val orderedWorkshops = workshops.toList.sortBy { case (workshopId, _) => workshopId.id }
-
-      val allTimeSlots = Set[TimeSlot](FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
 
       def orderStudents(students: List[Student]): List[Student] = students.sortBy(s => (s.algoPrio, s.studentId.id))
 
@@ -108,7 +107,7 @@ object Algorithm extends StrictLogging {
                     val (_, updatedTopicSelections) = topicSelections.span(_.selectionPriority.prio <= prio)
                     val updatedAssignedTopics = assignedTopics + foundTopicId
                     val updatedStudent = headStudent.copy(
-                      algoPrio = algoPrio + 6 - prio,
+                      algoPrio = algoPrio + worstPrio.prio - prio,
                       topicSelections = updatedTopicSelections,
                       unassignedTimeSlots = updatedTimeSlots,
                       assignedTopics = updatedAssignedTopics,

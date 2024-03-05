@@ -3,7 +3,7 @@ package hcd.algorithms.fullcombinatoric
 import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
 import hcd.algorithms.{FixtureWorkshops, fixtureSymmetricWorkshopsFor}
-import hcd.model.Metric.metric
+import hcd.model.Metric.{initialMetric, metricGlobal}
 import hcd.model.Verification.withInputVerification
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
@@ -96,7 +96,7 @@ class AlgorithmSpec
       override val topics: Topics = underlyingFixtureWorkshops.topics
       override val workshops: Workshops = underlyingFixtureWorkshops.workshops
       private lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
-      private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority)
+      private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority(_))
 
       // generate random workshop selections
       Random.setSeed(0L) // fix randomness during development
@@ -458,12 +458,12 @@ class AlgorithmSpec
       )
       val expectedStudentsWorkshopCombosWithMetrics = Map(
         student1 -> Set(
-          (Set(WorkshopId(0), WorkshopId(4), WorkshopId(8)), Metric(6)),
-          (Set(WorkshopId(6), WorkshopId(7), WorkshopId(8)), Metric(1600)),
+          (Set(WorkshopId(0), WorkshopId(4), WorkshopId(8)), Metric(1 + 2 + 3)),
+          (Set(WorkshopId(6), WorkshopId(7), WorkshopId(8)), Metric(100 + 200 + 300 + 1000)),
         ),
         student2 -> Set(
-          (Set(WorkshopId(6)), Metric(1100)),
-          (Set.empty, Metric(1000)),
+          (Set(WorkshopId(6)), Metric(100 + 1000)),
+          (Set.empty, Metric(0 + 1000)),
         ),
       )
 
@@ -499,7 +499,7 @@ class AlgorithmSpec
         val comboSize = 3
         val studentsSelectedTopics: StudentsSelectedTopics = Map.empty
         val originalWorkshopSeats = f.workshops.view.mapValues { case (_, _, _, seats) => seats }.toMap
-        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, Metric(0), originalWorkshopSeats))
+        val expectedDistribution = Some((f.workshops.view.mapValues(_ => Set.empty).toMap, initialMetric, originalWorkshopSeats))
 
         distributeStudentsToWorkshops(comboSize)(f.topics, f.workshops)(studentsSelectedTopics) shouldEqual expectedDistribution
       }
@@ -524,7 +524,7 @@ class AlgorithmSpec
             WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
           ),
-          Metric(6),
+          Metric(1 + 2 + 3),
           Map(
             WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
@@ -563,7 +563,7 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          Metric(9),
+          Metric((1 + 2) + (2 + 4)),
           Map(
             WorkshopId(0) -> f.twoLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.oneLessSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
@@ -605,7 +605,8 @@ class AlgorithmSpec
             WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set.empty, // TopicId(3)
             WorkshopId(12) -> Set.empty, WorkshopId(13) -> Set.empty, WorkshopId(14) -> Set.empty, // TopicId(4)
           ),
-          Metric(6),
+          //noinspection ScalaUnnecessaryParentheses
+          Metric((0) + (2 + 4)),
           Map(
             WorkshopId(0) -> f.oneLessSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats, // TopicId(0)
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats, // TopicId(1)
@@ -641,7 +642,8 @@ class AlgorithmSpec
             WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty,
             WorkshopId(6) -> Set(student1), WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty,
           ),
-          Metric(1001),
+          //noinspection ScalaUnnecessaryParentheses
+          Metric((1 + 1000) + (0)),
           Map(
             WorkshopId(0) -> f.allSeats, WorkshopId(1) -> f.allSeats, WorkshopId(2) -> f.allSeats,
             WorkshopId(3) -> f.allSeats, WorkshopId(4) -> f.allSeats, WorkshopId(5) -> f.allSeats,
@@ -723,7 +725,7 @@ class AlgorithmSpec
             WorkshopId(4) -> Set(student2),
             WorkshopId(5) -> Set(student1),
           ),
-          Metric(11),
+          Metric((3 + 5) + (1 + 2)),
           Map(
             WorkshopId(0) -> Seats(0),
             WorkshopId(1) -> Seats(0),
@@ -772,7 +774,7 @@ class AlgorithmSpec
       if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false)) {
         withInputVerification(distributionAlgorithm)(f.topics, f.workshops)(f.studentsSelectedTopics) match {
           case Some(workshopAssignments) =>
-            val aPosterioriMetric = metric(f.topics, f.workshops, f.studentsSelectedTopics)(workshopAssignments)
+            val aPosterioriMetric = metricGlobal(f.topics, f.workshops, f.studentsSelectedTopics)(workshopAssignments)
             logger.info((aPosterioriMetric, workshopAssignments).toString)
           case None => logger.error("Distribution failed!")
         }
