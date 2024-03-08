@@ -1,18 +1,12 @@
 package hcd.algorithms.randomroundrobin
 
-import hcd.algorithms.fixtureSymmetricWorkshopsFor
 import hcd.algorithms.randomroundrobin.Algorithm.distributionAlgorithm
+import hcd.algorithms.{AlgorithmBaseSpec, FixtureFullDataModel, fixtureSymmetricWorkshopsFor}
 import hcd.model.Metric.metricGlobal
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 
-class AlgorithmSpec
-  extends AnyWordSpec
-    with Matchers
-    with OptionValues {
+class AlgorithmSpec extends AlgorithmBaseSpec {
 
   "Random Round Robin Algorithm" should {
 
@@ -513,6 +507,11 @@ class AlgorithmSpec
         metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
       }
 
+    }
+
+    "optionally print intermediate data models and run the distribution algorithm" in {
+      val f = new FixtureFullDataModel {}
+      maybeRunDistributionAlgorithm(f, distributionAlgorithm)
     }
 
   }
