@@ -14,7 +14,7 @@ class AlgorithmSpec
     with Matchers
     with OptionValues {
 
-  "Algorithm" should {
+  "Random Round Robin Algorithm" should {
 
     "provide a distributionAlgorithm" which {
 

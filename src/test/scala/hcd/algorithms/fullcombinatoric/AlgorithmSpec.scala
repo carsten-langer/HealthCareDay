@@ -20,7 +20,7 @@ class AlgorithmSpec
     with OptionValues
     with StrictLogging {
 
-  "Algorithm" should {
+  "Full Combinatoric Algorithm" should {
 
     trait FixtureWorkshopsFC extends FixtureWorkshops {
       def allSeats: Seats = Seats(noSeats)
