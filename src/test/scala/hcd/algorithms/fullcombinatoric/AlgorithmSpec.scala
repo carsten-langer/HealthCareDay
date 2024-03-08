@@ -1,24 +1,15 @@
 package hcd.algorithms.fullcombinatoric
 
-import com.typesafe.scalalogging.StrictLogging
 import hcd.algorithms.fullcombinatoric.Algorithm._
-import hcd.algorithms.{FixtureWorkshops, fixtureSymmetricWorkshopsFor}
-import hcd.model.Metric.{initialMetric, metricGlobal}
-import hcd.model.Verification.withInputVerification
+import hcd.algorithms.{AlgorithmBaseSpec, FixtureFullDataModel, FixtureWorkshops, fixtureSymmetricWorkshopsFor}
+import hcd.model.Metric.initialMetric
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
-import org.scalatest.OptionValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 
 import scala.annotation.unused
 import scala.util.Random
 
-class AlgorithmSpec
-  extends AnyWordSpec
-    with Matchers
-    with OptionValues
-    with StrictLogging {
+class AlgorithmSpec extends AlgorithmBaseSpec {
 
   "Full Combinatoric Algorithm" should {
 
@@ -81,31 +72,6 @@ class AlgorithmSpec
       override val topics: Topics = underlyingFixtureWorkshops.topics
       override val workshops: Workshops = underlyingFixtureWorkshops.workshops
     }
-
-    trait FixtureFullDataModel extends FixtureWorkshopsFC {
-      // Inputs for model size
-      private val noTopics = 50
-      private val noStudents = 600
-      private val noSelectionsPerStudent = 6
-      // combo 50/1000/6/30-25 finds very quick a distribution
-      // combo 50/1000/6/24-20 searches a lot (20 is min.)
-      // combo 50/600/6/16 finds very quick a distribution
-      // combo 50/600/6/15 searches a lot (12 is min.)
-      override val noSeats = 16
-      private val underlyingFixtureWorkshops: FixtureWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)
-      override val topics: Topics = underlyingFixtureWorkshops.topics
-      override val workshops: Workshops = underlyingFixtureWorkshops.workshops
-      private lazy val studentIds: Set[StudentId] = Range(0, noStudents).toSet.map(StudentId)
-      private lazy val selectionPriorities: Set[SelectionPriority] = Range.inclusive(1, noSelectionsPerStudent).toSet.map(SelectionPriority(_))
-
-      // generate random workshop selections
-      Random.setSeed(0L) // fix randomness during development
-      lazy val studentsSelectedTopics: StudentsSelectedTopics = studentIds.map(
-        _ -> (grade, BiMap.from(Random.shuffle(topics.keySet.toSeq).zip(selectionPriorities)))
-      ).toMap
-    }
-
-    def fixtureFullDataModel: FixtureFullDataModel = new FixtureFullDataModel {}
 
     "select MatchingWorkshops from SelectedTopics" in {
       val f = fixtureSymmetricWorkshops(noTopics = 4)
@@ -741,22 +707,8 @@ class AlgorithmSpec
 
     }
 
-    "build test data correctly and optionally print it" in {
-      val f = fixtureFullDataModel
-
-      f.topics(TopicId(0)) shouldEqual Nutrition
-      f.topics(TopicId(1)) shouldEqual Relaxation
-      f.topics(TopicId(2)) shouldEqual Sports
-      f.topics(TopicId(3)) shouldEqual Other
-      f.workshops(WorkshopId(0)) shouldEqual(TopicId(0), FirstTimeSlot, f.grades, f.allSeats)
-      f.workshops(WorkshopId(4)) shouldEqual(TopicId(1), SecondTimeSlot, f.grades, f.allSeats)
-      f.workshops(WorkshopId(8)) shouldEqual(TopicId(2), ThirdTimeSlot, f.grades, f.allSeats)
-
-      // print workshops ordered by id
-      //f.workshops.toSeq.sortBy(_._1.id).foreach(w => logger.info(w.toString))
-
-      // print students' selected workshop topics ordered by student id
-      //f.studentsSelectedTopics.toSeq.sortBy(_._1.id).foreach(sst => logger.info(sst.toString))
+    "optionally print intermediate data models and run the distribution algorithm" in {
+      val f = new FixtureFullDataModel {}
 
       // print students' matching workshops from their selected workshop topics for full model
       @unused // may be unused, depending on whether the model is printed out our not
@@ -770,15 +722,7 @@ class AlgorithmSpec
       lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
       //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
-      // verify input (but not result) and print distributeStudentsToWorkshops for full model
-      if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false)) {
-        withInputVerification(distributionAlgorithm)(f.topics, f.workshops)(f.studentsSelectedTopics) match {
-          case Some(workshopAssignments) =>
-            val aPosterioriMetric = metricGlobal(f.topics, f.workshops, f.studentsSelectedTopics)(workshopAssignments)
-            logger.info((aPosterioriMetric, workshopAssignments).toString)
-          case None => logger.error("Distribution failed!")
-        }
-      }
+      maybeRunDistributionAlgorithm(f, distributionAlgorithm)
     }
 
   }
