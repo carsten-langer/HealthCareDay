@@ -4,3 +4,10 @@ target
 # IntelliJ
 .bsp
 .idea
+.run
+
+# result files
+*.csv
+
+# my notes
+notes
