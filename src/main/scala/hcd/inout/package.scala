@@ -7,7 +7,7 @@ import java.io.File
 package object inout {
 
   val DefaultInputConfig: InputConfig = InputConfig(
-    algorithm = Algorithm.FullCombinatoric,
+    algorithm = Algorithm.RandomRoundRobin,
 
     // workshop planning CSV file
     wFile = new File(""),
