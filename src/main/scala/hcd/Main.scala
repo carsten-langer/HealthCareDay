@@ -4,7 +4,7 @@ import hcd.inout.CmdLineParser.parser
 import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
 import hcd.inout.OutputCsvConversion.{metricCsvFile, studentAssignmentsCsvFile, workshopAssignmentsCsvFile, writeDistribution}
-import hcd.model.Verification.withInputVerification
+import hcd.model.Verification.withVerification
 import hcd.model.{studentsSelectedTopicsFrom, topicsFrom}
 import scopt.OParser
 
@@ -16,7 +16,7 @@ object Main {
           (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
           studentsSelectedTopicsWithName <- readHcdStudentTopicSelection(config)
         } yield {
-          val algorithm = withInputVerification(config.algorithm.distributionAlgorithm)
+          val algorithm = withVerification(config.algorithm.distributionAlgorithm)
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
           algorithm(topics, workshops)(studentsSelectedTopics) match {
