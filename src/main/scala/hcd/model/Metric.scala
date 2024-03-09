@@ -18,19 +18,22 @@ object Metric extends StrictLogging {
 
   def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
 
-  def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric = {
-    val studentAssignments = studentAssignmentsFrom(workshopAssignments)
-    val studentMetrics = studentAssignments.map { case (studentId, assignedWorkshopIds) =>
-      val (_, selectedTopics) = studentsSelectedTopics(studentId)
-      metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
-    }
-    studentMetrics.toList match {
+  def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric =
+    orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments) match {
       case Nil => initialMetric
       case ::(head, next) => add(head, next)
     }
-  }
 
-  private def metricStudent(topics: Topics, workshops: Workshops)(assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
+  def orderedMetricsStudents(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): List[Metric] =
+    studentAssignmentsFrom(workshopAssignments)
+      .toList
+      .sortBy { case (StudentId(id), _) => id }
+      .map { case (studentId, assignedWorkshopIds) =>
+        val (_, selectedTopics) = studentsSelectedTopics(studentId)
+        metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
+      }
+
+  def metricStudent(topics: Topics, workshops: Workshops)(assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
     val assignedTopicsIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _) => topicId } // .toList is redundant to business logic
     val assignedCategories = assignedTopicsIds.map(topics)
     val metricCategories = metricFromCategories(assignedCategories)

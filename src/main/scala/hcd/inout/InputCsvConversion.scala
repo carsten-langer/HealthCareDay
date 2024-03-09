@@ -2,6 +2,7 @@ package hcd.inout
 
 import com.github.tototoshi.csv.{CSVReader, DefaultCSVFormat}
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.TimeSlot.{FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot}
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
@@ -9,7 +10,7 @@ import scala.util.{Try, Using}
 
 object InputCsvConversion extends StrictLogging {
 
-  def readHcdWorkshopPlanning(config: InputConfig): Try[(Topics, Workshops)] = {
+  def readHcdWorkshopPlanning(config: InputConfig): Try[(TopicsWithName, Workshops)] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.wDelimiter
@@ -66,11 +67,11 @@ object InputCsvConversion extends StrictLogging {
             .collect {
               case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
             }
-          ((topicId, category), workshops)
+          ((topicId, (topicName, category)), workshops)
         }
       val topicsWorkshops = allTopicsWorkshops.filter {
-        case ((topicId, _), _) if excludedTopics(config).contains(topicId) =>
-          logger.debug(s"Excluding full-day topic $topicId from the distribution.")
+        case ((topicId, (topicName, _)), _) if excludedTopics(config).contains(topicId) =>
+          logger.debug(s"Excluding full-day topic $topicId ($topicName) from the distribution.")
           false
         case _ => true
       }
@@ -81,7 +82,7 @@ object InputCsvConversion extends StrictLogging {
 
   }
 
-  def readHcdStudentTopicSelection(config: InputConfig): Try[StudentsSelectedTopics] = {
+  def readHcdStudentTopicSelection(config: InputConfig): Try[StudentsSelectedTopicsWithName] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.sDelimiter
@@ -93,6 +94,7 @@ object InputCsvConversion extends StrictLogging {
         .slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents)
         .map { columns =>
           val studentId = to(StudentId)(columns(config.sColStudentId - 1))
+          val studentName = columns(config.sColStudentName - 1)
           val grade = to(Grade)(columns(config.sColGrade - 1))
           val selectedTopics = BiMap.from(Range.inclusive(1, 6)
             .map { prio =>
@@ -100,21 +102,21 @@ object InputCsvConversion extends StrictLogging {
               val selectionPriority = SelectionPriority(prio)
               topicId -> selectionPriority
             })
-          logger.trace(s"$studentId, $grade, $selectedTopics")
-          studentId -> (grade, selectedTopics)
+          logger.trace(s"$studentId, $studentName, $grade, $selectedTopics")
+          studentId -> (studentName, grade, selectedTopics)
         }.toMap
       val unselectedTopicId = TopicId(0)
-      val studentsSelectedTopics = allStudentsSelectedTopics.flatMap {
-        case (studentId, (_, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
-          logger.debug(s"Removing student $studentId from distribution, as student chose a full-day topic.")
+      val studentsSelectedTopicsWithName = allStudentsSelectedTopics.flatMap {
+        case (studentId, (studentName, _, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
+          logger.debug(s"Removing student $studentId $studentName distribution, as student chose a full-day topic.")
           None
-        case (studentId, (grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
+        case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
           logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
-          Some((studentId, (grade, remainingTopics)))
+          Some((studentId, (studentName, grade, remainingTopics)))
         case valid => Some(valid)
       }
-      studentsSelectedTopics
+      studentsSelectedTopicsWithName
     }
 
   }

@@ -29,6 +29,10 @@ case class InputConfig(
                         sRowsToSkip: Int,
                         sNoStudents: Int,
                         sColStudentId: Int,
+                        sColStudentName: Int,
                         sColGrade: Int,
                         sColFirstSelection: Int,
+
+                        // workshop assignments CSV file
+                        oDelimiter: Char,
                       )

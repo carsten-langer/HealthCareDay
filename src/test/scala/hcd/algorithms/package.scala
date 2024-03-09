@@ -6,7 +6,7 @@ package object algorithms {
 
   def fixtureSymmetricWorkshopsFor(noTopics: Int, _noSeats: Int): FixtureWorkshops = new FixtureWorkshops {
     // Inputs for model size
-    private val timeSlots = Seq(FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
+    private val timeSlots = TimeSlot.values.sortBy(_.ts)
     private val categories = Seq(Nutrition, Relaxation, Sports, Other)
     private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available on all timeslots
 

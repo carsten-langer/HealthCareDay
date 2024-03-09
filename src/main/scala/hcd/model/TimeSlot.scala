@@ -1,9 +1,17 @@
 package hcd.model
 
-sealed trait TimeSlot
+import enumeratum._
 
-case object FirstTimeSlot extends TimeSlot
+sealed abstract class TimeSlot(val ts: Int) extends EnumEntry
 
-case object SecondTimeSlot extends TimeSlot
+case object TimeSlot extends Enum[TimeSlot] {
 
-case object ThirdTimeSlot extends TimeSlot
+  case object FirstTimeSlot extends TimeSlot(1)
+
+  case object SecondTimeSlot extends TimeSlot(2)
+
+  case object ThirdTimeSlot extends TimeSlot(3)
+
+  val values: IndexedSeq[TimeSlot] = findValues
+
+}

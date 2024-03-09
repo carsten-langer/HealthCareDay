@@ -1,6 +1,7 @@
 package hcd.algorithms
 
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.TimeSlot.{FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot}
 import hcd.model._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
