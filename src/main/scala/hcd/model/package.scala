@@ -12,6 +12,9 @@ package object model {
   /** All topics with their category. */
   type Topics = Map[TopicId, Category]
 
+  /** All topics with their name and category. */
+  type TopicsWithName = Map[TopicId, (String, Category)]
+
   /**
    * Which workshop topic is selected with which priority (per student).
    * BiMap guarantees both topic and selection priority are unique (per student).
@@ -20,6 +23,9 @@ package object model {
 
   /** The students' grade and workshop topic selections. */
   type StudentsSelectedTopics = Map[StudentId, (Grade, SelectedTopics)]
+
+  /** The students' name and grade and workshop topic selections. */
+  type StudentsSelectedTopicsWithName = Map[StudentId, (String, Grade, SelectedTopics)]
 
   /**
    * All the concrete workshops.
@@ -41,6 +47,12 @@ package object model {
   /** An algorithm to distribute students to workshops based on their topic selections. */
   type DistributionAlgorithm = (Topics, Workshops) => StudentsSelectedTopics => Option[WorkshopAssignments]
 
+  def topicsFrom(topicsWithName: TopicsWithName): Topics =
+    topicsWithName.view.mapValues { case (_, category) => category }.toMap
+
+  def studentsSelectedTopicsFrom(studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName): StudentsSelectedTopics =
+    studentsSelectedTopicsWithName.view.mapValues { case (_, grade, selectedTopics) => (grade, selectedTopics) }.toMap
+
   def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
     workshopAssignments
       .toList
@@ -50,6 +62,6 @@ package object model {
       .mapValues(_.toSet)
       .toMap
 
-  val allTimeSlots: Set[TimeSlot] = Set[TimeSlot](FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot)
+  val allTimeSlots: Set[TimeSlot] = TimeSlot.values.toSet
 
 }

@@ -31,8 +31,12 @@ package object inout {
     sRowsToSkip = 27,
     sNoStudents = 570,
     sColStudentId = 29,
+    sColStudentName = 30,
     sColGrade = 28,
     sColFirstSelection = 22,
+
+    // workshop assignments CSV file
+    oDelimiter = ';',
   )
 
 }

@@ -104,6 +104,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(sColStudentId = x))
         .text(s"The column of the student id (1-based, A = 1, B = 2, ...), default: ${d.sColStudentId}"),
+      opt[Int]("sColStudentName")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColStudentName = x))
+        .text(s"The column of the student name (1-based, A = 1, B = 2, ...), default: ${d.sColStudentName}"),
       opt[Int]("sColGrade")
         .valueName("<int>")
         .action((x, c) => c.copy(sColGrade = x))
@@ -116,6 +120,12 @@ object CmdLineParser {
         .required()
         .action((x, c) => c.copy(sFile = x))
         .text("The HealthCareDay student topic selection CSV export file, required"),
+
+      note("Options for writing out the HCD distribution CSV files:"),
+      opt[Char]("oDelimiter")
+        .valueName("<char>")
+        .action((x, c) => c.copy(oDelimiter = x))
+        .text(s"The column separating character, default: ${d.oDelimiter}"),
     )
   }
 
