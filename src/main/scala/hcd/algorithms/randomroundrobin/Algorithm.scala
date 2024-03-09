@@ -40,13 +40,14 @@ object Algorithm extends StrictLogging {
           Student(algoPrio = 1, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
       })
 
+      def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
+        topicCandidates.toList.map(topics).count(_ == category) < 3
+
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
-        topicCandidates.toList.map(topics).count(_ == Nutrition) < 3 &&
-          topicCandidates.toList.map(topics).count(_ == Relaxation) < 3
+        hasNot3TimesGivenCategory(topicCandidates, Nutrition) && hasNot3TimesGivenCategory(topicCandidates, Relaxation)
 
       def haveMaxVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
-        haveMinVaryingCategories(topicCandidates) &&
-          topicCandidates.toList.map(topics).count(_ == Sports) < 3
+        haveMinVaryingCategories(topicCandidates) && hasNot3TimesGivenCategory(topicCandidates, Sports)
 
       type FindWorkshopId12 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
       type FindWorkshopId23 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, TimeSlot)]
