@@ -15,7 +15,10 @@ object Verification extends StrictLogging {
     (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
       distributionAlgorithm(topics, workshops)(studentsSelectedTopics) match {
         case result@Some(workshopAssignments) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
-        case _ => None
+        case Some(workshopAssignments) =>
+          logger.error(s"Resulting workshop assignments are not valid! $workshopAssignments")
+          None
+        case None => None
       }
 
   //noinspection ScalaUnusedSymbol
@@ -84,7 +87,7 @@ object Verification extends StrictLogging {
     val studentNumberOfAssignments = studentAssignmentsFrom(workshopAssignments).view.mapValues(_.size)
     val b2 = studentsSelectedTopics.keys.forall(studentNumberOfAssignments.getOrElse(_, 0) == 3)
     if (!b2) logger.error("A student is not assigned to 3 workshops.")
-    b1 //&& b2  // todo re-enable the result of check b2
+    b1 && b2
   }
 
 }
