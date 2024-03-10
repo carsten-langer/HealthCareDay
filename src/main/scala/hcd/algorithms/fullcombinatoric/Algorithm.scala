@@ -8,11 +8,13 @@ import io.cvbio.collection.mutable.bimap.BiMap
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributionAlgorithm: DistributionAlgorithm =
-    (topics: Topics, workshops: Workshops) => (studentsSelectedTopics: StudentsSelectedTopics) =>
-      distributeStudentsToWorkshops(comboSize = 3)(topics, workshops)(studentsSelectedTopics) map {
-        case (workshopAssignments, _, _) => workshopAssignments
-      }
+  def distributionAlgorithm: StoppableDistributionAlgorithm =
+    (shallStop: ShallStop) =>
+      (topics: Topics, workshops: Workshops) =>
+        (studentsSelectedTopics: StudentsSelectedTopics) =>
+          distributeStudentsToWorkshops(comboSize = 3, shallStop)(topics, workshops)(studentsSelectedTopics) map {
+            case (workshopAssignments, _, _) => workshopAssignments
+          }
 
   // If a selected workshop topic is not contained in the concrete workshops, it is ignored.
   // Only workshops eligible for the grade are selected.
@@ -190,7 +192,7 @@ object Algorithm extends StrictLogging {
     )
   }
 
-  protected[algorithms] def distributeStudentsToWorkshops(comboSize: Int)(topics: Topics, workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
+  protected[algorithms] def distributeStudentsToWorkshops(comboSize: Int, shallStop: ShallStop = () => false)(topics: Topics, workshops: Workshops)(studentsSelectedTopics: StudentsSelectedTopics): Option[(WorkshopAssignments, Metric, WorkshopSeats)] = {
     val initialFreeWorkshopSeats = workshops.view.mapValues { case (_, _, _, seats) => seats }.toMap
     val studentsWorkshopCombos = generateStudentsWorkshopCombos(workshops, topics, comboSize)(studentsSelectedTopics)
     val studentsWorkshopCombosWithMetrics = addMetricsToStudentsWorkshopCombos(studentsWorkshopCombos)
@@ -209,14 +211,15 @@ object Algorithm extends StrictLogging {
                   accMetric: Metric,
                   freeWorkshopSeats: WorkshopSeats,
                   studentsWorkshopCombosToDistribute: List[(StudentId, List[(List[WorkshopId], Metric)])],
-                 ): Option[(DistributedStudentsWorkshopCombos, Metric, WorkshopSeats)] =
-      studentsWorkshopCombosToDistribute match {
-        case Nil => Some((distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats))
-        case ::((studentId, Nil), _) =>
+                 ): Option[(DistributedStudentsWorkshopCombos, Metric, WorkshopSeats)] = {
+      (shallStop(), studentsWorkshopCombosToDistribute) match {
+        case (true, _) => None
+        case (_, Nil) => Some((distributedStudentsWorkshopCombos, accMetric, freeWorkshopSeats))
+        case (_, ::((studentId, Nil), _)) =>
           // The situation that a student has an empty list of possible workshop combos should have been resolved
           // before entering the recursion.
           throw new IllegalStateException(s"$studentId has no workshop combos, such situation should have been dealt with before the recursion!")
-        case ::((studentId, workshopCombosWithMetric), nextStudents) =>
+        case (_, ::((studentId, workshopCombosWithMetric), nextStudents)) =>
           val possibleStudentsWorkshopCombosToDistributeFurther = workshopCombosWithMetric
             .map { case (workshopCombo, metric) =>
               logger.whenDebugEnabled {
@@ -245,6 +248,7 @@ object Algorithm extends StrictLogging {
           //logger.trace(s"after: $maybeFirstResult")
           maybeFirstResult
       }
+    }
 
     val maybeResult = recursion(List.empty, initialMetric, initialFreeWorkshopSeats, orderedStudentsNonEmptyWorkshopCombosWithMetrics)
     maybeResult map {

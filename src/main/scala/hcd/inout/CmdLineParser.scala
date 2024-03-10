@@ -5,6 +5,7 @@ import hcd.algorithms.Algorithm
 import scopt.OParser
 
 import java.io.File
+import scala.concurrent.duration.Duration
 
 object CmdLineParser {
 
@@ -28,6 +29,10 @@ object CmdLineParser {
         .valueName(s"<${Algorithm.values.map(_.entryName).mkString("|")}>")
         .action((x, c) => c.copy(algorithm = x))
         .text(s"The distribution algorithm, default: ${d.algorithm.entryName}"),
+      opt[Duration]("searchDuration")
+        .valueName("<duration>")
+        .action((x, c) => c.copy(searchDuration = x))
+        .text(s"The duration how long the algorithm shall search for a distribution, e.g. 3600s, 60m, 1h, default: ${d.searchDuration.toSeconds}s"),
 
       note("Options for reading in the HCD workshop planning CSV file:"),
       opt[Char]("wDelimiter")
