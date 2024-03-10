@@ -18,34 +18,17 @@ object Algorithm extends StrictLogging {
     (topics: Topics, workshops: Workshops) =>
       (studentsSelectedTopics: StudentsSelectedTopics) => {
 
-        // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result, thus
-        // we need a new data type. Ordering makes most sense by selection priority, thus we use the flipped order of
-        // values compared to SelectedTopics
-        final case class TopicSelection(selectionPriority: SelectionPriority, topicId: TopicId)
-
-        final case class Student(
-                                  algoPrio: Int,
-                                  sortingOrder: Int,
-                                  studentId: StudentId,
-                                  grade: Grade,
-                                  topicSelections: List[TopicSelection],
-                                  unassignedTimeSlots: Set[TimeSlot],
-                                  assignedTopics: Set[TopicId],
-                                )
-
         // ordering of workshops is necessary for the unit tests to know the expected result
         val orderedWorkshops = workshops.toList.sortBy { case (workshopId, _) => workshopId.id }
 
-        def orderStudents(students: List[Student]): List[Student] = students.sortBy(s => (s.algoPrio, s.sortingOrder))
-
         // ordering both the students and the topic selections per student is necessary for the unit tests
         // to know the expected result
-        val orderedStudents = orderStudents(studentsSelectedTopics.toList.map {
+        val orderedStudents = studentsSelectedTopics.toList.map {
           case (studentId, (grade, selectedTopics)) =>
             val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
             val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
             Student(algoPrio = 1, studentId.id, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
-        })
+        }.sortBy(_.studentId.id)
 
         def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
           topicCandidates.toList.map(topics).count(_ == category) < 3
@@ -55,13 +38,6 @@ object Algorithm extends StrictLogging {
 
         def haveMaxVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
           haveMinVaryingCategories(topicCandidates) && hasNot3TimesGivenCategory(topicCandidates, Sports)
-
-        type FindWorkshopId12 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
-        type FindWorkshopId23 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, TimeSlot)]
-
-        // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
-        // for the need for a holder to avoid deprecation message on (scala/bug#6675)
-        case class Holder[T](_1: T) extends Product1[T]
 
         // First round of distribution: For a student, select the next workshop being part of her selection and which
         // otherwise fulfils all criteria.
@@ -121,12 +97,12 @@ object Algorithm extends StrictLogging {
                         assignedTopics = updatedAssignedTopics,
                       )
                       // While it does not make a difference for the resulting total order if we write
-                      // orderStudents(updatedStudent :: nextStudents) or
-                      // orderStudents(nextStudents :+ updatedStudent)
-                      // the latter expresses better that students just assigned go the back of the list
+                      // (updatedStudent :: nextStudents).sortBy() or
+                      // (nextStudents :+ updatedStudent).sortBy(), as long as the student.sortingOrder is unique,
+                      // the latter expresses better that students just assigned go the back of the list.
                       // It may also have a performance improvement if the uses sorting algorithm handles nearly-sorted
                       // lists well.
-                      orderStudents(nextStudents :+ updatedStudent)
+                      (nextStudents :+ updatedStudent).sortBy(s => (s.algoPrio, s.sortingOrder))
                     }
                   recursion12(findWorkshopId)(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
               }
@@ -219,5 +195,27 @@ object Algorithm extends StrictLogging {
         )
 
       }
+
+  // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result, thus
+  // we need an own data type. Ordering makes most sense by selection priority, thus we use the flipped order of
+  // values compared to SelectedTopics
+  private final case class TopicSelection(selectionPriority: SelectionPriority, topicId: TopicId)
+
+  private final case class Student(
+                                    algoPrio: Int,
+                                    sortingOrder: Int,
+                                    studentId: StudentId,
+                                    grade: Grade,
+                                    topicSelections: List[TopicSelection],
+                                    unassignedTimeSlots: Set[TimeSlot],
+                                    assignedTopics: Set[TopicId],
+                                  )
+
+  private type FindWorkshopId12 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
+  private type FindWorkshopId23 = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, TimeSlot)]
+
+  // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
+  // for the need for a holder to avoid deprecation message on (scala/bug#6675)
+  private case class Holder[T](_1: T) extends Product1[T]
 
 }
