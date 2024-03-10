@@ -9,6 +9,7 @@ object Metric extends StrictLogging {
 
   private val neutralMetric: Metric = Metric(0)
   private val bonusMetricGroup: Metric = Metric(-6) // compensation for simple metrics for selection prios (1 + 2 + 3), see below for details
+  private val malusMetricNoneOfFirstPrios: Metric = Metric(10000)
   private val malusMetricUnwantedTopic: Metric = Metric(7)
   private val malusMetricSports: Metric = Metric(1000)
 
@@ -56,8 +57,15 @@ object Metric extends StrictLogging {
         // If the student got assigned workshops without selecting the topic, while having selected topics she was
         // not assigned to, this gives a malus per workshop assigned and not be part of the selection.
         val assignedSelectedTopics = selectedTopics.filter { case (topicId, _) => assignedTopicIds.contains(topicId) }
-        val maluses = List.fill(allTimeSlots.size - assignedSelectedTopics.size)(malusMetricUnwantedTopic)
-        val bonusMalus = add(bonusMetricGroup, maluses)
+        val malusNoneOfFirstThreePrios =
+          if (selectedTopics.isEmpty
+            || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
+            prio <= 3 && assignedTopicIds.contains(topicId)
+          }) neutralMetric // no malus if no topic was selected or from the selected at least one topic with prio <= 3 was assigned
+          else malusMetricNoneOfFirstPrios
+        val malusesUnwantedTopics = List.fill(allTimeSlots.size - assignedSelectedTopics.size)(malusMetricUnwantedTopic)
+        val malus = add(malusNoneOfFirstThreePrios, malusesUnwantedTopics)
+        val bonusMalus = add(bonusMetricGroup, malus)
         val assignedSelectionPriorities = assignedSelectedTopics.values
         val metricsSelectionPriorities = assignedSelectionPriorities.map(metricFromSelectionPriority)
         add(bonusMalus, metricsSelectionPriorities)

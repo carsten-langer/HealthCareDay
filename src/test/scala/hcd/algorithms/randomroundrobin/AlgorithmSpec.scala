@@ -501,7 +501,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set(student2), WorkshopId(7) -> Set(student1), WorkshopId(8) -> Set(student4), // TopicId(2)
           WorkshopId(9) -> Set(student3), WorkshopId(10) -> Set(student4), WorkshopId(11) -> Set(student1), // TopicId(3)
         )
-        val expectedMetric = Metric((1 + 3 + 7 - 6) + (4 + 5 + 6 - 6) + (2 + 3 + 7 - 6) + (6 + 7 + 7 - 6))
+        val expectedMetric = Metric((1 + 3 + 7 - 6) + (4 + 5 + 6 - 6 + 10000) + (2 + 3 + 7 - 6) + (6 + 7 + 7 - 6 + 10000))
         val workshopAssignments = distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value
         workshopAssignments shouldEqual expectedWorkshopAssignments
         metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
