@@ -25,6 +25,7 @@ object Algorithm extends StrictLogging {
 
         final case class Student(
                                   algoPrio: Int,
+                                  sortingOrder: Int,
                                   studentId: StudentId,
                                   grade: Grade,
                                   topicSelections: List[TopicSelection],
@@ -35,7 +36,7 @@ object Algorithm extends StrictLogging {
         // ordering of workshops is necessary for the unit tests to know the expected result
         val orderedWorkshops = workshops.toList.sortBy { case (workshopId, _) => workshopId.id }
 
-        def orderStudents(students: List[Student]): List[Student] = students.sortBy(s => (s.algoPrio, s.studentId.id))
+        def orderStudents(students: List[Student]): List[Student] = students.sortBy(s => (s.algoPrio, s.sortingOrder))
 
         // ordering both the students and the topic selections per student is necessary for the unit tests
         // to know the expected result
@@ -43,7 +44,7 @@ object Algorithm extends StrictLogging {
           case (studentId, (grade, selectedTopics)) =>
             val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
             val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-            Student(algoPrio = 1, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
+            Student(algoPrio = 1, studentId.id, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
         })
 
         def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
@@ -97,7 +98,7 @@ object Algorithm extends StrictLogging {
             case Nil =>
               logger.debug("Successful end of recursion12.")
               Some((workshopAssignments, undistributableStudents))
-            case ::(headStudent@Student(algoPrio, studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            case ::(headStudent@Student(algoPrio, _, studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
               findWorkshopId(headStudent, workshopAssignments) match {
                 case None =>
                   // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
@@ -183,7 +184,7 @@ object Algorithm extends StrictLogging {
             case Nil =>
               logger.debug("Successful end of recursion2.")
               Some(workshopAssignments)
-            case ::(headStudent@Student(_, studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            case ::(headStudent@Student(_, _, studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
               findWorkshopId3(headStudent, workshopAssignments) match {
                 case None =>
                   logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")
