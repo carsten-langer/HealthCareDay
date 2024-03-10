@@ -13,8 +13,8 @@ case class InputConfig(
                         wRowsToSkip: Int,
                         wNoTopics: Int,
                         wColTopicId: Int, // 1-based A = 1
+                        wColTopicName: Int,
                         wColCategory: Int,
-                        wColName: Int,
                         wColGrades1: Int,
                         wColSeats1: Int,
                         wColGrades2: Int,
