@@ -15,8 +15,8 @@ package object inout {
     wRowsToSkip = 5,
     wNoTopics = 53,
     wColTopicId = 1, // 1-based A = 1
+    wColTopicName = 3,
     wColCategory = 2,
-    wColName = 3,
     wColGrades1 = 16,
     wColSeats1 = 17,
     wColGrades2 = 18,

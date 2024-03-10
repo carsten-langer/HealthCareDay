@@ -46,14 +46,14 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColTopicId = x))
         .text(s"The column of the topic id (1-based, A = 1, B = 2, ...), default: ${d.wColTopicId}"),
+      opt[Int]("wColTopicName")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColTopicName = x))
+        .text(s"The column of the topic name (1-based, A = 1, B = 2, ...), default: ${d.wColTopicName}"),
       opt[Int]("wColCategory")
         .valueName("<int>")
         .action((x, c) => c.copy(wColCategory = x))
         .text(s"The column of the topic category (1-based, A = 1, B = 2, ...), default: ${d.wColCategory}"),
-      opt[Int]("wColName")
-        .valueName("<int>")
-        .action((x, c) => c.copy(wColName = x))
-        .text(s"The column of the topic name (1-based, A = 1, B = 2, ...), default: ${d.wColName}"),
       opt[Int]("wColGrades1")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades1 = x))

@@ -46,8 +46,8 @@ object InputCsvConversion extends StrictLogging {
         .slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics)
         .map { columns =>
           val topicId = to(TopicId)(columns(config.wColTopicId - 1))
+          val topicName = columns(config.wColTopicName - 1)
           val category = toCategory(columns(config.wColCategory - 1))
-          val name = columns(config.wColName - 1)
           val grades1 = columns(config.wColGrades1 - 1)
           val seats1 = columns(config.wColSeats1 - 1)
           val grades2 = columns(config.wColGrades2 - 1)
@@ -58,7 +58,7 @@ object InputCsvConversion extends StrictLogging {
           val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
           val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-          logger.trace(s"$topicId, $category, $name, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.trace(s"$topicId, $category, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
