@@ -2,9 +2,9 @@ package hcd.algorithms
 
 import enumeratum.EnumEntry.Lowercase
 import enumeratum._
-import hcd.model.DistributionAlgorithm
+import hcd.model.StoppableDistributionAlgorithm
 
-sealed abstract class Algorithm(val distributionAlgorithm: DistributionAlgorithm) extends EnumEntry with Lowercase
+sealed abstract class Algorithm(val distributionAlgorithm: StoppableDistributionAlgorithm) extends EnumEntry with Lowercase
 
 case object Algorithm extends Enum[Algorithm] {
 

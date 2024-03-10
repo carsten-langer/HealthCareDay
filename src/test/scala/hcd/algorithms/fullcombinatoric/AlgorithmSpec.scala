@@ -722,7 +722,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       lazy val studentsWorkshopCombos = generateStudentsWorkshopCombos(f.workshops, f.topics, comboSize = 3)(f.studentsSelectedTopics)
       //logger.info(studentsWorkshopCombos.view.filterKeys(_.id < 2).toMap.toString)
 
-      maybeRunDistributionAlgorithm(f, distributionAlgorithm)
+      maybeRunDistributionAlgorithm(f, distributionAlgorithm(() => false))
     }
 
   }
