@@ -5,8 +5,10 @@ import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
 import hcd.inout.OutputCsvConversion.{metricCsvFile, studentAssignmentsCsvFile, workshopAssignmentsCsvFile, writeDistribution}
 import hcd.model.Verification.withVerification
-import hcd.model.{studentsSelectedTopicsFrom, topicsFrom}
+import hcd.model.{ShallStop, studentsSelectedTopicsFrom, topicsFrom}
 import scopt.OParser
+
+import java.time.LocalDateTime
 
 object Main {
   def main(args: Array[String]): Unit =
@@ -16,7 +18,12 @@ object Main {
           (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
           studentsSelectedTopicsWithName <- readHcdStudentTopicSelection(config)
         } yield {
-          val algorithm = withVerification(config.algorithm.distributionAlgorithm)
+          val startDateTime = LocalDateTime.now()
+          val searchLimit = startDateTime.plusSeconds(config.searchDuration.toSeconds)
+
+          def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
+
+          val algorithm = withVerification(config.algorithm.distributionAlgorithm(shallStop))
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
           algorithm(topics, workshops)(studentsSelectedTopics) match {

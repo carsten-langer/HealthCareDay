@@ -3,9 +3,11 @@ package hcd.inout
 import hcd.algorithms.Algorithm
 
 import java.io.File
+import scala.concurrent.duration.Duration
 
 case class InputConfig(
                         algorithm: Algorithm,
+                        searchDuration: Duration,
 
                         // workshop planning CSV file
                         wFile: File,

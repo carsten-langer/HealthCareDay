@@ -3,11 +3,13 @@ package hcd
 import hcd.algorithms._
 
 import java.io.File
+import scala.concurrent.duration.Duration
 
 package object inout {
 
   val DefaultInputConfig: InputConfig = InputConfig(
     algorithm = Algorithm.RandomRoundRobin,
+    searchDuration = Duration("60s"),
 
     // workshop planning CSV file
     wFile = new File(""),

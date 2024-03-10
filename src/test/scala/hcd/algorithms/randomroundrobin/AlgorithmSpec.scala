@@ -1,6 +1,6 @@
 package hcd.algorithms.randomroundrobin
 
-import hcd.algorithms.randomroundrobin.Algorithm.distributionAlgorithm
+import hcd.algorithms.randomroundrobin.Algorithm.distributeSingleRound
 import hcd.algorithms.{AlgorithmBaseSpec, FixtureFullDataModel, fixtureSymmetricWorkshopsFor}
 import hcd.model.Metric.metricGlobal
 import hcd.model._
@@ -10,22 +10,22 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
 
   "Random Round Robin Algorithm" should {
 
-    "provide a distributionAlgorithm" which {
+    "provide a method distributeSingleRound()" which {
 
       "finds the empty distribution if there are neither topics/workshops nor students selections to distribute" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 0)
 
-        distributionAlgorithm(Map.empty, Map.empty)(Map.empty).value shouldBe empty
-        distributionAlgorithm(Map.empty, f.workshops)(Map.empty).value shouldBe empty
-        distributionAlgorithm(f.topics, f.workshops)(Map.empty).value shouldBe empty
+        distributeSingleRound(Map.empty, Map.empty)(Map.empty).value shouldBe empty
+        distributeSingleRound(Map.empty, f.workshops)(Map.empty).value shouldBe empty
+        distributeSingleRound(f.topics, f.workshops)(Map.empty).value shouldBe empty
       }
 
       "finds the empty distribution if there are workshops but no students selections to distribute" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 1)
         val expectedWorkshopAssignments = f.workshops.view.mapValues(_ => Set.empty).toMap
 
-        distributionAlgorithm(Map.empty, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
-        distributionAlgorithm(f.topics, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(Map.empty, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
       }
 
       "assigns 3 workshops to a student which has not selected any topic" in {
@@ -39,7 +39,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution for workshops for 3 topics and 1 student selecting 1 topic" in {
@@ -53,7 +53,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution for workshops for 3 topics and 2 students selecting the same single topic" in {
@@ -71,7 +71,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1, student2), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution for workshops for 3 topics and 2 students selecting each a different single topic" in {
@@ -89,7 +89,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1, student2), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "assigns an alternative workshops if a student selects a non-existing topic" in {
@@ -103,7 +103,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution for workshops for 3 topics and 1 student selecting 2 topics" in {
@@ -122,7 +122,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution if workshops are not available for all timeslots" in {
@@ -142,7 +142,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set(student1), WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set.empty, // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "assigns a workshop if a student selects a topic which exists" +
@@ -164,7 +164,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set(student1), // TopicId(3), student1 assigned here
         )
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "fails the distribution if there are not enough workshops to cover all needed timeslots" in {
@@ -173,7 +173,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student1 should get 3 workshops from 3 different topics, but only 2 topics exist, thus distribution fails
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
       }
 
       "fails the distribution if a student selects a topic which exists but not at a timeslot not yet assigned to the student and there are not enough fall-back workshops" in {
@@ -188,7 +188,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         )
         // student1 can be assigned to TopicId(0), but cannot be assigned to TopicId(1), thus needs 2 more topics, but only 1 more topic exists, thus distribution fails.
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
       }
 
       "finds a distribution for workshops for 3 topics and 1 student selecting 3 topics" in {
@@ -207,7 +207,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(6) -> Set.empty, WorkshopId(7) -> Set.empty, WorkshopId(8) -> Set(student1), // TopicId(2)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution which respects that not all 3 workshops shall be of category nutrition" in {
@@ -238,7 +238,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(27) -> Set.empty, WorkshopId(28) -> Set.empty, WorkshopId(29) -> Set(student1, student2), // TopicId(9)
         )
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "fails the distribution if the rule no-3-nutrition cannot be fulfilled" in {
@@ -251,7 +251,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         // As some do not exist, she would get assigned 0, 4, 8, but this is 3 times nutrition.
         // As no topic 9 exists, the distribution fails.
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
       }
 
       "finds a distribution which respects that not all 3 workshops shall be of category relaxation" in {
@@ -283,7 +283,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(30) -> Set.empty, WorkshopId(31) -> Set.empty, WorkshopId(32) -> Set(student1, student2), // TopicId(10)
         )
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "fails the distribution if the rule no-3-relaxation cannot be fulfilled" in {
@@ -296,7 +296,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         // As some do not exist, she would get assigned 1, 5, 9, but this is 3 times relaxation.
         // As no topic 10 exists, the distribution fails.
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics) shouldBe empty
       }
 
       "finds a distribution which avoids that all 3 workshops shall are of category sports" in {
@@ -329,7 +329,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(33) -> Set.empty, WorkshopId(34) -> Set.empty, WorkshopId(35) -> Set(student1, student2), // TopicId(11)
         )
 
-        distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "finds a distribution which assigns all 3 workshops having category sports if no alternative exists" in {
@@ -372,7 +372,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         )
         val expectedMetric = Metric((1 + 2 + 7 - 6 + 1000) + (0 + 1000))
 
-        val workshopAssignments = distributionAlgorithm(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value
+        val workshopAssignments = distributeSingleRound(f.topics, workshopsWsRemoved)(studentsSelectedTopics).value
         workshopAssignments shouldEqual expectedWorkshopAssignments
         metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
       }
@@ -400,7 +400,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(9) -> Set.empty, WorkshopId(10) -> Set.empty, WorkshopId(11) -> Set(student1), // TopicId(3)
         )
 
-        distributionAlgorithm(f.topics, workshopsGradesChanged)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, workshopsGradesChanged)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "fails the distribution if no workshop with the right grade can be found" in {
@@ -408,7 +408,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(student1 -> (f.gradeNonMatching, BiMap.empty[TopicId, SelectionPriority]))
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
       }
 
       "finds a distribution which respects the seats per workshop" in {
@@ -438,7 +438,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(9) -> Set(student4), WorkshopId(10) -> Set(student3), WorkshopId(11) -> Set(student2), // TopicId(3)
         )
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value shouldEqual expectedWorkshopAssignments
       }
 
       "fails the distribution if no workshop with enough seats can be found" in {
@@ -446,7 +446,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
 
-        distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
+        distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics) shouldBe empty
       }
 
       "distributes 1 workshop per student at a time, prioritizing students with worse assignments for the next recursion round" in {
@@ -502,16 +502,16 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           WorkshopId(9) -> Set(student3), WorkshopId(10) -> Set(student4), WorkshopId(11) -> Set(student1), // TopicId(3)
         )
         val expectedMetric = Metric((1 + 3 + 7 - 6) + (4 + 5 + 6 - 6) + (2 + 3 + 7 - 6) + (6 + 7 + 7 - 6))
-        val workshopAssignments = distributionAlgorithm(f.topics, f.workshops)(studentsSelectedTopics).value
+        val workshopAssignments = distributeSingleRound(f.topics, f.workshops)(studentsSelectedTopics).value
         workshopAssignments shouldEqual expectedWorkshopAssignments
         metricGlobal(f.topics, f.workshops, studentsSelectedTopics)(workshopAssignments) shouldEqual expectedMetric
       }
 
     }
 
-    "optionally print intermediate data models and run the distribution algorithm" in {
+    "optionally print intermediate data models and run the distribution algorithm for a single round" in {
       val f = new FixtureFullDataModel {}
-      maybeRunDistributionAlgorithm(f, distributionAlgorithm)
+      maybeRunDistributionAlgorithm(f, distributeSingleRound)
     }
 
   }

@@ -47,6 +47,15 @@ package object model {
   /** An algorithm to distribute students to workshops based on their topic selections. */
   type DistributionAlgorithm = (Topics, Workshops) => StudentsSelectedTopics => Option[WorkshopAssignments]
 
+  /** Indicates to stop if result is `true`. */
+  type ShallStop = () => Boolean
+
+  /**
+   * An algorithm to distribute students to workshops based on their topic selections,
+   * which stops when a given function indicates so.
+   */
+  type StoppableDistributionAlgorithm = ShallStop => DistributionAlgorithm
+
   def topicsFrom(topicsWithName: TopicsWithName): Topics =
     topicsWithName.view.mapValues { case (_, category) => category }.toMap
 
