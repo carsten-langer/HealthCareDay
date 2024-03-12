@@ -1,6 +1,7 @@
 package hcd.algorithms.randomroundrobin
 
 import com.typesafe.scalalogging.StrictLogging
+import hcd.model.Metric.metricGlobal
 import hcd.model.SelectionPriority.worstPrio
 import hcd.model._
 
@@ -11,7 +12,11 @@ object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
   def distributionAlgorithm: StoppableDistributionAlgorithm =
-    initThenDistribute((shallStop: ShallStop) => distributeUntilStop(None, 1L, shallStop))
+    (shallStop: ShallStop) =>
+      (topics: Topics, workshops: Workshops) =>
+        (studentsSelectedTopics: StudentsSelectedTopics) =>
+          initThenDistribute((_shallStop: ShallStop) =>
+            distributeUntilStop(_shallStop, workshops, studentsSelectedTopics))(shallStop)(topics, workshops)(studentsSelectedTopics)
 
   /**
    * This algorithm's distribution function for a single round for testing.
@@ -52,28 +57,44 @@ object Algorithm extends StrictLogging {
         }
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
-  @tailrec
-  private def distributeUntilStop(maybeAccWorkshopAssignments: Option[WorkshopAssignments],
-                                  round: Long,
-                                  shallStop: ShallStop,
-                                 )(
-                                   topics: Topics,
-                                   baseOrderedWorkshops: List[Workshop],
-                                   baseOrderedStudents: List[Student],
-                                 ): Option[WorkshopAssignments] =
-    if (shallStop())
-      maybeAccWorkshopAssignments
-    else {
-      logger.info(s"round: $round")
-      distributeUntilStop(
-        maybeAccWorkshopAssignments = shuffleThenDistribute(round)(topics, baseOrderedWorkshops, baseOrderedStudents),
-        round + 1L,
-        shallStop,
-      )(
-        topics,
-        baseOrderedWorkshops,
-        baseOrderedStudents,
+  private def distributeUntilStop(shallStop: ShallStop, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics): DistributeFromPreOrdered =
+    (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
+
+      // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
+      @tailrec
+      def _distributeUntilStop(maybeCurrentWorkshopAssignments: Option[WorkshopAssignments],
+                               maybeBestWorkshopAssignments: Option[WorkshopAssignments],
+                               bestMetric: Int,
+                               round: Long,
+                              ): Option[WorkshopAssignments] =
+        if (shallStop()) {
+          logger.info(s"requested to stop at round $round")
+          maybeBestWorkshopAssignments
+        } else {
+          val currentGlobalMetric = maybeCurrentWorkshopAssignments
+            .map(metricGlobal(topics, workshops, studentsSelectedTopics))
+            .map(_.m)
+            .getOrElse(Int.MaxValue)
+          val (nextMetric, nextMaybeBestWorkshopAssignments) = if (currentGlobalMetric < bestMetric) {
+            logger.info(s"round $round, found better metric $currentGlobalMetric")
+            (currentGlobalMetric, maybeCurrentWorkshopAssignments)
+          } else
+            (bestMetric, maybeBestWorkshopAssignments)
+          _distributeUntilStop(
+            maybeCurrentWorkshopAssignments = shuffleThenDistribute(round)(topics, baseOrderedWorkshops, baseOrderedStudents),
+            nextMaybeBestWorkshopAssignments,
+            nextMetric,
+            round + 1L,
+          )
+        }
+
+      _distributeUntilStop(
+        maybeCurrentWorkshopAssignments = None,
+        maybeBestWorkshopAssignments = None,
+        bestMetric = Int.MaxValue,
+        round = 0L,
       )
+
     }
 
   // From pre-ordered workshops and students create a new shuffled version and run the distribution.
