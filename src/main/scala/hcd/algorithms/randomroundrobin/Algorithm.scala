@@ -11,12 +11,13 @@ import scala.util.Random
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributionAlgorithm: StoppableDistributionAlgorithm =
-    (shallStop: ShallStop) =>
-      (topics: Topics, workshops: Workshops) =>
-        (studentsSelectedTopics: StudentsSelectedTopics) =>
-          initThenDistribute(
-            distributeUntilStop(shallStop, workshops, studentsSelectedTopics))(topics, workshops)(studentsSelectedTopics)
+  def distributionAlgorithm: StoppableDistributionAlgorithmSavingIntermediateStates =
+    (saveIntermediateState: WorkshopAssignments => Unit) =>
+      (shallStop: ShallStop) =>
+        (topics: Topics, workshops: Workshops) =>
+          (studentsSelectedTopics: StudentsSelectedTopics) =>
+            initThenDistribute(
+              distributeUntilStop(saveIntermediateState, shallStop, workshops, studentsSelectedTopics))(topics, workshops)(studentsSelectedTopics)
 
   /**
    * This algorithm's distribution function for a single round for testing.
@@ -56,7 +57,12 @@ object Algorithm extends StrictLogging {
       }
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
-  private def distributeUntilStop(shallStop: ShallStop, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics): DistributeFromPreOrdered =
+  private def distributeUntilStop(
+                                   saveIntermediateState: WorkshopAssignments => Unit,
+                                   shallStop: ShallStop,
+                                   workshops: Workshops,
+                                   studentsSelectedTopics: StudentsSelectedTopics,
+                                 ): DistributeFromPreOrdered =
     (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
 
       // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
@@ -76,6 +82,7 @@ object Algorithm extends StrictLogging {
             .getOrElse(Int.MaxValue)
           val (nextMetric, nextMaybeBestWorkshopAssignments) = if (currentGlobalMetric < bestMetric) {
             logger.info(s"round $round, found better metric $currentGlobalMetric")
+            maybeCurrentWorkshopAssignments.foreach(saveIntermediateState)
             (currentGlobalMetric, maybeCurrentWorkshopAssignments)
           } else
             (bestMetric, maybeBestWorkshopAssignments)

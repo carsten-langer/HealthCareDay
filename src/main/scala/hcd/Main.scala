@@ -2,7 +2,7 @@ package hcd
 
 import hcd.inout.CmdLineParser.parser
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
-import hcd.inout.OutputCsvConversion.{metricCsvFile, studentAssignmentsCsvFile, workshopAssignmentsCsvFile, writeDistribution}
+import hcd.inout.OutputCsvConversion._
 import hcd.inout.defaultCmdLineConfig
 import hcd.model.Verification.withVerification
 import hcd.model.{ShallStop, studentsSelectedTopicsFrom, topicsFrom}
@@ -18,20 +18,21 @@ object Main {
           (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
           studentsSelectedTopicsWithName <- readHcdStudentTopicSelection(config)
         } yield {
+          initWriteDistribution(config)
+          val saveIntermediateState = writeDistribution(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)
           val startDateTime = LocalDateTime.now()
           val searchLimit = startDateTime.plusSeconds(config.searchDuration.toSeconds)
 
           def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
 
-          val algorithm = withVerification(config.algorithm.distributionAlgorithm(shallStop))
+          val algorithm = withVerification(config.algorithm.distributionAlgorithm(saveIntermediateState)(shallStop))
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
-          val write = writeDistribution(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)
           algorithm(topics, workshops)(studentsSelectedTopics) match {
             case None => println("No distribution of students to workshops found!")
             case Some(workshopAssignments) =>
               println("Distribution of students to workshops found!")
-              write(workshopAssignments)
+              saveIntermediateState(workshopAssignments)
               println(s"Metric written to file $metricCsvFile")
               println(s"Workshop assignments written to file $workshopAssignmentsCsvFile")
               println(s"Student assignments written to file $studentAssignmentsCsvFile")

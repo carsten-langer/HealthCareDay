@@ -14,16 +14,25 @@ object OutputCsvConversion {
   val workshopAssignmentsCsvFile = new File("WorkshopAssignments.csv")
   val studentAssignmentsCsvFile = new File("StudentAssignments.csv")
 
+  def initWriteDistribution(config: CmdLineConfig): Unit = {
+    Using(CSVWriter.open(metricCsvFile)(csvFormat(config))) { writer =>
+      writer.writeRow(List("GlobalMetric", "MetricStudent1", "..."))
+    }
+    val otherFiles = Seq(workshopAssignmentsCsvFile, studentAssignmentsCsvFile)
+    otherFiles.foreach(_.delete())
+    otherFiles.foreach(_.createNewFile())
+  }
+
   private type WriteDistribution = CmdLineConfig => (TopicsWithName, Workshops, StudentsSelectedTopicsWithName) => WorkshopAssignments => Unit
 
   def writeDistribution: WriteDistribution =
     (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) =>
-          Seq(writeMetric, writeWorkshopAssignments, writeStudentAssignments)
+          Seq(appendMetric, writeWorkshopAssignments, writeStudentAssignments)
             .foreach(f => f(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)(workshopAssignments))
 
-  private def writeMetric: WriteDistribution =
+  private def appendMetric: WriteDistribution =
     (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) => {
@@ -31,8 +40,7 @@ object OutputCsvConversion {
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
           val globalMetric = metricGlobal(topics, workshops, studentsSelectedTopics)(workshopAssignments)
           val orderedStudentsMetrics = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
-          val _ = Using(CSVWriter.open(metricCsvFile)(csvFormat(config))) { writer =>
-            writer.writeRow(List("GlobalMetric", "MetricStudent1", "..."))
+          val _ = Using(CSVWriter.open(metricCsvFile, append = true)(csvFormat(config))) { writer =>
             writer.writeRow(List(globalMetric.m) ++ orderedStudentsMetrics.map(_.m))
           }
         }
