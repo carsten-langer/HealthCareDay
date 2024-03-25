@@ -56,6 +56,12 @@ package object model {
    */
   type StoppableDistributionAlgorithm = ShallStop => DistributionAlgorithm
 
+  /**
+   * An algorithm to distribute students to workshops based on their topic selections,
+   * which stops when a given function indicates so and has the option to save intermediate states.
+   */
+  type StoppableDistributionAlgorithmSavingIntermediateStates = (WorkshopAssignments => Unit) => StoppableDistributionAlgorithm
+
   def topicsFrom(topicsWithName: TopicsWithName): Topics =
     topicsWithName.view.mapValues { case (_, category) => category }.toMap
 
