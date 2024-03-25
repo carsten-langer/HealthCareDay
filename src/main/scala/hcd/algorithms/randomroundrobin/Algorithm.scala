@@ -15,8 +15,8 @@ object Algorithm extends StrictLogging {
     (shallStop: ShallStop) =>
       (topics: Topics, workshops: Workshops) =>
         (studentsSelectedTopics: StudentsSelectedTopics) =>
-          initThenDistribute((_shallStop: ShallStop) =>
-            distributeUntilStop(_shallStop, workshops, studentsSelectedTopics))(shallStop)(topics, workshops)(studentsSelectedTopics)
+          initThenDistribute(
+            distributeUntilStop(shallStop, workshops, studentsSelectedTopics))(topics, workshops)(studentsSelectedTopics)
 
   /**
    * This algorithm's distribution function for a single round for testing.
@@ -24,37 +24,36 @@ object Algorithm extends StrictLogging {
    * ignoring the shallStop signal.
    */
   protected[randomroundrobin] def distributeSingleRound: DistributionAlgorithm =
-    initThenDistribute(_ => distributeFromPreOrdered)(() => false)
+    initThenDistribute(distributeFromPreOrdered)
 
   // Create an ordered base of workshops and students and run the given distribution function on them.
-  private def initThenDistribute(distribute: ShallStop => DistributeFromPreOrdered): StoppableDistributionAlgorithm =
-    (shallStop: ShallStop) =>
-      (topics: Topics, workshops: Workshops) =>
-        (studentsSelectedTopics: StudentsSelectedTopics) => {
-          // Ordering of workshops and students is necessary for the unit tests to know the expected result.
-          // Re-ordering, i.e. shuffling, both workshops and students is part of each round of the algorithm.
+  private def initThenDistribute(distributeFromPreOrdered: DistributeFromPreOrdered): DistributionAlgorithm =
+    (topics: Topics, workshops: Workshops) =>
+      (studentsSelectedTopics: StudentsSelectedTopics) => {
+        // Ordering of workshops and students is necessary for the unit tests to know the expected result.
+        // Re-ordering, i.e. shuffling, both workshops and students is part of each round of the algorithm.
 
-          // Have a list of workshops with a baseline ordering which is immutable between multiple rounds of the
-          // algorithm, so that re-ordering it per round with different random seed is guaranteed to give reproducible
-          // results.
-          val baseOrderedWorkshops = workshops.toList.map {
-            case (workshopId, (topicId, timeSlot, grades, seats)) =>
-              Workshop(workshopId, topicId, timeSlot, grades, seats)
-          }.sortBy(_.workshopId.id)
+        // Have a list of workshops with a baseline ordering which is immutable between multiple rounds of the
+        // algorithm, so that re-ordering it per round with different random seed is guaranteed to give reproducible
+        // results.
+        val baseOrderedWorkshops = workshops.toList.map {
+          case (workshopId, (topicId, timeSlot, grades, seats)) =>
+            Workshop(workshopId, topicId, timeSlot, grades, seats)
+        }.sortBy(_.workshopId.id)
 
-          // Have a list of students and their topic selections with a baseline ordering which is immutable between
-          // multiple rounds of the algorithm, so that re-ordering it per round with different random seed is guaranteed
-          // to give reproducible results. Each student has the topic selections represented as a list ordered by the
-          // selection priority. The initial ordering between students is on the student id.
-          val baseOrderedStudentsWithOrderedSelections = studentsSelectedTopics.toList.map {
-            case (studentId, (grade, selectedTopics)) =>
-              val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
-              val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-              Student(algoPrio = 1, studentId.id, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
-          }.sortBy(_.sortingOrder)
+        // Have a list of students and their topic selections with a baseline ordering which is immutable between
+        // multiple rounds of the algorithm, so that re-ordering it per round with different random seed is guaranteed
+        // to give reproducible results. Each student has the topic selections represented as a list ordered by the
+        // selection priority. The initial ordering between students is on the student id.
+        val baseOrderedStudentsWithOrderedSelections = studentsSelectedTopics.toList.map {
+          case (studentId, (grade, selectedTopics)) =>
+            val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
+            val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
+            Student(algoPrio = 1, studentId.id, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
+        }.sortBy(_.sortingOrder)
 
-          distribute(shallStop)(topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
-        }
+        distributeFromPreOrdered(topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
+      }
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
   private def distributeUntilStop(shallStop: ShallStop, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics): DistributeFromPreOrdered =
