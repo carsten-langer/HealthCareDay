@@ -65,6 +65,8 @@ object Algorithm extends StrictLogging {
                                  ): DistributeFromPreOrdered =
     (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
 
+      val worstMetric = Int.MaxValue
+
       // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
       @tailrec
       def _distributeUntilStop(maybeCurrentWorkshopAssignments: Option[WorkshopAssignments],
@@ -79,7 +81,7 @@ object Algorithm extends StrictLogging {
           val currentGlobalMetric = maybeCurrentWorkshopAssignments
             .map(metricGlobal(topics, workshops, studentsSelectedTopics))
             .map(_.m)
-            .getOrElse(Int.MaxValue)
+            .getOrElse(worstMetric)
           val (nextMetric, nextMaybeBestWorkshopAssignments) = if (currentGlobalMetric < bestMetric) {
             logger.info(s"round $round, found better metric $currentGlobalMetric")
             maybeCurrentWorkshopAssignments.foreach(saveIntermediateState)
@@ -97,7 +99,7 @@ object Algorithm extends StrictLogging {
       _distributeUntilStop(
         maybeCurrentWorkshopAssignments = None,
         maybeBestWorkshopAssignments = None,
-        bestMetric = Int.MaxValue,
+        bestMetric = worstMetric,
         round = 0L,
       )
 
