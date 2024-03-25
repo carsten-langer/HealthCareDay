@@ -26,11 +26,12 @@ object Main {
           val algorithm = withVerification(config.algorithm.distributionAlgorithm(shallStop))
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
+          val write = writeDistribution(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)
           algorithm(topics, workshops)(studentsSelectedTopics) match {
             case None => println("No distribution of students to workshops found!")
             case Some(workshopAssignments) =>
               println("Distribution of students to workshops found!")
-              writeDistribution(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)(workshopAssignments)
+              write(workshopAssignments)
               println(s"Metric written to file $metricCsvFile")
               println(s"Workshop assignments written to file $workshopAssignmentsCsvFile")
               println(s"Student assignments written to file $studentAssignmentsCsvFile")
