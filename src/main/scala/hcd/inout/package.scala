@@ -7,7 +7,7 @@ import scala.concurrent.duration.Duration
 
 package object inout {
 
-  val DefaultInputConfig: InputConfig = InputConfig(
+  val defaultCmdLineConfig: CmdLineConfig = CmdLineConfig(
     algorithm = Algorithm.RandomRoundRobin,
     searchDuration = Duration("60s"),
 

@@ -14,17 +14,17 @@ object OutputCsvConversion {
   val workshopAssignmentsCsvFile = new File("WorkshopAssignments.csv")
   val studentAssignmentsCsvFile = new File("StudentAssignments.csv")
 
-  private type WriteDistribution = InputConfig => (TopicsWithName, Workshops, StudentsSelectedTopicsWithName) => WorkshopAssignments => Unit
+  private type WriteDistribution = CmdLineConfig => (TopicsWithName, Workshops, StudentsSelectedTopicsWithName) => WorkshopAssignments => Unit
 
   def writeDistribution: WriteDistribution =
-    (config: InputConfig) =>
+    (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) =>
           Seq(writeMetric, writeWorkshopAssignments, writeStudentAssignments)
             .foreach(f => f(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)(workshopAssignments))
 
   private def writeMetric: WriteDistribution =
-    (config: InputConfig) =>
+    (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) => {
           val topics = topicsFrom(topicsWithName)
@@ -38,7 +38,7 @@ object OutputCsvConversion {
         }
 
   private def writeWorkshopAssignments: WriteDistribution =
-    (config: InputConfig) =>
+    (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
@@ -74,7 +74,7 @@ object OutputCsvConversion {
         }
 
   private def writeStudentAssignments: WriteDistribution =
-    (config: InputConfig) =>
+    (config: CmdLineConfig) =>
       (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
         (workshopAssignments: WorkshopAssignments) => {
           val studentAssignments = studentAssignmentsFrom(workshopAssignments)
@@ -117,7 +117,7 @@ object OutputCsvConversion {
           }
         }
 
-  private def csvFormat(config: InputConfig) =
+  private def csvFormat(config: CmdLineConfig) =
     new DefaultCSVFormat {
       override val delimiter: Char = config.oDelimiter
     }

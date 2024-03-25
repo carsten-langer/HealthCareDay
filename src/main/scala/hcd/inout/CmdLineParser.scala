@@ -9,12 +9,12 @@ import scala.concurrent.duration.Duration
 
 object CmdLineParser {
 
-  private val builder = OParser.builder[InputConfig]
+  private val builder = OParser.builder[CmdLineConfig]
 
-  val parser: OParser[Unit, InputConfig] = {
+  val parser: OParser[Unit, CmdLineConfig] = {
     import builder._
     //val nl = sys.props("line.separator")
-    val d = DefaultInputConfig
+    val d = defaultCmdLineConfig
 
     OParser.sequence(
       head(BuildInfo.name, BuildInfo.version),
