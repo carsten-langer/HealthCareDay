@@ -60,7 +60,14 @@ package object model {
    * An algorithm to distribute students to workshops based on their topic selections,
    * which stops when a given function indicates so and has the option to save intermediate states.
    */
-  type StoppableDistributionAlgorithmSavingIntermediateStates = (WorkshopAssignments => Unit) => StoppableDistributionAlgorithm
+  private type StoppableDistributionAlgorithmSavingIntermediateStates = (WorkshopAssignments => Unit) => StoppableDistributionAlgorithm
+
+  /**
+   * An algorithm to distribute students to workshops based on their topic selections,
+   * which stops when a given function indicates so and has the option to save intermediate states,
+   * and has an initial seed .
+   */
+  type InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = Long => StoppableDistributionAlgorithmSavingIntermediateStates
 
   def topicsFrom(topicsWithName: TopicsWithName): Topics =
     topicsWithName.view.mapValues { case (_, category) => category }.toMap

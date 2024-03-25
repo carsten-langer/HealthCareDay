@@ -33,6 +33,10 @@ object CmdLineParser {
         .valueName("<duration>")
         .action((x, c) => c.copy(searchDuration = x))
         .text(s"The duration how long the algorithm shall search for a distribution, e.g. 3600s, 60m, 1h, default: ${d.searchDuration.toSeconds}s"),
+      opt[Long]("initialSeed")
+        .valueName("<initialSeed>")
+        .action((x, c) => c.copy(initialSeed = x))
+        .text(s"The initial seed for randomness, default: ${d.initialSeed}"),
 
       note("Options for reading in the HCD workshop planning CSV file:"),
       opt[Char]("wDelimiter")

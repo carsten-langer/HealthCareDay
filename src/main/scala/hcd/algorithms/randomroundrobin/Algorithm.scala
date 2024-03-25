@@ -11,13 +11,15 @@ import scala.util.Random
 object Algorithm extends StrictLogging {
 
   /** This algorithm's distribution function. */
-  def distributionAlgorithm: StoppableDistributionAlgorithmSavingIntermediateStates =
-    (saveIntermediateState: WorkshopAssignments => Unit) =>
-      (shallStop: ShallStop) =>
-        (topics: Topics, workshops: Workshops) =>
-          (studentsSelectedTopics: StudentsSelectedTopics) =>
-            initThenDistribute(
-              distributeUntilStop(saveIntermediateState, shallStop, workshops, studentsSelectedTopics))(topics, workshops)(studentsSelectedTopics)
+  def distributionAlgorithm: InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = {
+    (initialSeed: Long) =>
+      (saveIntermediateState: WorkshopAssignments => Unit) =>
+        (shallStop: ShallStop) =>
+          (topics: Topics, workshops: Workshops) =>
+            (studentsSelectedTopics: StudentsSelectedTopics) =>
+              initThenDistribute(
+                distributeUntilStop(initialSeed, saveIntermediateState, shallStop, workshops, studentsSelectedTopics))(topics, workshops)(studentsSelectedTopics)
+  }
 
   /**
    * This algorithm's distribution function for a single round for testing.
@@ -58,6 +60,7 @@ object Algorithm extends StrictLogging {
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
   private def distributeUntilStop(
+                                   initialSeed: Long,
                                    saveIntermediateState: WorkshopAssignments => Unit,
                                    shallStop: ShallStop,
                                    workshops: Workshops,
@@ -89,7 +92,7 @@ object Algorithm extends StrictLogging {
           } else
             (bestMetric, maybeBestWorkshopAssignments)
           _distributeUntilStop(
-            maybeCurrentWorkshopAssignments = shuffleThenDistribute(round)(topics, baseOrderedWorkshops, baseOrderedStudents),
+            maybeCurrentWorkshopAssignments = shuffleThenDistribute(initialSeed + round)(topics, baseOrderedWorkshops, baseOrderedStudents),
             nextMaybeBestWorkshopAssignments,
             nextMetric,
             round + 1L,

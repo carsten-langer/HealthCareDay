@@ -10,6 +10,7 @@ package object inout {
   val defaultCmdLineConfig: CmdLineConfig = CmdLineConfig(
     algorithm = Algorithm.RandomRoundRobin,
     searchDuration = Duration("60s"),
+    initialSeed = 0L,
 
     // workshop planning CSV file
     wFile = new File(""),
