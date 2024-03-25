@@ -10,7 +10,7 @@ import scala.util.{Try, Using}
 
 object InputCsvConversion extends StrictLogging {
 
-  def readHcdWorkshopPlanning(config: InputConfig): Try[(TopicsWithName, Workshops)] = {
+  def readHcdWorkshopPlanning(config: CmdLineConfig): Try[(TopicsWithName, Workshops)] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.wDelimiter
@@ -82,7 +82,7 @@ object InputCsvConversion extends StrictLogging {
 
   }
 
-  def readHcdStudentTopicSelection(config: InputConfig): Try[StudentsSelectedTopicsWithName] = {
+  def readHcdStudentTopicSelection(config: CmdLineConfig): Try[StudentsSelectedTopicsWithName] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.sDelimiter
@@ -121,7 +121,7 @@ object InputCsvConversion extends StrictLogging {
 
   }
 
-  private def excludedTopics(config: InputConfig): Set[TopicId] = config.wFullDayTopics.map(TopicId).toSet
+  private def excludedTopics(config: CmdLineConfig): Set[TopicId] = config.wFullDayTopics.map(TopicId).toSet
 
   private def to[A](f: Int => A)(s: String): A = f(s.trim.toInt)
 

@@ -1,9 +1,9 @@
 package hcd
 
 import hcd.inout.CmdLineParser.parser
-import hcd.inout.DefaultInputConfig
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
 import hcd.inout.OutputCsvConversion.{metricCsvFile, studentAssignmentsCsvFile, workshopAssignmentsCsvFile, writeDistribution}
+import hcd.inout.defaultCmdLineConfig
 import hcd.model.Verification.withVerification
 import hcd.model.{ShallStop, studentsSelectedTopicsFrom, topicsFrom}
 import scopt.OParser
@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 
 object Main {
   def main(args: Array[String]): Unit =
-    OParser.parse(parser, args, DefaultInputConfig) match {
+    OParser.parse(parser, args, defaultCmdLineConfig) match {
       case Some(config) =>
         val _ = for {
           (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
