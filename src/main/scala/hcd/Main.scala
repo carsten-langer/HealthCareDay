@@ -25,7 +25,7 @@ object Main {
 
           def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
 
-          val algorithm = withVerification(config.algorithm.distributionAlgorithm(saveIntermediateState)(shallStop))
+          val algorithm = withVerification(config.algorithm.distributionAlgorithm(config.initialSeed)(saveIntermediateState)(shallStop))
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
           algorithm(topics, workshops)(studentsSelectedTopics) match {

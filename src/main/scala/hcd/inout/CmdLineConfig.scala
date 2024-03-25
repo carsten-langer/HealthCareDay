@@ -8,6 +8,7 @@ import scala.concurrent.duration.Duration
 case class CmdLineConfig(
                           algorithm: Algorithm,
                           searchDuration: Duration,
+                          initialSeed: Long,
 
                           // workshop planning CSV file
                           wFile: File,
