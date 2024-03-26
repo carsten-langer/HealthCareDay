@@ -5,6 +5,7 @@ import hcd.model.Metric.metricGlobal
 import hcd.model.SelectionPriority.worstPrio
 import hcd.model._
 
+import java.time.LocalTime
 import scala.annotation.tailrec
 import scala.util.Random
 
@@ -76,6 +77,9 @@ object Algorithm extends StrictLogging {
     (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
 
       val worstMetric = Int.MaxValue
+      val startSeconds = LocalTime.now().toSecondOfDay
+
+      def secondsUntilNow: Int = LocalTime.now().toSecondOfDay - startSeconds
 
       // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
       @tailrec
@@ -85,7 +89,7 @@ object Algorithm extends StrictLogging {
                                round: Long,
                               ): Option[WorkshopAssignments] =
         if (shallStop()) {
-          logger.info(s"requested to stop at round $round")
+          logger.info(s"requested to stop at round $round after $secondsUntilNow seconds.")
           maybeBestWorkshopAssignments
         } else {
           val currentGlobalMetric = maybeCurrentWorkshopAssignments
@@ -93,7 +97,7 @@ object Algorithm extends StrictLogging {
             .map(_.m)
             .getOrElse(worstMetric)
           val (nextMetric, nextMaybeBestWorkshopAssignments) = if (currentGlobalMetric < bestMetric) {
-            logger.info(s"round $round, found better metric $currentGlobalMetric")
+            logger.info(s"found better metric $currentGlobalMetric at round $round after $secondsUntilNow seconds.")
             maybeCurrentWorkshopAssignments.foreach(saveIntermediateState)
             (currentGlobalMetric, maybeCurrentWorkshopAssignments)
           } else
