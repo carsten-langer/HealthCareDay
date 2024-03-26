@@ -52,7 +52,14 @@ object Algorithm extends StrictLogging {
           case (studentId, (grade, selectedTopics)) =>
             val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
             val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-            Student(algoPrio = 1, studentId.id, studentId, grade, orderedTopicSelection, allTimeSlots, assignedTopics = Set.empty)
+            Student(
+              algoPrio = 1,
+              sortingOrder = studentId.id,
+              studentId = studentId,
+              grade = grade,
+              topicSelections = orderedTopicSelection,
+              unassignedTimeSlots = allTimeSlots,
+              assignedTopics = Set.empty)
         }.sortBy(_.sortingOrder)
 
         distributeFromPreOrdered(topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
