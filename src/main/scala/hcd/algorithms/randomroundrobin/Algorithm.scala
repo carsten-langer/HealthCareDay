@@ -200,13 +200,13 @@ object Algorithm extends StrictLogging {
                       unassignedTimeSlots = updatedTimeSlots,
                       assignedTopics = updatedAssignedTopics,
                     )
-                    // While it does not make a difference for the resulting total order if we write
-                    // (updatedStudent :: nextStudents).sortBy() or
-                    // (nextStudents :+ updatedStudent).sortBy(), as long as the student.sortingOrder is unique,
-                    // the latter expresses better that students just assigned go the back of the list.
-                    // It may also have a performance improvement if the uses sorting algorithm handles nearly-sorted
-                    // lists well.
-                    (nextStudents :+ updatedStudent).sortBy(s => (s.algoPrio, s.sortingOrder))
+                    // The student goes back in the list to a new place. The following usage of span is about 3 times
+                    // faster than a solution with sortBy.
+                    // nextStudents :+ updatedStudent).sortBy(s => (s.algoPrio, s.sortingOrder))
+                    val (lesserAlgoPrio, sameOrGreaterAlgoPrio) = nextStudents.span(_.algoPrio < updatedStudent.algoPrio)
+                    val (sameAlgoprio, greaterAlgoPrio) = sameOrGreaterAlgoPrio.span(_.algoPrio == updatedStudent.algoPrio)
+                    val (lesserSortingOrder, greaterSortingOrder) = sameAlgoprio.span(_.sortingOrder < updatedStudent.sortingOrder)
+                    (lesserAlgoPrio ++ lesserSortingOrder :+ updatedStudent) ++ greaterSortingOrder ++ greaterAlgoPrio
                   }
                 recursion12(findWorkshopId)(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
             }
