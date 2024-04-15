@@ -89,9 +89,10 @@ object OutputCsvConversion {
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
             val topics = topicsFrom(topicsWithName)
             writer.writeRow(List("StudentId", "StudentName", "Grade", "Metric", "OneOfFirstThree",
-              "TimeSlot1", "WorkshopId1", "TopicId1", "TopicName1", "Category1", "Prio1",
-              "TimeSlot2", "WorkshopId2", "TopicId2", "TopicName2", "Category2", "Prio2",
-              "TimeSlot3", "WorkshopId3", "TopicId3", "TopicName3", "Category3", "Prio3",
+              "TS1Prio", "TS2Prio", "TS3Prio",
+              "TopicId1", "WorkshopId1", "TopicName1", "Category1",
+              "TopicId2", "WorkshopId2", "TopicName2", "Category2",
+              "TopicId3", "WorkshopId3", "TopicName3", "Category3",
             ))
             studentAssignments
               .toList
@@ -103,17 +104,19 @@ object OutputCsvConversion {
                 val oneOfFirstThree = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
                   assignedTopicIds.contains(topicId) && prio <= 3
                 }
-                val assignedWorkshops = assignedWorkshopIds.map { workshopId =>
-                    val (topicId, timeSlot, _, _) = workshops(workshopId)
-                    val (topicName, category) = topicsWithName(topicId)
-                    val selectionPriority = selectedTopics.get(topicId) match {
-                      case Some(selectionPriority) => selectionPriority
-                      case None if selectedTopics.isEmpty => unselectedPrio
-                      case None => unwantedSelectionPrio
-                    }
-                    (timeSlot, List[Any](timeSlot.ts, workshopId.id, topicId.id, topicName, category, selectionPriority.prio))
-                  }.toList.sortBy { case (timeSlot, _) => timeSlot.ts }
-                  .flatMap { case (_, list) => list }
+                val assignedWorkshopsWithPrios = assignedWorkshopIds.map { workshopId =>
+                  val (topicId, timeSlot, _, _) = workshops(workshopId)
+                  val (topicName, category) = topicsWithName(topicId)
+                  val selectionPriority = selectedTopics.get(topicId) match {
+                    case Some(selectionPriority) => selectionPriority
+                    case None if selectedTopics.isEmpty => unselectedPrio
+                    case None => unwantedSelectionPrio
+                  }
+                  (timeSlot, selectionPriority.prio, List[Any](topicId.id, workshopId.id, topicName, category))
+                }.toList.sortBy { case (timeSlot, _, _) => timeSlot.ts }
+                val assignedPrios = assignedWorkshopsWithPrios.map { case (_, prio, _) => prio }
+                val assignedWorkshopsWithoutPrios = assignedWorkshopsWithPrios.flatMap { case (_, _, list) => list }
+                val assignedWorkshops = assignedPrios ++ assignedWorkshopsWithoutPrios
                 writer.writeRow(List[Any](
                   studentId.id,
                   studentName,
