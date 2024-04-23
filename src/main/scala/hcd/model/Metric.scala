@@ -7,11 +7,12 @@ final case class Metric(m: Int) extends AnyVal
 
 object Metric extends StrictLogging {
 
-  private val neutralMetric: Metric = Metric(0)
-  private val bonusMetricGroup: Metric = Metric(-6) // compensation for simple metrics for selection prios (1 + 2 + 3), see below for details
-  private val malusMetricNoneOfFirstPrios: Metric = Metric(10000)
-  private val malusMetricUnwantedTopic: Metric = Metric(7)
-  private val malusMetricSports: Metric = Metric(1000)
+  private val neutralMetric = Metric(0)
+  private val bonusMetricGroup = Metric(-6) // compensation for simple metrics for selection prios (1 + 2 + 3), see below for details
+  private val malusMetricNoneOfFirstPrios = Metric(10000)
+  private val malusMetricUnwantedTopic = Metric(7)
+  private val malusMetricSports = Metric(1000)
+  private val malusMetricSparseWorkshop = Metric(10000)
 
   val initialMetric: Metric = neutralMetric
 
@@ -19,11 +20,13 @@ object Metric extends StrictLogging {
 
   def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
 
-  def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric =
-    orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments) match {
+  def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric = {
+    val metricStudents = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments) match {
       case Nil => initialMetric
       case ::(head, next) => add(head, next)
     }
+    add(metricStudents, metricWorkshops(workshopAssignments))
+  }
 
   def orderedMetricsStudents(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): List[Metric] =
     studentAssignmentsFrom(workshopAssignments)
@@ -79,6 +82,13 @@ object Metric extends StrictLogging {
   /** Malus if a combo contains only sports category. */
   def metricFromCategories(categories: Iterable[Category]): Metric =
     if (categories.forall(_ == Sports)) malusMetricSports
+    else neutralMetric
+
+  def metricWorkshops(workshopAssignments: WorkshopAssignments): Metric =
+    add(neutralMetric, workshopAssignments.map { case (_, students) => metricWorkshop(students.size) })
+
+  def metricWorkshop(filledSeats: Int): Metric =
+    if (filledSeats >= 1 && filledSeats <= 5) malusMetricSparseWorkshop
     else neutralMetric
 
 }

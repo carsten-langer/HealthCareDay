@@ -1,7 +1,7 @@
 package hcd.inout
 
 import com.github.tototoshi.csv.{CSVWriter, DefaultCSVFormat}
-import hcd.model.Metric.{metricGlobal, metricStudent, orderedMetricsStudents}
+import hcd.model.Metric._
 import hcd.model.SelectionPriority.{unselectedPrio, unwantedSelectionPrio}
 import hcd.model._
 
@@ -16,7 +16,7 @@ object OutputCsvConversion {
 
   def initWriteDistribution(config: CmdLineConfig): Unit = {
     Using(CSVWriter.open(metricCsvFile)(csvFormat(config))) { writer =>
-      writer.writeRow(List("GlobalMetric", "MetricStudent1", "..."))
+      writer.writeRow(List("GlobalMetric", "MetricWorkshops", "MetricStudent1", "..."))
     }
     val otherFiles = Seq(workshopAssignmentsCsvFile, studentAssignmentsCsvFile)
     otherFiles.foreach(_.delete())
@@ -39,9 +39,10 @@ object OutputCsvConversion {
           val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
           val globalMetric = metricGlobal(topics, workshops, studentsSelectedTopics)(workshopAssignments)
+          val workshopsMetric = metricWorkshops(workshopAssignments)
           val orderedStudentsMetrics = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
           val _ = Using(CSVWriter.open(metricCsvFile, append = true)(csvFormat(config))) { writer =>
-            writer.writeRow(List(globalMetric.m) ++ orderedStudentsMetrics.map(_.m))
+            writer.writeRow(List(globalMetric.m, workshopsMetric.m) ++ orderedStudentsMetrics.map(_.m))
           }
         }
 
@@ -51,7 +52,7 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Grades",
-              "Seats", "UsedSeats", "LeftSeats", "Student1", "Student2", "..."))
+              "Seats", "UsedSeats", "LeftSeats", "WorkshopMetric", "Student1", "Student2", "..."))
             workshopAssignments
               .toList
               .sortBy { case (WorkshopId(id), _) => id }
@@ -61,6 +62,7 @@ object OutputCsvConversion {
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
                 val leftSeats = seats - usedSeats
+                val workshopMetric = metricWorkshop(usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
                   val (studentName, _, _) = studentsSelectedTopicsWithName(studentId)
@@ -75,7 +77,8 @@ object OutputCsvConversion {
                   grades,
                   seats,
                   usedSeats,
-                  leftSeats
+                  leftSeats,
+                  workshopMetric,
                 ) ++ students)
               }
           }
