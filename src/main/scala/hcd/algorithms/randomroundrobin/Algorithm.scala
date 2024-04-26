@@ -135,7 +135,7 @@ object Algorithm extends StrictLogging {
     (topics: Topics, orderedWorkshops: List[Workshop], orderedStudents: List[Student]) => {
 
       def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
-        topicCandidates.toList.map(topics).count(_ == category) < 3
+        topicCandidates.toList.map(topics).count { case (_, thisCategory) => thisCategory == category } < 3
 
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         hasNot3TimesGivenCategory(topicCandidates, Nutrition) && hasNot3TimesGivenCategory(topicCandidates, Relaxation)

@@ -5,7 +5,7 @@ import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorksh
 import hcd.inout.OutputCsvConversion._
 import hcd.inout.defaultCmdLineConfig
 import hcd.model.Verification.withVerification
-import hcd.model.{ShallStop, studentsSelectedTopicsFrom, topicsFrom}
+import hcd.model.{ShallStop, studentsSelectedTopicsFrom}
 import scopt.OParser
 
 import java.time.LocalDateTime
@@ -15,18 +15,17 @@ object Main {
     OParser.parse(parser, args, defaultCmdLineConfig) match {
       case Some(config) =>
         val _ = for {
-          (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
+          (topics, workshops) <- readHcdWorkshopPlanning(config)
           studentsNameSelectedTopics <- readHcdStudentTopicSelection(config)
         } yield {
           initWriteDistribution(config)
-          val saveIntermediateState = writeDistribution(config)(topicsWithName, workshops, studentsNameSelectedTopics)
+          val saveIntermediateState = writeDistribution(config)(topics, workshops, studentsNameSelectedTopics)
           val startDateTime = LocalDateTime.now()
           val searchLimit = startDateTime.plusSeconds(config.searchDuration.toSeconds)
 
           def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
 
           val algorithm = withVerification(config.algorithm.distributionAlgorithm(config.initialSeed)(saveIntermediateState)(shallStop))
-          val topics = topicsFrom(topicsWithName)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsNameSelectedTopics)
           algorithm(topics, workshops)(studentsSelectedTopics) match {
             case None => println("No distribution of students to workshops found!")

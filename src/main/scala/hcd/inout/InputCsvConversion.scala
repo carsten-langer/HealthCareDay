@@ -10,7 +10,7 @@ import scala.util.{Try, Using}
 
 object InputCsvConversion extends StrictLogging {
 
-  def readHcdWorkshopPlanning(config: CmdLineConfig): Try[(TopicsWithName, Workshops)] = {
+  def readHcdWorkshopPlanning(config: CmdLineConfig): Try[(Topics, Workshops)] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.wDelimiter

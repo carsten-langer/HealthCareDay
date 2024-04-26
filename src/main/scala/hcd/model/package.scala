@@ -9,11 +9,8 @@ import io.cvbio.collection.mutable.bimap.BiMap
  */
 package object model {
 
-  /** All topics with their category. */
-  type Topics = Map[TopicId, Category]
-
   /** All topics with their name and category. */
-  type TopicsWithName = Map[TopicId, (String, Category)]
+  type Topics = Map[TopicId, (String, Category)]
 
   /**
    * Which workshop topic is selected with which priority (per student).
@@ -68,9 +65,6 @@ package object model {
    * and has an initial seed.
    */
   type InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = Long => StoppableDistributionAlgorithmSavingIntermediateStates
-
-  def topicsFrom(topicsWithName: TopicsWithName): Topics =
-    topicsWithName.view.mapValues { case (_, category) => category }.toMap
 
   def studentsSelectedTopicsFrom(studentsNameSelectedTopics: StudentsNameSelectedTopics): StudentsSelectedTopics =
     studentsNameSelectedTopics.view.mapValues { case (_, grade, selectedTopics) => (grade, selectedTopics) }.toMap
