@@ -16,14 +16,14 @@ lazy val root = (project in file("."))
   )
 
 // https://www.scalatest.org/install
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.17" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % "test"
 
 // https://www.scalatest.org/plus/scalacheck
-libraryDependencies += "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % "test"
+libraryDependencies += "org.scalatestplus" %% "scalacheck-1-17" % "3.2.18.0" % "test"
 
 // https://scalacheck.org/download.html, do not trust the version shown there but check from "The Central Repository":
 // https://central.sonatype.com/artifact/org.scalacheck/scalacheck_2.13
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.17.0" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.18.0" % "test"
 
 // https://github.com/clintval/bimap/tree/main
 libraryDependencies += "io.cvbio.collection.mutable" %% "bimap" % "2.0.0"
@@ -31,7 +31,7 @@ libraryDependencies += "io.cvbio.collection.mutable" %% "bimap" % "2.0.0"
 // https://github.com/lightbend-labs/scala-logging
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
 // https://www.slf4j.org/manual.html#projectDep
-libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.10"
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.13"
 
 // https://github.com/scopt/scopt
 libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
