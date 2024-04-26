@@ -16,7 +16,6 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 0)
 
         distributeSingleRound(Map.empty, Map.empty)(Map.empty).value shouldBe empty
-        distributeSingleRound(Map.empty, f.workshops)(Map.empty).value shouldBe empty
         distributeSingleRound(f.topics, f.workshops)(Map.empty).value shouldBe empty
       }
 
@@ -24,7 +23,6 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 1)
         val expectedWorkshopAssignments = f.workshops.view.mapValues(_ => Set.empty).toMap
 
-        distributeSingleRound(Map.empty, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
         distributeSingleRound(f.topics, f.workshops)(Map.empty).value shouldEqual expectedWorkshopAssignments
       }
 

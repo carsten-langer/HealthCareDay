@@ -50,14 +50,14 @@ object OutputCsvConversion {
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
-            writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Grades",
+            writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Preassigned", "Grades",
               "Seats", "UsedSeats", "LeftSeats", "WorkshopMetric", "Student1", "Student2", "..."))
             workshopAssignments
               .toList
               .sortBy { case (WorkshopId(id), _) => id }
               .foreach { case (workshopId, unsortedStudentIds) =>
                 val (topicId, timeSlot, unorderedGrades, Seats(seats)) = workshops(workshopId)
-                val (topicName, category) = topics(topicId)
+                val (topicName, category, preassigned) = topics(topicId)
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
                 val leftSeats = seats - usedSeats
@@ -73,6 +73,7 @@ object OutputCsvConversion {
                   topicName,
                   timeSlot.ts,
                   category,
+                  preassigned,
                   grades,
                   seats,
                   usedSeats,
@@ -91,9 +92,9 @@ object OutputCsvConversion {
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("StudentId", "StudentName", "Grade", "Metric", "OneOfFirstThree",
               "TS1Prio", "TS2Prio", "TS3Prio",
-              "TopicId1", "WorkshopId1", "TopicName1", "Category1",
-              "TopicId2", "WorkshopId2", "TopicName2", "Category2",
-              "TopicId3", "WorkshopId3", "TopicName3", "Category3",
+              "TopicId1", "WorkshopId1", "TopicName1", "Category1", "Preassigned1",
+              "TopicId2", "WorkshopId2", "TopicName2", "Category2", "Preassigned2",
+              "TopicId3", "WorkshopId3", "TopicName3", "Category3", "Preassigned3",
             ))
             studentAssignments
               .toList
@@ -107,13 +108,13 @@ object OutputCsvConversion {
                 }
                 val assignedWorkshopsWithPrios = assignedWorkshopIds.map { workshopId =>
                   val (topicId, timeSlot, _, _) = workshops(workshopId)
-                  val (topicName, category) = topics(topicId)
+                  val (topicName, category, preassigned) = topics(topicId)
                   val selectionPriority = selectedTopics.get(topicId) match {
                     case Some(selectionPriority) => selectionPriority
                     case None if selectedTopics.isEmpty => unselectedPrio
                     case None => unwantedSelectionPrio
                   }
-                  (timeSlot, selectionPriority.prio, List[Any](topicId.id, workshopId.id, topicName, category))
+                  (timeSlot, selectionPriority.prio, List[Any](topicId.id, workshopId.id, topicName, category, preassigned))
                 }.toList.sortBy { case (timeSlot, _, _) => timeSlot.ts }
                 val assignedPrios = assignedWorkshopsWithPrios.map { case (_, prio, _) => prio }
                 val assignedWorkshopsWithoutPrios = assignedWorkshopsWithPrios.flatMap { case (_, _, list) => list }

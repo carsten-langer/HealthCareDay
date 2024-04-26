@@ -9,8 +9,11 @@ import io.cvbio.collection.mutable.bimap.BiMap
  */
 package object model {
 
-  /** All topics with their name and category. */
-  type Topics = Map[TopicId, (String, Category)]
+  /** Boolean flag if a topic is pre-assigned or not. */
+  type Preassigned = Boolean
+
+  /** All topics with their name and category and pre-assignment flag. */
+  type Topics = Map[TopicId, (String, Category, Preassigned)]
 
   /**
    * Which workshop topic is selected with which priority (per student).

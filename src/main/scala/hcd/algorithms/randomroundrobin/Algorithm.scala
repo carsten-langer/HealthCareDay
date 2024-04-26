@@ -134,8 +134,14 @@ object Algorithm extends StrictLogging {
   private val distributeFromPreOrdered: DistributeFromPreOrdered =
     (topics: Topics, orderedWorkshops: List[Workshop], orderedStudents: List[Student]) => {
 
+      val (preassignedWorkshops, normalWorkshops) = orderedWorkshops.partition(workshop =>
+        topics(workshop.topicId) match {
+          case (_, _, preassigned) => preassigned
+        }
+      )
+
       def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
-        topicCandidates.toList.map(topics).count { case (_, thisCategory) => thisCategory == category } < 3
+        topicCandidates.toList.map(topics).count { case (_, thisCategory, _) => thisCategory == category } < 3
 
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         hasNot3TimesGivenCategory(topicCandidates, Nutrition) && hasNot3TimesGivenCategory(topicCandidates, Relaxation)
@@ -143,20 +149,84 @@ object Algorithm extends StrictLogging {
       def haveMaxVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         haveMinVaryingCategories(topicCandidates) && hasNot3TimesGivenCategory(topicCandidates, Sports)
 
+      // Collect first workshop from given list of workshops which fulfills some mandatory criteria and also
+      // the given criteria on the set of to-be-assigned topics
+      def collectFirstWorkshop(workshops: List[Workshop], isAssignable: Set[TopicId] => Boolean)(student: Student, workshopAssignments: WorkshopAssignments)(topicSelection: TopicSelection) =
+        workshops.collectFirst {
+          case Workshop(workshopId, topicId, timeSlot, grades, seats)
+            if topicId == topicSelection.topicId &&
+              student.unassignedTimeSlots.contains(timeSlot) &&
+              grades.contains(student.grade) &&
+              workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n &&
+              isAssignable(student.assignedTopics + topicId) =>
+            logger.trace(s"found: $workshopId at $timeSlot for $student.")
+            Holder((workshopId, topicId, topicSelection.selectionPriority, timeSlot))
+        }
+
+      // Initial distribution for pre-assigned topics: For each student, select the next workshop which corresponds to
+      // the pre-assigned topic.
+      def findWorkshopId0: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
+        object ExtractorFindWorkshopForTopic {
+          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
+            collectFirstWorkshop(preassignedWorkshops, isAssignable = _ => true)(student, workshopAssignments)(topicSelection)
+        }
+
+        student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
+      }
+
+      // Initial round of distribution only for pre-assigned topics:
+      // For each student who selected a preassigned topic, select the first corresponding workshop.
+      // Leave everything else to the next round.
+      @tailrec
+      def recursion0(
+                      accWorkshopAssignments: WorkshopAssignments,
+                      accUndistributableStudents: List[Student],
+                      remainingStudentsToDistribute: List[Student],
+                    ): Option[(WorkshopAssignments, List[Student])] =
+        remainingStudentsToDistribute match {
+          case Nil =>
+            logger.debug("Successful end of recursion0.")
+            Some((accWorkshopAssignments, accUndistributableStudents))
+          case ::(headStudent@Student(_, _, studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            findWorkshopId0(headStudent, accWorkshopAssignments) match {
+              case None =>
+                // skip this student as no pre-assigned workshops could be found anymore (or at all), the student will get assigned workshops from next round.
+                val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
+                recursion0(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
+              case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
+                val updatedWorkshopAssignments = accWorkshopAssignments
+                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
+                val updatedStudents =
+                  if (updatedTimeSlots.isEmpty)
+                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
+                  else {
+                    val updatedTopicSelections = topicSelections.filterNot(_.topicId == foundTopicId)
+                    val updatedAssignedTopics = assignedTopics + foundTopicId
+                    val updatedStudent = headStudent.copy(
+                      topicSelections = updatedTopicSelections,
+                      unassignedTimeSlots = updatedTimeSlots,
+                      assignedTopics = updatedAssignedTopics,
+                    )
+                    updatedStudent :: nextStudents
+                  }
+                recursion0(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
+            }
+        }
+
+      val maybeDistribution0 = recursion0(
+        accWorkshopAssignments = Map.empty,
+        accUndistributableStudents = List.empty,
+        remainingStudentsToDistribute = orderedStudents
+      )
+      logger.debug(s"maybeDistribution0: $maybeDistribution0")
+
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            orderedWorkshops.collectFirst {
-              case Workshop(workshopId, topicSelection.topicId, timeSlot, grades, seats)
-                if student.unassignedTimeSlots.contains(timeSlot) &&
-                  grades.contains(student.grade) &&
-                  workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n &&
-                  haveMaxVaryingCategories(student.assignedTopics + topicSelection.topicId) =>
-                logger.trace(s"found1: $workshopId at $timeSlot for $student.")
-                Holder((workshopId, topicSelection.topicId, topicSelection.selectionPriority, timeSlot))
-            }
+            collectFirstWorkshop(normalWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
         }
 
         student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
@@ -209,17 +279,19 @@ object Algorithm extends StrictLogging {
             }
         }
 
-      val maybeDistribution1 = recursion12(findWorkshopId1)(
-        accWorkshopAssignments = Map.empty,
-        accUndistributableStudents = List.empty,
-        remainingStudentsToDistribute = orderedStudents
-      )
+      val maybeDistribution1 = maybeDistribution0.flatMap { case (workshopAssignmentsSoFar, notYetDistributedStudents) =>
+        recursion12(findWorkshopId1)(
+          accWorkshopAssignments = workshopAssignmentsSoFar,
+          accUndistributableStudents = List.empty,
+          remainingStudentsToDistribute = notYetDistributedStudents
+        )
+      }
       logger.debug(s"maybeDistribution1: $maybeDistribution1")
 
       // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
       // criteria and the given function isAssignable, regardless of the student's selection.
       def findWorkshopId23(isAssignable: Set[TopicId] => Boolean): FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) =>
-        orderedWorkshops.collectFirst {
+        normalWorkshops.collectFirst {
           case Workshop(workshopId, topicId, timeSlot, grades, seats)
             if student.unassignedTimeSlots.contains(timeSlot) &&
               !student.assignedTopics.contains(topicId) &&

@@ -16,17 +16,17 @@ package object inout {
     wFile = new File(""),
     wDelimiter = ';',
     wRowsToSkip = 5,
-    wNoTopics = 53,
+    wNoTopics = 59,
     wColTopicId = 1, // 1-based A = 1
     wColTopicName = 3,
     wColCategory = 2,
+    wColPreassignedTopic = 22,
     wColGrades1 = 16,
     wColSeats1 = 17,
     wColGrades2 = 18,
     wColSeats2 = 19,
     wColGrades3 = 20,
     wColSeats3 = 21,
-    wFullDayTopics = Seq(9, 45, 46),
 
     // student topic selection CSV file
     sFile = new File(""),

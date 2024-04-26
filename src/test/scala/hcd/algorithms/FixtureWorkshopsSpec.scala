@@ -18,10 +18,10 @@ class FixtureWorkshopsSpec
     "build test data correctly and optionally print it" in {
       val f = new FixtureFullDataModel {}
 
-      inside(f.topics(TopicId(0))) { case (_, category) => category shouldEqual Nutrition }
-      inside(f.topics(TopicId(1))) { case (_, category) => category shouldEqual Relaxation }
-      inside(f.topics(TopicId(2))) { case (_, category) => category shouldEqual Sports }
-      inside(f.topics(TopicId(3))) { case (_, category) => category shouldEqual Other }
+      inside(f.topics(TopicId(0))) { case (_, category, _) => category shouldEqual Nutrition }
+      inside(f.topics(TopicId(1))) { case (_, category, _) => category shouldEqual Relaxation }
+      inside(f.topics(TopicId(2))) { case (_, category, _) => category shouldEqual Sports }
+      inside(f.topics(TopicId(3))) { case (_, category, _) => category shouldEqual Other }
       f.workshops(WorkshopId(0)) shouldEqual(TopicId(0), FirstTimeSlot, f.grades, Seats(f.noSeats))
       f.workshops(WorkshopId(4)) shouldEqual(TopicId(1), SecondTimeSlot, f.grades, Seats(f.noSeats))
       f.workshops(WorkshopId(8)) shouldEqual(TopicId(2), ThirdTimeSlot, f.grades, Seats(f.noSeats))

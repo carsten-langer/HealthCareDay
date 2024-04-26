@@ -39,7 +39,7 @@ object Metric extends StrictLogging {
 
   def metricStudent(topics: Topics, workshops: Workshops)(assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
     val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _) => topicId } // .toList is redundant to business logic
-    val assignedCategories = assignedTopicIds.map(topics).map { case (_, category) => category }
+    val assignedCategories = assignedTopicIds.map(topics).map { case (_, category, _) => category }
     val metricCategories = metricFromCategories(assignedCategories)
     val metricSelectedTopics =
       if (selectedTopics.isEmpty)

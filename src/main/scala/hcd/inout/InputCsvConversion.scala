@@ -23,6 +23,11 @@ object InputCsvConversion extends StrictLogging {
       case _ => Other
     }
 
+    def toPreassigned(preassignedStr: String): Preassigned = preassignedStr.trim.toLowerCase match {
+      case "" | "0" | "falsch" | "false" | "nein" => false
+      case _ => true
+    }
+
     def maybeGrades(grades: String): Option[Set[Grade]] = {
       val grades1: Set[String] = grades.trim.split(',').toSet.filterNot(_.isEmpty) // deal with trailing ','
       val grades2: Set[Grade] = grades1.map(to(Grade))
@@ -42,13 +47,14 @@ object InputCsvConversion extends StrictLogging {
       } yield (topicId, timeSlot, grades, seats)
 
     Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
-      val allTopicsWorkshops = reader
+      val topicsWorkshops = reader
         .all()
         .slice(config.wRowsToSkip, config.wRowsToSkip + config.wNoTopics)
         .map { columns =>
           val topicId = to(TopicId)(columns(config.wColTopicId - 1))
           val topicName = columns(config.wColTopicName - 1)
           val category = toCategory(columns(config.wColCategory - 1))
+          val preassigned = toPreassigned(columns(config.wColPreassignedTopic - 1))
           val grades1 = columns(config.wColGrades1 - 1)
           val seats1 = columns(config.wColSeats1 - 1)
           val grades2 = columns(config.wColGrades2 - 1)
@@ -59,7 +65,7 @@ object InputCsvConversion extends StrictLogging {
           val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
           val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-          logger.trace(s"$topicId, $category, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.trace(s"$topicId, $category, $preassigned, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
@@ -67,14 +73,8 @@ object InputCsvConversion extends StrictLogging {
             .collect {
               case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
             }
-          ((topicId, (topicName, category)), workshops)
+          ((topicId, (topicName, category, preassigned)), workshops)
         }
-      val topicsWorkshops = allTopicsWorkshops.filter {
-        case ((topicId, (topicName, _)), _) if excludedTopics(config).contains(topicId) =>
-          logger.debug(s"Excluding full-day topic $topicId ($topicName) from the distribution.")
-          false
-        case _ => true
-      }
       val topics = topicsWorkshops.map { case (topic, _) => topic }.toMap
       val workshops = topicsWorkshops.flatMap { case (_, workshops) => workshops }.toMap
       (topics, workshops)
@@ -108,22 +108,17 @@ object InputCsvConversion extends StrictLogging {
           studentId -> (studentName, grade, selectedTopics)
         }.toMap
       val unselectedTopicId = TopicId(0)
-      val studentsNameSelectedTopics = allStudentsSelectedTopics.flatMap {
-        case (studentId, (studentName, _, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
-          logger.info(s"Removing student $studentId $studentName from distribution, as student chose (among others) a full-day topic.")
-          None
+      val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
         case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
           logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
-          Some((studentId, (studentName, grade, remainingTopics)))
-        case valid => Some(valid)
+          (studentId, (studentName, grade, remainingTopics))
+        case valid => valid
       }
       studentsNameSelectedTopics
     }
 
   }
-
-  private def excludedTopics(config: CmdLineConfig): Set[TopicId] = config.wFullDayTopics.map(TopicId).toSet
 
   private def to[A](f: Int => A)(s: String): A = f(s.trim.toInt)
 

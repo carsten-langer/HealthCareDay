@@ -18,13 +18,13 @@ case class CmdLineConfig(
                           wColTopicId: Int, // 1-based A = 1
                           wColTopicName: Int,
                           wColCategory: Int,
+                          wColPreassignedTopic: Int,
                           wColGrades1: Int,
                           wColSeats1: Int,
                           wColGrades2: Int,
                           wColSeats2: Int,
                           wColGrades3: Int,
                           wColSeats3: Int,
-                          wFullDayTopics: Seq[Int],
 
                           // student topic selection CSV file
                           sFile: File,

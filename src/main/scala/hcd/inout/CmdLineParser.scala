@@ -63,6 +63,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColCategory = x))
         .text(s"The column of the topic category (1-based, A = 1, B = 2, ...), default: ${d.wColCategory}"),
+      opt[Int]("wColPreassignedTopic")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColPreassignedTopic = x))
+        .text(s"The column of the flag if the topic is pre-assigned (1-based, A = 1, B = 2, ...), default: ${d.wColPreassignedTopic}"),
       opt[Int]("wColGrades1")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades1 = x))
@@ -87,10 +91,6 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColSeats3 = x))
         .text(s"The column of the number of seats for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSeats3}"),
-      opt[Seq[Int]]("wFullDayTopics")
-        .valueName("<int,int,...>")
-        .action((x, c) => c.copy(wFullDayTopics = x))
-        .text(s"The topic ids which represent full day topics, which should be excluded from the distribution, default: ${d.wFullDayTopics.mkString(",")}"),
       arg[File]("<hcd-workshop-planning-file.csv>")
         .required()
         .action((x, c) => c.copy(wFile = x))
