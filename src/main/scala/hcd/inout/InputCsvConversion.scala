@@ -82,7 +82,7 @@ object InputCsvConversion extends StrictLogging {
 
   }
 
-  def readHcdStudentTopicSelection(config: CmdLineConfig): Try[StudentsSelectedTopicsWithName] = {
+  def readHcdStudentTopicSelection(config: CmdLineConfig): Try[StudentsNameSelectedTopics] = {
 
     val csvFormat = new DefaultCSVFormat {
       override val delimiter: Char = config.sDelimiter
@@ -108,7 +108,7 @@ object InputCsvConversion extends StrictLogging {
           studentId -> (studentName, grade, selectedTopics)
         }.toMap
       val unselectedTopicId = TopicId(0)
-      val studentsSelectedTopicsWithName = allStudentsSelectedTopics.flatMap {
+      val studentsNameSelectedTopics = allStudentsSelectedTopics.flatMap {
         case (studentId, (studentName, _, selectedTopics)) if selectedTopics.keySet.intersect(excludedTopics(config)).nonEmpty =>
           logger.info(s"Removing student $studentId $studentName from distribution, as student chose (among others) a full-day topic.")
           None
@@ -118,7 +118,7 @@ object InputCsvConversion extends StrictLogging {
           Some((studentId, (studentName, grade, remainingTopics)))
         case valid => Some(valid)
       }
-      studentsSelectedTopicsWithName
+      studentsNameSelectedTopics
     }
 
   }

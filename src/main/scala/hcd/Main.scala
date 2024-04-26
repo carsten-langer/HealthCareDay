@@ -16,10 +16,10 @@ object Main {
       case Some(config) =>
         val _ = for {
           (topicsWithName, workshops) <- readHcdWorkshopPlanning(config)
-          studentsSelectedTopicsWithName <- readHcdStudentTopicSelection(config)
+          studentsNameSelectedTopics <- readHcdStudentTopicSelection(config)
         } yield {
           initWriteDistribution(config)
-          val saveIntermediateState = writeDistribution(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)
+          val saveIntermediateState = writeDistribution(config)(topicsWithName, workshops, studentsNameSelectedTopics)
           val startDateTime = LocalDateTime.now()
           val searchLimit = startDateTime.plusSeconds(config.searchDuration.toSeconds)
 
@@ -27,7 +27,7 @@ object Main {
 
           val algorithm = withVerification(config.algorithm.distributionAlgorithm(config.initialSeed)(saveIntermediateState)(shallStop))
           val topics = topicsFrom(topicsWithName)
-          val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
+          val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsNameSelectedTopics)
           algorithm(topics, workshops)(studentsSelectedTopics) match {
             case None => println("No distribution of students to workshops found!")
             case Some(workshopAssignments) =>

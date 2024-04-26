@@ -25,7 +25,7 @@ package object model {
   type StudentsSelectedTopics = Map[StudentId, (Grade, SelectedTopics)]
 
   /** The students' name and grade and workshop topic selections. */
-  type StudentsSelectedTopicsWithName = Map[StudentId, (String, Grade, SelectedTopics)]
+  type StudentsNameSelectedTopics = Map[StudentId, (String, Grade, SelectedTopics)]
 
   /**
    * All the concrete workshops.
@@ -72,8 +72,8 @@ package object model {
   def topicsFrom(topicsWithName: TopicsWithName): Topics =
     topicsWithName.view.mapValues { case (_, category) => category }.toMap
 
-  def studentsSelectedTopicsFrom(studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName): StudentsSelectedTopics =
-    studentsSelectedTopicsWithName.view.mapValues { case (_, grade, selectedTopics) => (grade, selectedTopics) }.toMap
+  def studentsSelectedTopicsFrom(studentsNameSelectedTopics: StudentsNameSelectedTopics): StudentsSelectedTopics =
+    studentsNameSelectedTopics.view.mapValues { case (_, grade, selectedTopics) => (grade, selectedTopics) }.toMap
 
   def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
     workshopAssignments

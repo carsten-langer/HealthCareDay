@@ -23,21 +23,21 @@ object OutputCsvConversion {
     otherFiles.foreach(_.createNewFile())
   }
 
-  private type WriteDistribution = CmdLineConfig => (TopicsWithName, Workshops, StudentsSelectedTopicsWithName) => WorkshopAssignments => Unit
+  private type WriteDistribution = CmdLineConfig => (TopicsWithName, Workshops, StudentsNameSelectedTopics) => WorkshopAssignments => Unit
 
   def writeDistribution: WriteDistribution =
     (config: CmdLineConfig) =>
-      (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
+      (topicsWithName: TopicsWithName, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) =>
           Seq(appendMetric, writeWorkshopAssignments, writeStudentAssignments)
-            .foreach(f => f(config)(topicsWithName, workshops, studentsSelectedTopicsWithName)(workshopAssignments))
+            .foreach(f => f(config)(topicsWithName, workshops, studentsNameSelectedTopics)(workshopAssignments))
 
   private def appendMetric: WriteDistribution =
     (config: CmdLineConfig) =>
-      (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
+      (topicsWithName: TopicsWithName, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
           val topics = topicsFrom(topicsWithName)
-          val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsSelectedTopicsWithName)
+          val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsNameSelectedTopics)
           val globalMetric = metricGlobal(topics, workshops, studentsSelectedTopics)(workshopAssignments)
           val workshopsMetric = metricWorkshops(workshopAssignments)
           val orderedStudentsMetrics = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
@@ -48,7 +48,7 @@ object OutputCsvConversion {
 
   private def writeWorkshopAssignments: WriteDistribution =
     (config: CmdLineConfig) =>
-      (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
+      (topicsWithName: TopicsWithName, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Grades",
@@ -65,7 +65,7 @@ object OutputCsvConversion {
                 val workshopMetric = metricWorkshop(usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
-                  val (studentName, _, _) = studentsSelectedTopicsWithName(studentId)
+                  val (studentName, _, _) = studentsNameSelectedTopics(studentId)
                   s"${studentId.id}, $studentName"
                 }
                 writer.writeRow(List[Any](
@@ -86,7 +86,7 @@ object OutputCsvConversion {
 
   private def writeStudentAssignments: WriteDistribution =
     (config: CmdLineConfig) =>
-      (topicsWithName: TopicsWithName, workshops: Workshops, studentsSelectedTopicsWithName: StudentsSelectedTopicsWithName) =>
+      (topicsWithName: TopicsWithName, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
           val studentAssignments = studentAssignmentsFrom(workshopAssignments)
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
@@ -101,7 +101,7 @@ object OutputCsvConversion {
               .toList
               .sortBy { case (StudentId(id), _) => id }
               .foreach { case (studentId, assignedWorkshopIds) =>
-                val (studentName, grade, selectedTopics) = studentsSelectedTopicsWithName(studentId)
+                val (studentName, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
                 val metric = metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
                 val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _) => topicId }
                 val oneOfFirstThree = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
