@@ -58,5 +58,7 @@ that some form of approximation is needed to find a suboptimal yet sufficiently 
 
 ## ToDos
 
-* The current approach still tries a full combinatorial solution, just to see how far we can come. No approximation
-  algorithm was yet tried.
+* The original approach still tried a full combinatorial solution, just to see how far we could come. As expected, the
+  algorithm would not finish in a reasonable time. Finally, this algorithm was removed again.
+* Meanwhile, an alternative algorithm _Random Round Robin_ was introduced as well as additional requirements, but they
+  still need to be documented.

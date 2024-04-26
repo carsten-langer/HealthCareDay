@@ -14,11 +14,11 @@ object Metric extends StrictLogging {
   private val malusMetricSports = Metric(1000)
   private val malusMetricSparseWorkshop = Metric(10000)
 
-  val initialMetric: Metric = neutralMetric
+  private val initialMetric: Metric = neutralMetric
 
-  def add(m1: Metric, m2: Metric): Metric = Metric(m1.m + m2.m)
+  private def add(m1: Metric, m2: Metric): Metric = Metric(m1.m + m2.m)
 
-  def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
+  private def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
 
   def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric = {
     val metricStudents = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments) match {
@@ -77,10 +77,10 @@ object Metric extends StrictLogging {
   }
 
   /** Simple linear metric from selection priority without group compensation. */
-  def metricFromSelectionPriority(selectionPriority: SelectionPriority): Metric = Metric(selectionPriority.prio)
+  private def metricFromSelectionPriority(selectionPriority: SelectionPriority): Metric = Metric(selectionPriority.prio)
 
   /** Malus if a combo contains only sports category. */
-  def metricFromCategories(categories: Iterable[Category]): Metric =
+  private def metricFromCategories(categories: Iterable[Category]): Metric =
     if (categories.forall(_ == Sports)) malusMetricSports
     else neutralMetric
 

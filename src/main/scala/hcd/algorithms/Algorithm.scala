@@ -8,9 +8,6 @@ sealed abstract class Algorithm(val distributionAlgorithm: InitiallySeededStoppa
 
 case object Algorithm extends Enum[Algorithm] {
 
-  //noinspection ScalaUnusedSymbol
-  case object FullCombinatoric extends Algorithm(distributionAlgorithm = _ => _ => fullcombinatoric.Algorithm.distributionAlgorithm)
-
   case object RandomRoundRobin extends Algorithm(distributionAlgorithm = randomroundrobin.Algorithm.distributionAlgorithm)
 
   val values: IndexedSeq[Algorithm] = findValues

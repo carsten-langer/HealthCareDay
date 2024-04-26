@@ -54,7 +54,7 @@ package object model {
    * An algorithm to distribute students to workshops based on their topic selections,
    * which stops when a given function indicates so.
    */
-  type StoppableDistributionAlgorithm = ShallStop => DistributionAlgorithm
+  private type StoppableDistributionAlgorithm = ShallStop => DistributionAlgorithm
 
   /**
    * An algorithm to distribute students to workshops based on their topic selections,
