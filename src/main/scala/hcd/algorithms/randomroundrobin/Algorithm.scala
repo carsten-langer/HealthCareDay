@@ -146,7 +146,7 @@ object Algorithm extends StrictLogging {
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
-        object ExtractorWorkshopForTopic {
+        object ExtractorFindWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
             orderedWorkshops.collectFirst {
               case Workshop(workshopId, topicSelection.topicId, timeSlot, grades, seats)
@@ -159,7 +159,7 @@ object Algorithm extends StrictLogging {
             }
         }
 
-        student.topicSelections.collectFirst { case ExtractorWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
+        student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
       // First and second round of distribution:
@@ -167,22 +167,22 @@ object Algorithm extends StrictLogging {
       // If no workshop can be found, skip the student and leave the distribution to the next round.
       @tailrec
       def recursion12(findWorkshopId: FindWorkshopId)(
-        workshopAssignments: WorkshopAssignments,
-        undistributableStudents: List[Student],
-        studentsToDistribute: List[Student],
+        accWorkshopAssignments: WorkshopAssignments,
+        accUndistributableStudents: List[Student],
+        remainingStudentsToDistribute: List[Student],
       ): Option[(WorkshopAssignments, List[Student])] =
-        studentsToDistribute match {
+        remainingStudentsToDistribute match {
           case Nil =>
             logger.debug("Successful end of recursion12.")
-            Some((workshopAssignments, undistributableStudents))
+            Some((accWorkshopAssignments, accUndistributableStudents))
           case ::(headStudent@Student(algoPrio, _, studentId, _, topicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId(headStudent, workshopAssignments) match {
+            findWorkshopId(headStudent, accWorkshopAssignments) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
-                val updatedUndistributableStudents = undistributableStudents :+ headStudent
-                recursion12(findWorkshopId)(workshopAssignments, updatedUndistributableStudents, nextStudents)
+                val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
+                recursion12(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
-                val updatedWorkshopAssignments = workshopAssignments
+                val updatedWorkshopAssignments = accWorkshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
                 val updatedStudents =
@@ -205,27 +205,27 @@ object Algorithm extends StrictLogging {
                     val (lesserSortingOrder, greaterSortingOrder) = sameAlgoprio.span(_.sortingOrder < updatedStudent.sortingOrder)
                     (lesserAlgoPrio ++ lesserSortingOrder :+ updatedStudent) ++ greaterSortingOrder ++ greaterAlgoPrio
                   }
-                recursion12(findWorkshopId)(updatedWorkshopAssignments, undistributableStudents, updatedStudents)
+                recursion12(findWorkshopId)(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
             }
         }
 
       val maybeDistribution1 = recursion12(findWorkshopId1)(
-        workshopAssignments = Map.empty,
-        undistributableStudents = List.empty,
-        studentsToDistribute = orderedStudents
+        accWorkshopAssignments = Map.empty,
+        accUndistributableStudents = List.empty,
+        remainingStudentsToDistribute = orderedStudents
       )
       logger.debug(s"maybeDistribution1: $maybeDistribution1")
 
       // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
-      // criteria and all criteria by the given function hasVaryingCategories, regardless of the student's selection.
-      def findWorkshopId23(haveVaryingCategories: Set[TopicId] => Boolean): FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) =>
+      // criteria and the given function isAssignable, regardless of the student's selection.
+      def findWorkshopId23(isAssignable: Set[TopicId] => Boolean): FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) =>
         orderedWorkshops.collectFirst {
           case Workshop(workshopId, topicId, timeSlot, grades, seats)
             if student.unassignedTimeSlots.contains(timeSlot) &&
               !student.assignedTopics.contains(topicId) &&
               grades.contains(student.grade) &&
               workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n &&
-              haveVaryingCategories(student.assignedTopics + topicId) =>
+              isAssignable(student.assignedTopics + topicId) =>
             logger.trace(s"found23: $workshopId at $timeSlot for $student.")
             (workshopId, topicId, SelectionPriority(Int.MaxValue), timeSlot)
         }
@@ -239,8 +239,8 @@ object Algorithm extends StrictLogging {
       val maybeDistribution2 = maybeDistribution1.flatMap { case (workshopAssignments, notYetDistributedStudents) =>
         recursion12(findWorkshopId2)(
           workshopAssignments,
-          undistributableStudents = List.empty,
-          studentsToDistribute = notYetDistributedStudents
+          accUndistributableStudents = List.empty,
+          remainingStudentsToDistribute = notYetDistributedStudents
         )
       }
       logger.debug(s"maybeDistribution2: $maybeDistribution2")
@@ -249,18 +249,18 @@ object Algorithm extends StrictLogging {
       // of her selection, with the exception of the criteria that no 3 workshops of category sports shall be assigned.
       // If no workshop can be found, the distribution fails.
       @tailrec
-      def recursion3(workshopAssignments: WorkshopAssignments, remainingStudents: List[Student]): Option[WorkshopAssignments] =
-        remainingStudents match {
+      def recursion3(accWorkshopAssignments: WorkshopAssignments, remainingStudentsToDistribute: List[Student]): Option[WorkshopAssignments] =
+        remainingStudentsToDistribute match {
           case Nil =>
             logger.debug("Successful end of recursion3.")
-            Some(workshopAssignments)
+            Some(accWorkshopAssignments)
           case ::(headStudent@Student(_, _, studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId3(headStudent, workshopAssignments) match {
+            findWorkshopId3(headStudent, accWorkshopAssignments) match {
               case None =>
                 logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")
                 None
               case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
-                val updatedWorkshopAssignments = workshopAssignments
+                val updatedWorkshopAssignments = accWorkshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
                 val updatedStudents =
