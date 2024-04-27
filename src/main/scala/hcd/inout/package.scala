@@ -21,6 +21,7 @@ package object inout {
     wColTopicName = 3,
     wColCategory = 2,
     wColPreassignedTopic = 22,
+    wColOnlyVoluntaryTopic = 23,
     wColGrades1 = 16,
     wColSeats1 = 17,
     wColGrades2 = 18,

@@ -67,6 +67,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColPreassignedTopic = x))
         .text(s"The column of the flag if the topic is pre-assigned (1-based, A = 1, B = 2, ...), default: ${d.wColPreassignedTopic}"),
+      opt[Int]("wColOnlyVoluntaryTopic")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColOnlyVoluntaryTopic = x))
+        .text(s"The column of the flag if the topic is only assignable if the student selected it (1-based, A = 1, B = 2, ...), default: ${d.wColOnlyVoluntaryTopic}"),
       opt[Int]("wColGrades1")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades1 = x))

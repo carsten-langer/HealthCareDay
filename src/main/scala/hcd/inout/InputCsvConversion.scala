@@ -23,7 +23,7 @@ object InputCsvConversion extends StrictLogging {
       case _ => Other
     }
 
-    def toPreassigned(preassignedStr: String): Preassigned = preassignedStr.trim.toLowerCase match {
+    def toFlag(preassignedStr: String): Flag = preassignedStr.trim.toLowerCase match {
       case "" | "0" | "falsch" | "false" | "nein" => false
       case _ => true
     }
@@ -54,7 +54,8 @@ object InputCsvConversion extends StrictLogging {
           val topicId = to(TopicId)(columns(config.wColTopicId - 1))
           val topicName = columns(config.wColTopicName - 1)
           val category = toCategory(columns(config.wColCategory - 1))
-          val preassigned = toPreassigned(columns(config.wColPreassignedTopic - 1))
+          val preassigned = toFlag(columns(config.wColPreassignedTopic - 1))
+          val onlyVoluntary = toFlag(columns(config.wColOnlyVoluntaryTopic - 1))
           val grades1 = columns(config.wColGrades1 - 1)
           val seats1 = columns(config.wColSeats1 - 1)
           val grades2 = columns(config.wColGrades2 - 1)
@@ -65,7 +66,7 @@ object InputCsvConversion extends StrictLogging {
           val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
           val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-          logger.trace(s"$topicId, $category, $preassigned, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.trace(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
@@ -73,7 +74,7 @@ object InputCsvConversion extends StrictLogging {
             .collect {
               case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
             }
-          ((topicId, (topicName, category, preassigned)), workshops)
+          ((topicId, (topicName, category, preassigned, onlyVoluntary)), workshops)
         }
       val topics = topicsWorkshops.map { case (topic, _) => topic }.toMap
       val workshops = topicsWorkshops.flatMap { case (_, workshops) => workshops }.toMap

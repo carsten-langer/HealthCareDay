@@ -134,14 +134,19 @@ object Algorithm extends StrictLogging {
   private val distributeFromPreOrdered: DistributeFromPreOrdered =
     (topics: Topics, orderedWorkshops: List[Workshop], orderedStudents: List[Student]) => {
 
-      val (preassignedWorkshops, normalWorkshops) = orderedWorkshops.partition(workshop =>
+      val (preassignedWorkshops, normalAndOnlyVoluntaryWorkshops) = orderedWorkshops.partition(workshop =>
         topics(workshop.topicId) match {
-          case (_, _, preassigned) => preassigned
+          case (_, _, preassigned, _) => preassigned
+        }
+      )
+      val normalWorkshops = normalAndOnlyVoluntaryWorkshops.filterNot(workshop =>
+        topics(workshop.topicId) match {
+          case (_, _, _, onlyVoluntary) => onlyVoluntary
         }
       )
 
       def hasNot3TimesGivenCategory(topicCandidates: Set[TopicId], category: Category) =
-        topicCandidates.toList.map(topics).count { case (_, thisCategory, _) => thisCategory == category } < 3
+        topicCandidates.toList.map(topics).count { case (_, thisCategory, _, _) => thisCategory == category } < 3
 
       def haveMinVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         hasNot3TimesGivenCategory(topicCandidates, Nutrition) && hasNot3TimesGivenCategory(topicCandidates, Relaxation)
@@ -223,10 +228,12 @@ object Algorithm extends StrictLogging {
 
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
+      // During first round a student can only get assigned a topic which she selected, thus find a workshop from
+      // both normal and only-voluntary workshops.
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            collectFirstWorkshop(normalWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
+            collectFirstWorkshop(normalAndOnlyVoluntaryWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
         }
 
         student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
@@ -290,6 +297,8 @@ object Algorithm extends StrictLogging {
 
       // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
       // criteria and the given function isAssignable, regardless of the student's selection.
+      // However, any student that needs to go through the second or third round has depleted her selections,
+      // thus only normal workshops can be selected, i.e. which do not have the flag "onlyVoluntary".
       def findWorkshopId23(isAssignable: Set[TopicId] => Boolean): FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) =>
         normalWorkshops.collectFirst {
           case Workshop(workshopId, topicId, timeSlot, grades, seats)

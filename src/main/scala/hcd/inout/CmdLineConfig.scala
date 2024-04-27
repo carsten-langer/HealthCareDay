@@ -19,6 +19,7 @@ case class CmdLineConfig(
                           wColTopicName: Int,
                           wColCategory: Int,
                           wColPreassignedTopic: Int,
+                          wColOnlyVoluntaryTopic: Int,
                           wColGrades1: Int,
                           wColSeats1: Int,
                           wColGrades2: Int,
