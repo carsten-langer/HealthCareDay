@@ -159,10 +159,7 @@ object Algorithm extends StrictLogging {
             }
         }
 
-        student.topicSelections.collectFirst {
-          case ExtractorWorkshopForTopic(Holder((workshopId, topicId, selectionPriority, timeSlot))) =>
-            (workshopId, topicId, selectionPriority, timeSlot)
-        }
+        student.topicSelections.collectFirst { case ExtractorWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
       // First and second round of distribution:
