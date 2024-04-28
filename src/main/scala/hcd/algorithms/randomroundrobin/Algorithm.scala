@@ -225,6 +225,19 @@ object Algorithm extends StrictLogging {
         remainingStudentsToDistribute = orderedStudents
       )
       logger.debug(s"maybeDistribution0: $maybeDistribution0")
+      maybeDistribution0.foreach { case (_, students) =>
+        students.foreach(student =>
+          student
+            .topicSelections
+            .map { topicSelection =>
+              val topicId = topicSelection.topicId
+              topics.get(topicId).foreach { case (_, _, preassigned, _) =>
+                if (preassigned)
+                  logger.error(s"Student ${student.studentId} could not be pre-assigned to topic $topicId as there are not enough seats!")
+              }
+            }
+        )
+      }
 
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
