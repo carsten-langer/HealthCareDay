@@ -51,7 +51,7 @@ package object model {
   private type StudentAssignments = Map[StudentId, Set[WorkshopId]]
 
   /** An algorithm to distribute students to workshops based on their topic selections. */
-  type DistributionAlgorithm = (Topics, Workshops) => StudentsSelectedTopics => Option[WorkshopAssignments]
+  type DistributionAlgorithm = (Topics, Workshops, StudentsSelectedTopics) => Option[WorkshopAssignments]
 
   /** Indicates to stop if result is `true`. */
   type ShallStop = () => Boolean

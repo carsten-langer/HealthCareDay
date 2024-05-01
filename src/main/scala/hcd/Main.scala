@@ -25,9 +25,12 @@ object Main {
 
           def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
 
-          val algorithm = withVerification(config.algorithm.distributionAlgorithm(config.initialSeed)(saveIntermediateState)(shallStop))
+          val distributionAlgorithm = config.algorithm.distributionAlgorithm
+          val initialSeed = config.initialSeed
+          val configuredAlgorithm = distributionAlgorithm(initialSeed)(saveIntermediateState)(shallStop)
+          val algorithm = withVerification(configuredAlgorithm)
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsNameSelectedTopics)
-          algorithm(topics, workshops)(studentsSelectedTopics) match {
+          algorithm(topics, workshops, studentsSelectedTopics) match {
             case None => println("No distribution of students to workshops found!")
             case Some(workshopAssignments) =>
               println("Distribution of students to workshops found!")

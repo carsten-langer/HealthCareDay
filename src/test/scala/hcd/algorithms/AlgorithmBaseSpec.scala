@@ -15,15 +15,14 @@ trait AlgorithmBaseSpec
     with StrictLogging {
 
   /** If property DistributeStudentsToWorkshops is true, run the algorithm for the full model. */
-  def maybeRunDistributionAlgorithm(f: FixtureFullDataModel, distributionAlgorithm: DistributionAlgorithm): Unit = {
+  def maybeRunDistributionAlgorithm(f: FixtureFullDataModel, distributionAlgorithm: DistributionAlgorithm): Unit =
     // verify input (but not result) and print distributeStudentsToWorkshops for full model
     if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))
-      withInputVerification(distributionAlgorithm)(f.topics, f.workshops)(f.studentsSelectedTopics) match {
+      withInputVerification(distributionAlgorithm)(f.topics, f.workshops, f.studentsSelectedTopics) match {
         case Some(workshopAssignments) =>
           val aPosterioriMetric = metricGlobal(f.topics, f.workshops, f.studentsSelectedTopics)(workshopAssignments)
           logger.info((aPosterioriMetric, workshopAssignments).toString)
         case None => logger.error("Distribution failed!")
       }
-  }
 
 }
