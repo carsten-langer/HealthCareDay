@@ -11,6 +11,7 @@ package object inout {
     algorithm = Algorithm.RandomRoundRobin,
     searchDuration = Duration("60s"),
     initialSeed = 0L,
+    distributeWorkshopFilling = false,
 
     // workshop planning CSV file
     wFile = new File(""),

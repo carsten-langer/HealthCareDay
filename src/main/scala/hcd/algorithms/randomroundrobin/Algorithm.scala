@@ -16,9 +16,9 @@ object Algorithm extends StrictLogging {
     (initialSeed: Long) =>
       (saveIntermediateState: WorkshopAssignments => Unit) =>
         (shallStop: ShallStop) =>
-          (topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
+          (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
             initThenDistribute(
-              distributeUntilStop(initialSeed, saveIntermediateState, shallStop, workshops, studentsSelectedTopics))(topics, workshops, studentsSelectedTopics)
+              distributeUntilStop(initialSeed, saveIntermediateState, shallStop, workshops, studentsSelectedTopics))(distributeWorkshopFilling, topics, workshops, studentsSelectedTopics)
 
   /**
    * This algorithm's distribution function for a single round for testing.
@@ -30,7 +30,7 @@ object Algorithm extends StrictLogging {
 
   // Create an ordered base of workshops and students and run the given distribution function on them.
   private def initThenDistribute(distributeFromPreOrdered: DistributeFromPreOrdered): DistributionAlgorithm =
-    (topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) => {
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) => {
       // Ordering of workshops and students is necessary for the unit tests to know the expected result.
       // Re-ordering, i.e. shuffling, both workshops and students is part of each round of the algorithm.
 
@@ -60,7 +60,7 @@ object Algorithm extends StrictLogging {
             assignedTopics = Set.empty)
       }.sortBy(_.sortingOrder)
 
-      distributeFromPreOrdered(topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
+      distributeFromPreOrdered(distributeWorkshopFilling, topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
     }
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the shallStop sign.
@@ -71,7 +71,7 @@ object Algorithm extends StrictLogging {
                                    workshops: Workshops,
                                    studentsSelectedTopics: StudentsSelectedTopics,
                                  ): DistributeFromPreOrdered =
-    (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
 
       val worstMetric = Int.MaxValue
       val startSeconds = LocalTime.now().toSecondOfDay
@@ -100,7 +100,7 @@ object Algorithm extends StrictLogging {
           } else
             (bestMetric, maybeBestWorkshopAssignments)
           _distributeUntilStop(
-            maybeCurrentWorkshopAssignments = shuffleThenDistribute(initialSeed + round)(topics, baseOrderedWorkshops, baseOrderedStudents),
+            maybeCurrentWorkshopAssignments = shuffleThenDistribute(initialSeed + round)(distributeWorkshopFilling, topics, baseOrderedWorkshops, baseOrderedStudents),
             nextMaybeBestWorkshopAssignments,
             nextMetric,
             round + 1L,
@@ -118,18 +118,18 @@ object Algorithm extends StrictLogging {
 
   // From pre-ordered workshops and students create a new shuffled version and run the distribution.
   private def shuffleThenDistribute(seed: Long): DistributeFromPreOrdered =
-    (topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
       Random.setSeed(seed)
       val shuffledWorkshops = Random.shuffle(baseOrderedWorkshops)
       val shuffledStudents = Random.shuffle(baseOrderedStudents)
         .zipWithIndex
         .map { case (student, sortingOrder) => student.copy(sortingOrder = sortingOrder) }
-      distributeFromPreOrdered(topics, shuffledWorkshops, shuffledStudents)
+      distributeFromPreOrdered(distributeWorkshopFilling, topics, shuffledWorkshops, shuffledStudents)
     }
 
   // This algorithm's distribution function for one round from pre-ordered workshops and students.
   private val distributeFromPreOrdered: DistributeFromPreOrdered =
-    (topics: Topics, orderedWorkshops: List[Workshop], orderedStudents: List[Student]) => {
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, orderedWorkshops: List[Workshop], orderedStudents: List[Student]) => {
 
       val (preassignedWorkshops, normalAndOnlyVoluntaryWorkshops) = orderedWorkshops.partition(workshop =>
         topics(workshop.topicId) match {
@@ -151,26 +151,33 @@ object Algorithm extends StrictLogging {
       def haveMaxVaryingCategories(topicCandidates: Set[TopicId]): Boolean =
         haveMinVaryingCategories(topicCandidates) && hasNot3TimesGivenCategory(topicCandidates, Sports)
 
-      // Collect first workshop from given list of workshops which fulfills some mandatory criteria and also
-      // the given criteria on the set of to-be-assigned topics
-      def collectFirstWorkshop(workshops: List[Workshop], isAssignable: Set[TopicId] => Boolean)(student: Student, workshopAssignments: WorkshopAssignments)(topicSelection: TopicSelection) =
-        workshops.collectFirst {
-          case Workshop(workshopId, topicId, timeSlot, grades, seats)
-            if topicId == topicSelection.topicId &&
+      // Collect best workshop from given list of workshops which fulfills some mandatory criteria and also
+      // the given criteria on the set of to-be-assigned topics.
+      def collectBestWorkshop(workshops: List[Workshop], isAssignable: Set[TopicId] => Boolean)(student: Student, workshopAssignments: WorkshopAssignments)(topicSelection: TopicSelection) = {
+        val possibleWorkshops = workshops.flatMap {
+          case Workshop(workshopId, topicId, timeSlot, grades, seats) =>
+            val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
+            if (topicId == topicSelection.topicId &&
               student.unassignedTimeSlots.contains(timeSlot) &&
               grades.contains(student.grade) &&
-              workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n &&
-              isAssignable(student.assignedTopics + topicId) =>
-            logger.trace(s"found: $workshopId at $timeSlot for $student.")
-            Holder((workshopId, topicId, topicSelection.selectionPriority, timeSlot))
+              filledSeats < seats.n &&
+              isAssignable(student.assignedTopics + topicId)) {
+              logger.trace(s"found: $workshopId at $timeSlot for $student.")
+              Some((Holder((workshopId, topicId, topicSelection.selectionPriority, timeSlot)), filledSeats.toDouble / seats.n))
+            } else None
         }
+        val maybeWorkshop = if (distributeWorkshopFilling)
+          possibleWorkshops.minByOption { case (_, fillRatio) => fillRatio }
+        else possibleWorkshops.headOption
+        maybeWorkshop.map { case (workshopHolder, _) => workshopHolder }
+      }
 
       // Initial distribution for pre-assigned topics: For each student, select the next workshop which corresponds to
       // the pre-assigned topic.
       def findWorkshopId0: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            collectFirstWorkshop(preassignedWorkshops, isAssignable = _ => true)(student, workshopAssignments)(topicSelection)
+            collectBestWorkshop(preassignedWorkshops, isAssignable = _ => true)(student, workshopAssignments)(topicSelection)
         }
 
         student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
@@ -243,7 +250,7 @@ object Algorithm extends StrictLogging {
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
           def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            collectFirstWorkshop(normalAndOnlyVoluntaryWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
+            collectBestWorkshop(normalAndOnlyVoluntaryWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
         }
 
         student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
@@ -403,7 +410,7 @@ object Algorithm extends StrictLogging {
                                     assignedTopics: Set[TopicId],
                                   )
 
-  private type DistributeFromPreOrdered = (Topics, List[Workshop], List[Student]) => Option[WorkshopAssignments]
+  private type DistributeFromPreOrdered = (DistributeWorkshopFilling, Topics, List[Workshop], List[Student]) => Option[WorkshopAssignments]
   private type FindWorkshopId = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
 
   // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111

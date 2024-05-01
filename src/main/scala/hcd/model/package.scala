@@ -18,6 +18,9 @@ package object model {
   /** Flag if a topic is only assignable if it was selected. */
   private type OnlyVoluntary = Flag
 
+  /** Flag if workshops shall be filled in a distributed way or not. */
+  type DistributeWorkshopFilling = Flag
+
   /** All topics with their name and category and pre-assignment flag. */
   type Topics = Map[TopicId, (String, Category, Preassigned, OnlyVoluntary)]
 
@@ -50,8 +53,11 @@ package object model {
   /** The assignments of workshops to a student. */
   private type StudentAssignments = Map[StudentId, Set[WorkshopId]]
 
-  /** An algorithm to distribute students to workshops based on their topic selections. */
-  type DistributionAlgorithm = (Topics, Workshops, StudentsSelectedTopics) => Option[WorkshopAssignments]
+  /**
+   * An algorithm to distribute students to workshops based on their topic selections, controlled by flag
+   * DistributeWorkshopFilling.
+   */
+  type DistributionAlgorithm = (DistributeWorkshopFilling, Topics, Workshops, StudentsSelectedTopics) => Option[WorkshopAssignments]
 
   /** Indicates to stop if result is `true`. */
   type ShallStop = () => Boolean

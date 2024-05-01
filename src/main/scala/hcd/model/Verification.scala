@@ -5,15 +5,15 @@ import com.typesafe.scalalogging.StrictLogging
 object Verification extends StrictLogging {
 
   def withInputVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
-    (topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
       if (isValidInput(topics, workshops, studentsSelectedTopics))
-        distributionAlgorithm(topics, workshops, studentsSelectedTopics)
+        distributionAlgorithm(distributeWorkshopFilling, topics, workshops, studentsSelectedTopics)
       else None
 
   //noinspection ScalaWeakerAccess
   def withResultVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
-    (topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
-      distributionAlgorithm(topics, workshops, studentsSelectedTopics) match {
+    (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>
+      distributionAlgorithm(distributeWorkshopFilling, topics, workshops, studentsSelectedTopics) match {
         case result@Some(workshopAssignments) if isValidResult(workshops, studentsSelectedTopics, workshopAssignments) => result
         case Some(workshopAssignments) =>
           logger.error(s"Resulting workshop assignments are not valid! $workshopAssignments")

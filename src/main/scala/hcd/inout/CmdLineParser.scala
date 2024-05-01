@@ -2,6 +2,7 @@ package hcd.inout
 
 import hcd.BuildInfo
 import hcd.algorithms.Algorithm
+import hcd.model.DistributeWorkshopFilling
 import scopt.OParser
 
 import java.io.File
@@ -37,6 +38,10 @@ object CmdLineParser {
         .valueName("<initialSeed>")
         .action((x, c) => c.copy(initialSeed = x))
         .text(s"The initial seed for randomness, default: ${d.initialSeed}"),
+      opt[DistributeWorkshopFilling]("distributeWorkshopFilling")
+        .valueName("<boolean>")
+        .action((x, c) => c.copy(distributeWorkshopFilling = x))
+        .text(s"Flag (true/false) if the workshop filling shall be more distributed, default: ${d.distributeWorkshopFilling}"),
 
       note("Options for reading in the HCD workshop planning CSV file:"),
       opt[Char]("wDelimiter")
