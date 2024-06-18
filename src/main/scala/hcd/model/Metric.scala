@@ -104,10 +104,12 @@ object Metric extends StrictLogging {
     else neutralMetric
 
   def metricWorkshops(workshopAssignments: WorkshopAssignments): Metric =
-    add(neutralMetric, workshopAssignments.map { case (_, students) => metricWorkshop(students.size) })
+    add(neutralMetric, workshopAssignments.map { case (workshopId, students) => metricWorkshop(workshopId, students.size) })
 
-  def metricWorkshop(filledSeats: Int): Metric =
-    if (filledSeats >= 1 && filledSeats <= 5) malusMetricSparseWorkshop
+  def metricWorkshop(workshopId: WorkshopId, filledSeats: Int): Metric =
+    // special quirk for HCD24
+    if ((13 to 15).contains(workshopId.id) && filledSeats >= 1 && filledSeats <= 13) Metric(1000000)
+    else if (filledSeats >= 1 && filledSeats <= 5) malusMetricSparseWorkshop
     else neutralMetric
 
 }
