@@ -16,13 +16,13 @@ package object inout {
     // workshop planning CSV file
     wFile = new File(""),
     wDelimiter = ';',
-    wRowsToSkip = 5,
-    wNoTopics = 59,
+    wRowsToSkip = 4,
+    wNoTopics = 62,
     wColTopicId = 1, // 1-based A = 1
     wColTopicName = 3,
     wColCategory = 2,
-    wColPreassignedTopic = 22,
-    wColOnlyVoluntaryTopic = 23,
+    wColPreassignedTopic = 14,
+    wColOnlyVoluntaryTopic = 15,
     wColGrades1 = 16,
     wColSeats1 = 17,
     wColGrades2 = 18,
@@ -33,12 +33,12 @@ package object inout {
     // student topic selection CSV file
     sFile = new File(""),
     sDelimiter = ';',
-    sRowsToSkip = 27,
-    sNoStudents = 570,
-    sColStudentId = 29,
-    sColStudentName = 30,
-    sColGrade = 28,
-    sColFirstSelection = 22,
+    sRowsToSkip = 1,
+    sNoStudents = 533,
+    sColStudentId = 2,
+    sColStudentName = 4,
+    sColGrade = 3,
+    sColFirstSelection = 5,
 
     // workshop assignments CSV file
     oDelimiter = ';',
