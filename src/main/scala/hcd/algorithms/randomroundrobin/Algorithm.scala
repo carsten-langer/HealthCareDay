@@ -46,19 +46,22 @@ object Algorithm extends StrictLogging {
       // multiple rounds of the algorithm, so that re-ordering it per round with different random seed is guaranteed
       // to give reproducible results. Each student has the topic selections represented as a list ordered by the
       // selection priority. The initial ordering between students is on the student id.
-      val baseOrderedStudentsWithOrderedSelections = studentsSelectedTopics.toList.map {
-        case (studentId, (grade, selectedTopics)) =>
-          val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
-          val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
-          Student(
-            algoPrio = 1,
-            sortingOrder = studentId.id,
-            studentId = studentId,
-            grade = grade,
-            topicSelections = orderedTopicSelection,
-            unassignedTimeSlots = allTimeSlots,
-            assignedTopics = Set.empty)
-      }.sortBy(_.sortingOrder)
+      val baseOrderedStudentsWithOrderedSelections = studentsSelectedTopics
+        // special quirk for HCD24
+        .filterNot { case (StudentId(id), _) => id == 164 }
+        .toList.map {
+          case (studentId, (grade, selectedTopics)) =>
+            val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
+            val orderedTopicSelection = topicSelections.sortBy(_.selectionPriority.prio)
+            Student(
+              algoPrio = 1,
+              sortingOrder = studentId.id,
+              studentId = studentId,
+              grade = grade,
+              topicSelections = orderedTopicSelection,
+              unassignedTimeSlots = allTimeSlots,
+              assignedTopics = Set.empty)
+        }.sortBy(_.sortingOrder)
 
       distributeFromPreOrdered(distributeWorkshopFilling, topics, baseOrderedWorkshops, baseOrderedStudentsWithOrderedSelections)
     }
@@ -160,7 +163,7 @@ object Algorithm extends StrictLogging {
             if (topicId == topicSelection.topicId &&
               student.unassignedTimeSlots.contains(timeSlot) &&
               grades.contains(student.grade) &&
-              filledSeats < seats.n &&
+              filledSeats < seats.n - (if (student.studentId.id == 133) 1 else 0) &&
               isAssignable(student.assignedTopics + topicId)) {
               logger.trace(s"found: $workshopId at $timeSlot for $student.")
               Some((Holder((workshopId, topicId, topicSelection.selectionPriority, timeSlot)), filledSeats.toDouble / seats.n))
@@ -204,7 +207,13 @@ object Algorithm extends StrictLogging {
                 recursion0(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
                 val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                  .updatedWith(foundWorkshopId)(maybeStudents =>
+                    if (studentId.id == 133) {
+                      // special quirk for HCD24
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId + StudentId(164))
+                    } else
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId)
+                  )
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
                 val updatedStudents =
                   if (updatedTimeSlots.isEmpty)
@@ -277,7 +286,13 @@ object Algorithm extends StrictLogging {
                 recursion12(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
                 val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                  .updatedWith(foundWorkshopId)(maybeStudents =>
+                    if (studentId.id == 133) {
+                      // special quirk for HCD24
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId + StudentId(164))
+                    } else
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId)
+                  )
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
                 val updatedStudents =
                   if (updatedTimeSlots.isEmpty)
@@ -322,7 +337,7 @@ object Algorithm extends StrictLogging {
             if student.unassignedTimeSlots.contains(timeSlot) &&
               !student.assignedTopics.contains(topicId) &&
               grades.contains(student.grade) &&
-              workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n &&
+              workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n - (if (student.studentId.id == 133) 1 else 0) &&
               isAssignable(student.assignedTopics + topicId) =>
             logger.trace(s"found23: $workshopId at $timeSlot for $student.")
             (workshopId, topicId, SelectionPriority(Int.MaxValue), timeSlot)
@@ -359,7 +374,13 @@ object Algorithm extends StrictLogging {
                 None
               case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
                 val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                  .updatedWith(foundWorkshopId)(maybeStudents =>
+                    if (studentId.id == 133) {
+                      // special quirk for HCD24
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId + StudentId(164))
+                    } else
+                      Some(maybeStudents.getOrElse(Set.empty) + studentId)
+                  )
                 val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
                 val updatedStudents =
                   if (updatedTimeSlots.isEmpty)
