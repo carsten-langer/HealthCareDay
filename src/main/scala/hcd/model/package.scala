@@ -9,6 +9,9 @@ import io.cvbio.collection.mutable.bimap.BiMap
  */
 package object model {
 
+  /** Seed. */
+  type Seed = Long
+
   /** Boolean flag. */
   type Flag = Boolean
 

@@ -2,7 +2,7 @@ package hcd.inout
 
 import hcd.BuildInfo
 import hcd.algorithms.Algorithm
-import hcd.model.DistributeWorkshopFilling
+import hcd.model.{DistributeWorkshopFilling, Seed}
 import scopt.OParser
 
 import java.io.File
@@ -34,8 +34,8 @@ object CmdLineParser {
         .valueName("<duration>")
         .action((x, c) => c.copy(searchDuration = x))
         .text(s"The duration how long the algorithm shall search for a distribution, e.g. 3600s, 60m, 1h, default: ${d.searchDuration.toSeconds}s"),
-      opt[Long]("initialSeed")
-        .valueName("<initialSeed>")
+      opt[Seed]("initialSeed")
+        .valueName("<long>")
         .action((x, c) => c.copy(initialSeed = x))
         .text(s"The initial seed for randomness, default: ${d.initialSeed}"),
       opt[DistributeWorkshopFilling]("distributeWorkshopFilling")

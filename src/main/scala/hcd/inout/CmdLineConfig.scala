@@ -1,7 +1,7 @@
 package hcd.inout
 
 import hcd.algorithms.Algorithm
-import hcd.model.Flag
+import hcd.model.{Flag, Seed}
 
 import java.io.File
 import scala.concurrent.duration.Duration
@@ -9,7 +9,7 @@ import scala.concurrent.duration.Duration
 case class CmdLineConfig(
                           algorithm: Algorithm,
                           searchDuration: Duration,
-                          initialSeed: Long,
+                          initialSeed: Seed,
                           distributeWorkshopFilling: Flag,
 
                           // workshop planning CSV file

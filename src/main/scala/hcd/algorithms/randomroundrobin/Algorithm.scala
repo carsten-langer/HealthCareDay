@@ -65,7 +65,7 @@ object Algorithm extends StrictLogging {
 
   // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the shallStop sign.
   private def distributeUntilStop(
-                                   initialSeed: Long,
+                                   initialSeed: Seed,
                                    saveIntermediateState: WorkshopAssignments => Unit,
                                    shallStop: ShallStop,
                                    workshops: Workshops,
@@ -117,7 +117,7 @@ object Algorithm extends StrictLogging {
     }
 
   // From pre-ordered workshops and students create a new shuffled version and run the distribution.
-  private def shuffleThenDistribute(seed: Long): DistributeFromPreOrdered =
+  private def shuffleThenDistribute(seed: Seed): DistributeFromPreOrdered =
     (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
       Random.setSeed(seed)
       val shuffledWorkshops = Random.shuffle(baseOrderedWorkshops)
