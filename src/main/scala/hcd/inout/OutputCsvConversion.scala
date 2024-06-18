@@ -1,6 +1,6 @@
 package hcd.inout
 
-import com.github.tototoshi.csv.{CSVWriter, DefaultCSVFormat}
+import com.github.tototoshi.csv.{CSVWriter, DefaultCSVFormat, QUOTE_NONE, Quoting}
 import hcd.model.Metric._
 import hcd.model.SelectionPriority.{unselectedPrio, unwantedSelectionPrio}
 import hcd.model._
@@ -49,7 +49,7 @@ object OutputCsvConversion {
     (config: CmdLineConfig) =>
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
-          val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
+          Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Preassigned",
               "OnlyVoluntary", "Grades", "Seats", "UsedSeats", "LeftSeats", "WorkshopMetric",
               "Student1", "Student2", "..."))
@@ -84,6 +84,29 @@ object OutputCsvConversion {
                 ) ++ students)
               }
           }
+
+          topics.foreach { case (topicId, (topicName, _, _, _)) =>
+            val file = new File(s"Kurszuweisung_${topicId.id}.txt")
+            val format = new DefaultCSVFormat {
+              override val quoting: Quoting = QUOTE_NONE
+            }
+            Using(CSVWriter.open(file)(format)) { writer =>
+              writer.writeRow(List(s"Kurs ${topicId.id}: ${topicName.trim}"))
+              workshopAssignments
+                .toList
+                .filter { case (workshopId, _) => workshops(workshopId)._1 == topicId }
+                .sortBy { case (WorkshopId(id), _) => id }
+                .foreach { case (workshopId, unsortedStudentIds) =>
+                  writer.writeRow(List.empty)
+                  writer.writeRow(List(s"Zeitschlitz ${workshops(workshopId)._2.ts}:"))
+                  val studentIds = unsortedStudentIds.toList.sortBy(_.id)
+                  studentIds.foreach { studentId =>
+                    val (studentName, _, _) = studentsNameSelectedTopics(studentId)
+                    writer.writeRow(List(s"$studentName"))
+                  }
+                }
+            }
+          }
         }
 
   private def writeStudentAssignments: WriteDistribution =
@@ -91,7 +114,7 @@ object OutputCsvConversion {
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
           val studentAssignments = studentAssignmentsFrom(workshopAssignments)
-          val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
+          Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List(
               "StudentId", "StudentName", "Grade", "Metric",
               "First", "OneOfFirstTwo", "OneOfFirstThree", "bothFirstTwo",
@@ -147,6 +170,36 @@ object OutputCsvConversion {
                 ) ++ assignedWorkshops)
               }
           }
+
+          studentAssignments
+            .toList
+            .groupBy { case (studentId, _) => studentsNameSelectedTopics(studentId)._1.take(3) }
+            .foreach { case (_class, studentsAssignments) =>
+              val file = new File(s"Klassenliste_${_class}.txt")
+              val format = new DefaultCSVFormat {
+                override val quoting: Quoting = QUOTE_NONE
+                override val delimiter: Char = '|'
+              }
+              Using(CSVWriter.open(file)(format)) { writer =>
+                writer.writeRow(List(s"Klasse ${_class}"))
+                writer.writeRow(List.empty)
+                writer.writeRow(List("Schüler/in ", " Kursnummer 1 ", " Kursname 1 ", " Kursnummer 2 ", " Kursname 2 ", " Kursnummer 3 ", " Kursname 3"))
+                writer.writeRow(List.empty)
+                studentsAssignments
+                  .sortBy(_._1.id)
+                  .foreach { case (id, assignedWorkshopIds) =>
+                    val name = s"${studentsNameSelectedTopics(id)._1.dropWhile(_ != '_').drop(1)} "
+                    val assignedWorkshops = assignedWorkshopIds.map { workshopId =>
+                        val (topicId, timeSlot, _, _) = workshops(workshopId)
+                        val (topicName, _, _, _) = topics(topicId)
+                        (timeSlot, List[Any](s" ${topicId.id} ", s" ${topicName.trim} "))
+                      }.toList
+                      .sortBy { case (timeSlot, _) => timeSlot.ts }
+                      .flatMap(_._2)
+                    writer.writeRow(List(name) ++ assignedWorkshops)
+                  }
+              }
+            }
         }
 
   private def csvFormat(config: CmdLineConfig) =
