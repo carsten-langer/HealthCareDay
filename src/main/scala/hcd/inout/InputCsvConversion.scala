@@ -66,7 +66,7 @@ object InputCsvConversion extends StrictLogging {
           val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
           val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
 
-          logger.trace(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
@@ -105,14 +105,14 @@ object InputCsvConversion extends StrictLogging {
               val selectionPriority = SelectionPriority(prio)
               topicId -> selectionPriority
             })
-          logger.trace(s"$studentId, $studentName, $grade, $selectedTopics")
+          logger.debug(s"$studentId, $studentName, $grade, $selectedTopics")
           studentId -> (studentName, grade, selectedTopics)
         }.toMap
       val unselectedTopicId = TopicId(0)
       val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
         case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
-          logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
+          logger.info(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
           (studentId, (studentName, grade, remainingTopics))
         case valid => valid
       }
