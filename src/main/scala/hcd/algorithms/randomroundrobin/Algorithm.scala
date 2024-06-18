@@ -237,7 +237,7 @@ object Algorithm extends StrictLogging {
               val topicId = topicSelection.topicId
               topics.get(topicId).foreach { case (_, _, preassigned, _) =>
                 if (preassigned)
-                  logger.error(s"Student ${student.studentId} could not be pre-assigned to topic $topicId as there are not enough seats!")
+                  logger.error(s"Student ${student.studentId} could not be pre-assigned to topic $topicId; check prerequisites like allowed graded and number of free seats!")
               }
             }
         )
