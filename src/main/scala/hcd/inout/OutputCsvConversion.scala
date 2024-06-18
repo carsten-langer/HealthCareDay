@@ -92,7 +92,9 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val studentAssignments = studentAssignmentsFrom(workshopAssignments)
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
-            writer.writeRow(List("StudentId", "StudentName", "Grade", "Metric", "OneOfFirstThree",
+            writer.writeRow(List(
+              "StudentId", "StudentName", "Grade", "Metric",
+              "First", "OneOfFirstTwo", "OneOfFirstThree", "bothFirstTwo",
               "TS1Prio", "TS2Prio", "TS3Prio",
               "TopicId1", "WorkshopId1", "TopicName1", "Category1", "Preassigned1", "OnlyVoluntary1",
               "TopicId2", "WorkshopId2", "TopicName2", "Category2", "Preassigned2", "OnlyVoluntary2",
@@ -105,9 +107,21 @@ object OutputCsvConversion {
                 val (studentName, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
                 val metric = metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
                 val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _) => topicId }
+                val first = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
+                  assignedTopicIds.contains(topicId) && prio == 1
+                }
+                val oneOfFirstTwo = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
+                  assignedTopicIds.contains(topicId) && prio <= 2
+                }
                 val oneOfFirstThree = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
                   assignedTopicIds.contains(topicId) && prio <= 3
                 }
+                val bothFirstTwo = selectedTopics.isEmpty || (
+                  selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
+                    assignedTopicIds.contains(topicId) && prio == 1
+                  } && selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
+                    assignedTopicIds.contains(topicId) && prio == 2
+                  })
                 val assignedWorkshopsWithPrios = assignedWorkshopIds.map { workshopId =>
                   val (topicId, timeSlot, _, _) = workshops(workshopId)
                   val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
@@ -126,7 +140,10 @@ object OutputCsvConversion {
                   studentName,
                   grade.grade,
                   metric.m,
+                  first,
+                  oneOfFirstTwo,
                   oneOfFirstThree,
+                  bothFirstTwo,
                 ) ++ assignedWorkshops)
               }
           }
