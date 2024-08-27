@@ -46,7 +46,7 @@ package object model {
    * That is: each topic can only exist once per timeslot, and such topic/timeslot combination is a unique concrete
    * workshop.
    * However, as we extend the workshops with other attributes relevant to the distribution algorithms, this would break
-   * the the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
+   * the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
    */
   type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Set[Grade], Seats)]
 
