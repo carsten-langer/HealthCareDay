@@ -3,6 +3,7 @@ package hcd.algorithms.randomroundrobin
 import com.typesafe.scalalogging.StrictLogging
 import hcd.model.Metric.metricGlobal
 import hcd.model.SelectionPriority.worstPrio
+import hcd.model.TimeSlot.FirstTimeSlot
 import hcd.model._
 
 import java.time.LocalTime
@@ -56,7 +57,7 @@ object Algorithm extends StrictLogging {
             studentId = studentId,
             grade = grade,
             topicSelections = orderedTopicSelection,
-            unassignedTimeSlots = allTimeSlots,
+            unassignedTimeSlots = Set(FirstTimeSlot),
             assignedTopics = Set.empty)
       }.sortBy(_.sortingOrder)
 

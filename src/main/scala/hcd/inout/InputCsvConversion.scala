@@ -2,7 +2,7 @@ package hcd.inout
 
 import com.github.tototoshi.csv.{CSVReader, DefaultCSVFormat}
 import com.typesafe.scalalogging.StrictLogging
-import hcd.model.TimeSlot.{FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot}
+import hcd.model.TimeSlot.FirstTimeSlot
 import hcd.model._
 import io.cvbio.collection.mutable.bimap.BiMap
 
@@ -63,14 +63,12 @@ object InputCsvConversion extends StrictLogging {
           val seats2 = columns(config.wColSeats2 - 1)
           val grades3 = columns(config.wColGrades3 - 1)
           val seats3 = columns(config.wColSeats3 - 1)
-          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
-          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
-          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
+          val ws = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
 
           logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
-          logger.trace(s"$ws1, $ws2, $ws3")
+          logger.trace(s"$ws")
 
-          val workshops = Seq(ws1, ws2, ws3)
+          val workshops = Seq(ws)
             .zipWithIndex
             .collect {
               case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)

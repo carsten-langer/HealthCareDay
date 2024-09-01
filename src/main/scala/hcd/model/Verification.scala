@@ -85,8 +85,8 @@ object Verification extends StrictLogging {
     val b1 = workshopAssignments.keys.forall(workshops.contains)
     if (!b1) logger.error("A workshop assignment contains an unknown workshop.")
     val studentNumberOfAssignments = studentAssignmentsFrom(workshopAssignments).view.mapValues(_.size)
-    val b2 = studentsSelectedTopics.keys.forall(studentNumberOfAssignments.getOrElse(_, 0) == 3)
-    if (!b2) logger.error("A student is not assigned to 3 workshops.")
+    val b2 = studentsSelectedTopics.keys.forall(studentNumberOfAssignments.getOrElse(_, 0) == 1)
+    if (!b2) logger.error("A student is not assigned to 1 workshop.")
     b1 && b2
   }
 
