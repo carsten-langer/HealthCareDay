@@ -14,7 +14,7 @@ object Main {
   def main(args: Array[String]): Unit =
     OParser.parse(parser, args, defaultCmdLineConfig) match {
       case Some(config) =>
-        val _ = for {
+        val unitT = for {
           (topics, workshops) <- readHcdWorkshopPlanning(config)
           studentsNameSelectedTopics <- readHcdStudentTopicSelection(config)
         } yield {
@@ -41,6 +41,10 @@ object Main {
               println(s"Student assignments written to file $studentAssignmentsCsvFile")
           }
         }
+        unitT.getOrElse(unitT.failed.foreach { t =>
+          println("Distribution failed with:")
+          t.printStackTrace()
+        })
 
       case _ => () // arguments are bad, error message will have been displayed, nothing more to do
     }
