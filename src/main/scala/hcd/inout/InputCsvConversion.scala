@@ -99,7 +99,7 @@ object InputCsvConversion extends StrictLogging {
           val grade = to(Grade)(columns(config.sColGrade - 1))
           // scan the selected topics from least to highest priority, so that in case a student has selected a topic
           // several times, it is inserted into the BiMap with the best priority
-          val selectedTopics = BiMap.from(Range.inclusive(6, 1, -1)
+          val selectedTopics = BiMap.from(Range.inclusive(2, 1, -1)
             .map { prio =>
               val topicId = to(TopicId, unselectedTopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
               val selectionPriority = SelectionPriority(prio)
