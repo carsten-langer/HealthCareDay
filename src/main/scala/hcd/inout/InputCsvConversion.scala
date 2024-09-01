@@ -91,6 +91,7 @@ object InputCsvConversion extends StrictLogging {
     }
 
     Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
+      val unselectedTopicId = TopicId(0)
       val allStudentsSelectedTopics = reader
         .all()
         .slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents)
@@ -102,14 +103,13 @@ object InputCsvConversion extends StrictLogging {
           // several times, it is inserted into the BiMap with the best priority
           val selectedTopics = BiMap.from(Range.inclusive(6, 1, -1)
             .map { prio =>
-              val topicId = to(TopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
+              val topicId = to(TopicId, unselectedTopicId)(columns(config.sColFirstSelection - 1 + prio - 1))
               val selectionPriority = SelectionPriority(prio)
               topicId -> selectionPriority
             })
           logger.debug(s"$studentId, $studentName, $grade, $selectedTopics")
           studentId -> (studentName, grade, selectedTopics)
         }.toMap
-      val unselectedTopicId = TopicId(0)
       val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
         case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
@@ -123,5 +123,7 @@ object InputCsvConversion extends StrictLogging {
   }
 
   private def to[A](f: Int => A)(s: String): A = f(s.trim.toInt)
+
+  private def to[A](f: Int => A, default: A)(s: String): A = Try(f(s.trim.toInt)).getOrElse(default)
 
 }
