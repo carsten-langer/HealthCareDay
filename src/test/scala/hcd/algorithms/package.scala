@@ -8,7 +8,7 @@ package object algorithms {
     // Inputs for model size
     private val timeSlots = TimeSlot.values.sortBy(_.ts)
     private val categories = Seq(Nutrition, Relaxation, Sports, Other)
-    private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available on all timeslots
+    private val noWorkshops = noTopics * timeSlots.size // all workshop topics are available at all timeslots
 
     // Generate all IDs
     private val topicIds = Range(0, noTopics).map(TopicId)

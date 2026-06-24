@@ -78,7 +78,7 @@ object Algorithm extends StrictLogging {
 
       def secondsUntilNow: Int = LocalTime.now().toSecondOfDay - startSeconds
 
-      // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the  shallStop sign.
+      // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the shallStop sign.
       @tailrec
       def _distributeUntilStop(maybeCurrentWorkshopAssignments: Option[WorkshopAssignments],
                                maybeBestWorkshopAssignments: Option[WorkshopAssignments],
@@ -183,8 +183,8 @@ object Algorithm extends StrictLogging {
         student.topicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
-      // Initial round of distribution only for pre-assigned topics:
-      // For each student who selected a preassigned topic, select the first corresponding workshop.
+      // The initial round of distribution only for pre-assigned topics:
+      // For each student who selected a pre-assigned topic, select the first corresponding workshop.
       // Leave everything else to the next round.
       @tailrec
       def recursion0(
@@ -245,7 +245,7 @@ object Algorithm extends StrictLogging {
 
       // First round of distribution: For a student, select the next workshop being part of her selection and which
       // otherwise fulfils all criteria.
-      // During first round a student can only get assigned a topic which she selected, thus find a workshop from
+      // During the first round a student can only get assigned a topic which she selected, thus find a workshop from
       // both normal and only-voluntary workshops.
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
@@ -293,7 +293,7 @@ object Algorithm extends StrictLogging {
                     )
                     // The student goes back in the list to a new place. The following usage of span is about 3 times
                     // faster than a solution with sortBy.
-                    // nextStudents :+ updatedStudent).sortBy(s => (s.algoPrio, s.sortingOrder))
+                    // nextStudents :+ updatedStudent.sortBy(s => (s.algoPrio, s.sortingOrder))
                     val (lesserAlgoPrio, sameOrGreaterAlgoPrio) = nextStudents.span(_.algoPrio < updatedStudent.algoPrio)
                     val (sameAlgoprio, greaterAlgoPrio) = sameOrGreaterAlgoPrio.span(_.algoPrio == updatedStudent.algoPrio)
                     val (lesserSortingOrder, greaterSortingOrder) = sameAlgoprio.span(_.sortingOrder < updatedStudent.sortingOrder)
@@ -314,7 +314,7 @@ object Algorithm extends StrictLogging {
 
       // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
       // criteria and the given function isAssignable, regardless of the student's selection.
-      // However, any student that needs to go through the second or third round has depleted her selections,
+      // However, any student that needs to go through the second or third round has depleted her selections;
       // thus only normal workshops can be selected, i.e. which do not have the flag "onlyVoluntary".
       def findWorkshopId23(isAssignable: Set[TopicId] => Boolean): FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) =>
         normalWorkshops.collectFirst {
@@ -344,7 +344,7 @@ object Algorithm extends StrictLogging {
       logger.debug(s"maybeDistribution2: $maybeDistribution2")
 
       // Third round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
-      // of her selection, with the exception of the criteria that no 3 workshops of category sports shall be assigned.
+      // of her selection, except the criteria that no 3 workshops of category sports shall be assigned.
       // If no workshop can be found, the distribution fails.
       @tailrec
       def recursion3(accWorkshopAssignments: WorkshopAssignments, remainingStudentsToDistribute: List[Student]): Option[WorkshopAssignments] =
@@ -379,7 +379,7 @@ object Algorithm extends StrictLogging {
       val maybeWorkshopAssignments3 = maybeDistribution2.flatMap((recursion3 _).tupled)
       logger.debug(s"maybeWorkshopAssignments3: $maybeWorkshopAssignments3")
 
-      // make sure each workshop has a set of students. If not yet the case, add an empty set.
+      // Make sure each workshop has a set of students. If not yet the case, add an empty set.
       maybeWorkshopAssignments3.map(workshopAssignments =>
         orderedWorkshops.foldLeft(workshopAssignments) { case (accWorkshopAssignments, workshop) =>
           accWorkshopAssignments.updatedWith(workshop.workshopId) {
@@ -396,7 +396,7 @@ object Algorithm extends StrictLogging {
   private final case class Workshop(workshopId: WorkshopId, topicId: TopicId, timeSlot: TimeSlot, grades: Set[Grade], seats: Seats)
 
   // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result.
-  // It is easier if we have our own data type. Ordering makes most sense by selection priority,
+  // It is easier if we have our own data type. Ordering makes most sense by selection priority;
   // thus we use the flipped order of values compared to SelectedTopics.
   private final case class TopicSelection(selectionPriority: SelectionPriority, topicId: TopicId)
 

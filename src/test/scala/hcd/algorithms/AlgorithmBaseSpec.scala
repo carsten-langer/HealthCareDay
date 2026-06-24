@@ -14,7 +14,7 @@ trait AlgorithmBaseSpec
     with OptionValues
     with StrictLogging {
 
-  /** If property DistributeStudentsToWorkshops is true, run the algorithm for the full model. */
+  /** If the property DistributeStudentsToWorkshops is true, run the algorithm for the full model. */
   def maybeRunDistributionAlgorithm(f: FixtureFullDataModel, distributionAlgorithm: DistributionAlgorithm): Unit =
     // verify input (but not result) and print distributeStudentsToWorkshops for full model
     if (System.getProperty("DistributeStudentsToWorkshops", "false").toBooleanOption.getOrElse(false))

@@ -9,7 +9,7 @@ trait FixtureWorkshops {
 
   def noSeats: Int
 
-  def grade: Grade = Grade(0) // a test grade for all students, included in the workshops, the value 0 has no further meaning
+  def grade: Grade = Grade(0) // a test grade for all students, included in the workshops, value 0 has no further meaning
 
   def gradeNonMatching: Grade = Grade(1) // a test grade not matching normal grade
 

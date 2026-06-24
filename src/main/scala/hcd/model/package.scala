@@ -4,7 +4,7 @@ import io.cvbio.collection.mutable.bimap.BiMap
 
 /**
  * Workshop: A concrete workshop with a single timeslot, number of seats, room etc., dealing with one topic.
- * Topic: A workshop topic a student can chose. Typically behind each workshop topic there are 3 concrete workshops
+ * Topic: A workshop topic a student can choose. Typically, behind each workshop topic there are 3 concrete workshops
  * with different timeslots.
  */
 package object model {
@@ -43,7 +43,7 @@ package object model {
    * All the concrete workshops.
    * The relation between WorkshopId and Topic/TimeSlot is actually a BiMap, i.e. both workshop id and combination of
    * topic id and timeslot is unique within this map.
-   * That is: each topic can only exist once per timeslot, and such topic/timeslot combination is a unique concrete
+   * That is: each topic can only exist once per timeslot, and such a topic/timeslot combination is a unique concrete
    * workshop.
    * However, as we extend the workshops with other attributes relevant to the distribution algorithms, this would break
    * the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
@@ -62,7 +62,7 @@ package object model {
    */
   type DistributionAlgorithm = (DistributeWorkshopFilling, Topics, Workshops, StudentsSelectedTopics) => Option[WorkshopAssignments]
 
-  /** Indicates to stop if result is `true`. */
+  /** Indicates to stop if the result is `true`. */
   type ShallStop = () => Boolean
 
   /**
@@ -73,14 +73,13 @@ package object model {
 
   /**
    * An algorithm to distribute students to workshops based on their topic selections,
-   * which stops when a given function indicates so and has the option to save intermediate states.
+   * which stops when a given function indicates so and can save intermediate states.
    */
   private type StoppableDistributionAlgorithmSavingIntermediateStates = (WorkshopAssignments => Unit) => StoppableDistributionAlgorithm
 
   /**
    * An algorithm to distribute students to workshops based on their topic selections,
-   * which stops when a given function indicates so and has the option to save intermediate states,
-   * and has an initial seed.
+   * which stops when a given function indicates so and can save intermediate states and has an initial seed.
    */
   type InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = Long => StoppableDistributionAlgorithmSavingIntermediateStates
 

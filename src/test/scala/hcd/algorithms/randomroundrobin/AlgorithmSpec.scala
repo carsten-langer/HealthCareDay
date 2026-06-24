@@ -113,7 +113,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
             TopicId(0) -> SelectionPriority(11), // expected in 1st timeslot, as assigned first due to higher selection prio
           )),
         )
-        // student1 has 2 selections, thus gets assigned a 3rd workshops on the remaining timeslot
+        // student1 has 2 selections, thus gets assigned a 3rd workshop on the remaining timeslot
         val expectedWorkshopAssignments = Map(
           WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
           WorkshopId(3) -> Set.empty, WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1)
@@ -130,10 +130,10 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val studentsSelectedTopics = Map(
           student1 -> (f.grade, BiMap(
             TopicId(1) -> SelectionPriority(11), // expected in 2nd timeslot, as assigned first due to prio, but workshop 3 does not exist, thus first timeslot cannot be used, but workshop 4 exists and second timeslot is free
-            TopicId(0) -> SelectionPriority(12), // expected in 3rd timeslot, as assigned second due to prio, but workshops 0 do not exist, thus first timeslot cannot be used, workshop 1 exists but second timeslot is not free, finally workshop 2 exists and third timeslot is free
+            TopicId(0) -> SelectionPriority(12), // expected in 3rd timeslot, as assigned second due to prio, but workshops 0 do not exist, thus first timeslot cannot be used, workshop 1 exists, but second timeslot is not free, finally workshop 2 exists, and third timeslot is free
           )),
         )
-        // student1 has 2 selections, thus gets assigned a 3rd workshops on the remaining timeslot
+        // student1 has 2 selections, thus gets assigned a 3rd workshop on the remaining timeslot
         val expectedWorkshopAssignments = Map(
           WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set(student1), // TopicId(0), WorkshopId(0) does not exist
           WorkshopId(4) -> Set(student1), WorkshopId(5) -> Set.empty, // TopicId(1), WorkshopId(3) does not exist
@@ -184,7 +184,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
             TopicId(1) -> SelectionPriority(2), // unassigned, as tried to assign second due to prio, but both 1st and 3rd timeslots do not exist and the 2nd is already assigned.
           )),
         )
-        // student1 can be assigned to TopicId(0), but cannot be assigned to TopicId(1), thus needs 2 more topics, but only 1 more topic exists, thus distribution fails.
+        // student1 can be assigned to TopicId(0), but cannot be assigned to TopicId(1), thus needs 2 more topics, but only 1 more topic exists; thus distribution fails.
 
         distributeSingleRound(false, f.topics, workshopsWsRemoved, studentsSelectedTopics) shouldBe empty
       }
@@ -223,7 +223,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
           student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         // student 1 can be assigned topic 0 and topic 4, but not topic 8, as this would be the 3rd nutrition.
-        // As topic 1, 2, 3, 5, 6, 7, do not exist, topic 9 is the replacement, i.e. the assignment is 0, 4, 9.
+        // As topic 1, 2, 3, 5, 6, 7 do not exist, topic 9 is the replacement, i.e. the assignment is 0, 4, 9.
         // student 2 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
         // As some do not exist, she would get assigned 0, 4, 8, but this is 3 times nutrition,
         // thus the assignment is 0, 4, 9.
@@ -272,7 +272,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         // As some do not exist, she would get assigned 1, 5, 9, but this is 3 times relaxation,
         // thus the assignment is 1, 5, 10.
         val expectedWorkshopAssignments = Map(
-          // workshops for topic 0 does not exist
+          // workshop for topic 0 does not exist
           WorkshopId(3) -> Set(student1, student2), WorkshopId(4) -> Set.empty, WorkshopId(5) -> Set.empty, // TopicId(1)
           // workshops for topics 2, 3, 4 do not exist
           WorkshopId(15) -> Set.empty, WorkshopId(16) -> Set(student1, student2), WorkshopId(17) -> Set.empty, // TopicId(5)

@@ -43,20 +43,20 @@ object Metric extends StrictLogging {
     val metricCategories = metricFromCategories(assignedCategories)
     val metricSelectedTopics =
       if (selectedTopics.isEmpty)
-        // The student did not chose any topics. There is no malus, as the student cannot complain about any assigned
+        // The student did not choose any topics. There is no malus, as the student cannot complain about any assigned
         // topic, as no selection was done.
         neutralMetric
       else {
-        // The student did chose topics and we expect the student to have selected enough topics that all 3 timeslots
-        // could be filled. However, we do not hard assert it, as some unit tests may draw profit from setting up such
+        // The student did choose topics, and we expect the student to have selected enough topics that all 3 timeslots
+        // could be filled. However, we do not hard assert it, as some unit tests may profit from setting up such a
         // normally unexpected situation. However, we log an error in this case.
         if (selectedTopics.size < allTimeSlots.size) logger.error(
           s"If a student made selections, at least ${allTimeSlots.size} selections should have been made, but only ${selectedTopics.size} were made!")
         // In this case, a student being assigned the topics of the first 3 selection priorities would without
         // compensation get a metric of 1 + 2 + 3 = 6, and thus a worse metric than a student having made no selection
         // and getting the metric 0.
-        // To compensate for this, for the set of selection priorities we calculate the normal the metric from each
-        // selection priority, but add a bonus of (-6) to the group, which compensates this effect.
+        // To compensate for this, for the set of selection priorities we calculate the normal metric from each
+        // selection priority but add a bonus of (-6) to the group, which compensates for this effect.
         // If the student got assigned workshops without selecting the topic, while having selected topics she was
         // not assigned to, this gives a malus per workshop assigned and not be part of the selection.
         val assignedSelectedTopics = selectedTopics.filter { case (topicId, _) => assignedTopicIds.contains(topicId) }

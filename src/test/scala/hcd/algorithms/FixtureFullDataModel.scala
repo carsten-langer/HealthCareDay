@@ -10,9 +10,9 @@ trait FixtureFullDataModel extends FixtureWorkshops {
   private val noTopics = 50
   private val noStudents = 600
   private val noSelectionsPerStudent = 6
-  // combo 50/1000/6/30-25 finds very quick a distribution
+  // combo 50/1000/6/30-25 finds very quickly a distribution
   // combo 50/1000/6/24-20 searches a lot (20 is min.)
-  // combo 50/600/6/16 finds very quick a distribution
+  // combo 50/600/6/16 finds very quickly a distribution
   // combo 50/600/6/15 searches a lot (12 is min.)
   override val noSeats = 16
   private val underlyingFixtureWorkshops: FixtureWorkshops = fixtureSymmetricWorkshopsFor(noTopics, noSeats)

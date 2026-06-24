@@ -54,10 +54,10 @@ ThisBuild / scalacOptions ++= Seq(
   //"-Werror", // Fail the compilation if there are any warnings.
   //
   // Advanced Settings
-  //"-Xdev", // Indicates user is a developer - issue warnings about anything which seems amiss // Not used, as
+  //"-Xdev", // Indicates the user is a developer - issue warnings about anything that seems amiss // Not used, as
   // https://gitter.im/scala/scala/archives/2019/08/22?at=5d5e62f95ba4a84f696d88c3
   // indicates that the actual use is
-  // "Issue warnings about anything which seems amiss in compiler internals. Intended for compiler developers"
+  // "Issue warnings about anything that seems amiss in compiler internals. Intended for compiler developers".
   //"-Xlint", // Enable all "lint" warnings. // Not used as I do not want to use "xlint:unused", see below.
   "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
   "-Xlint:nullary-unit", // Warn when nullary methods return Unit.
