@@ -15,7 +15,7 @@ object CmdLineParser {
   val parser: OParser[Unit, CmdLineConfig] = {
     import builder._
     //val nl = sys.props("line.separator")
-    val d = defaultCmdLineConfig
+    val d = CmdLineConfig.default
 
     OParser.sequence(
       head(BuildInfo.name, BuildInfo.version),
