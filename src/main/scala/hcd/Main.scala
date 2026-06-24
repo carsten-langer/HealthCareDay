@@ -7,8 +7,6 @@ import hcd.model.Verification.withVerification
 import hcd.model.{ShallStop, studentsSelectedTopicsFrom}
 import scopt.OParser
 
-import java.time.LocalDateTime
-
 object Main {
   def main(args: Array[String]): Unit =
     OParser.parse(CmdLineParser.parser, args, CmdLineConfig.default) match {
@@ -19,10 +17,10 @@ object Main {
         } yield {
           initWriteDistribution(config)
           val saveIntermediateState = writeDistribution(config)(topics, workshops, studentsNameSelectedTopics)
-          val startDateTime = LocalDateTime.now()
-          val searchLimit = startDateTime.plusSeconds(config.searchDuration.toSeconds)
+          val startNanoTime = System.nanoTime()
+          val searchLimit = startNanoTime + config.searchDuration.toNanos
 
-          def shallStop: ShallStop = () => LocalDateTime.now().isAfter(searchLimit)
+          def shallStop: ShallStop = () => System.nanoTime() >= searchLimit
 
           val distributionAlgorithm = config.algorithm.distributionAlgorithm
           val initialSeed = config.initialSeed

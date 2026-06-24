@@ -5,7 +5,6 @@ import hcd.model.Metric.metricGlobal
 import hcd.model.SelectionPriority.worstPrio
 import hcd.model._
 
-import java.time.LocalTime
 import scala.annotation.tailrec
 import scala.util.Random
 
@@ -74,9 +73,9 @@ object Algorithm extends StrictLogging {
     (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, baseOrderedWorkshops: List[Workshop], baseOrderedStudents: List[Student]) => {
 
       val worstMetric = Int.MaxValue
-      val startSeconds = LocalTime.now().toSecondOfDay
+      val startNanoTime = System.nanoTime()
 
-      def secondsUntilNow: Int = LocalTime.now().toSecondOfDay - startSeconds
+      def secondsUntilNow: Long = (System.nanoTime() - startNanoTime) / 1_000_000_000L
 
       // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the shallStop sign.
       @tailrec
