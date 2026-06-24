@@ -4,7 +4,7 @@ maintainer := "Carsten Langer"
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 // Scala 2.x version https://www.scala-lang.org/download/all.html
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "2.13.18"
 
 lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
@@ -16,31 +16,31 @@ lazy val root = (project in file("."))
   )
 
 // https://www.scalatest.org/install
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % "test"
 
 // https://www.scalatest.org/plus/scalacheck
-libraryDependencies += "org.scalatestplus" %% "scalacheck-1-17" % "3.2.18.0" % "test"
+libraryDependencies += "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % "test"
 
 // https://scalacheck.org/download.html, do not trust the version shown there but check from "The Central Repository":
 // https://central.sonatype.com/artifact/org.scalacheck/scalacheck_2.13
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.18.0" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.19.0" % "test"
 
 // https://github.com/clintval/bimap/tree/main
 libraryDependencies += "io.cvbio.collection.mutable" %% "bimap" % "2.0.0"
 
 // https://github.com/lightbend-labs/scala-logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6"
 // https://www.slf4j.org/manual.html#projectDep
-libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.13"
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.18"
 
 // https://github.com/scopt/scopt
 libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
 
 // https://github.com/tototoshi/scala-csv
-libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.10"
+libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "2.0.0"
 
 // https://github.com/lloydmeta/enumeratum
-libraryDependencies += "com.beachape" %% "enumeratum" % "1.7.3"
+libraryDependencies += "com.beachape" %% "enumeratum" % "1.9.8"
 
 // https://docs.scala-lang.org/overviews/compiler-options/index.html
 ThisBuild / scalacOptions ++= Seq(
