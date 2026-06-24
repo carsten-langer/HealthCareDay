@@ -1,8 +1,8 @@
 package hcd.model
 
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.LazyLogging
 
-object Verification extends StrictLogging {
+object Verification extends LazyLogging {
 
   def withInputVerification(distributionAlgorithm: DistributionAlgorithm): DistributionAlgorithm =
     (distributeWorkshopFilling: DistributeWorkshopFilling, topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics) =>

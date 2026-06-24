@@ -1,6 +1,5 @@
 package hcd.algorithms
 
-import com.typesafe.scalalogging.StrictLogging
 import hcd.model.TimeSlot.{FirstTimeSlot, SecondTimeSlot, ThirdTimeSlot}
 import hcd.model._
 import org.scalatest.Inside
@@ -11,7 +10,8 @@ class FixtureWorkshopsSpec
   extends AnyWordSpec
     with Matchers
     with Inside
-    with StrictLogging {
+    //with StrictLogging
+{
 
   "FixtureFullDataModel" should {
 

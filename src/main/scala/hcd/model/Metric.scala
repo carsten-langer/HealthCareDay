@@ -1,11 +1,11 @@
 package hcd.model
 
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.LazyLogging
 
 /** Metric of a combo or distribution. */
 final case class Metric(m: Int) extends AnyVal
 
-object Metric extends StrictLogging {
+object Metric extends LazyLogging {
 
   private val neutralMetric = Metric(0)
   private val bonusMetricGroup = Metric(-6) // compensation for simple metrics for selection prios (1 + 2 + 3), see below for details
