@@ -90,7 +90,7 @@ object InputCsvConversion extends StrictLogging {
     }
 
     Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
-      val unselectedTopicId = TopicId(0)
+      val unselectedTopicId = TopicId(Int.MinValue)
       val allStudentsSelectedTopics = reader
         .all()
         .slice(config.sRowsToSkip, config.sRowsToSkip + config.sNoStudents)
