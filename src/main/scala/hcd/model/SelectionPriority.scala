@@ -4,7 +4,7 @@ package hcd.model
 final case class SelectionPriority(prio: Int) extends AnyVal
 
 object SelectionPriority {
-  val worstPrio: SelectionPriority = SelectionPriority(6)
-  val unselectedPrio: SelectionPriority = SelectionPriority(0)
-  val unwantedSelectionPrio: SelectionPriority = SelectionPriority(7)
+  val WorstPrio: SelectionPriority = SelectionPriority(6)
+  val UnselectedPrio: SelectionPriority = SelectionPriority(0)
+  val UnwantedSelectionPrio: SelectionPriority = SelectionPriority(7)
 }

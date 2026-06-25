@@ -2,7 +2,7 @@ package hcd.inout
 
 import com.github.tototoshi.csv.{CSVWriter, DefaultCSVFormat}
 import hcd.model.Metric._
-import hcd.model.SelectionPriority.{unselectedPrio, unwantedSelectionPrio}
+import hcd.model.SelectionPriority.{UnselectedPrio, UnwantedSelectionPrio}
 import hcd.model._
 
 import java.io.File
@@ -90,7 +90,6 @@ object OutputCsvConversion {
     (config: CmdLineConfig) =>
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
-          val studentAssignments = studentAssignmentsFrom(workshopAssignments)
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List(
               "StudentId", "StudentName", "Grade", "Metric",
@@ -100,7 +99,7 @@ object OutputCsvConversion {
               "TopicId2", "WorkshopId2", "TopicName2", "Category2", "Preassigned2", "OnlyVoluntary2",
               "TopicId3", "WorkshopId3", "TopicName3", "Category3", "Preassigned3", "OnlyVoluntary3",
             ))
-            studentAssignments
+            studentAssignmentsFrom(workshopAssignments)
               .toList
               .sortBy { case (StudentId(id), _) => id }
               .foreach { case (studentId, assignedWorkshopIds) =>
@@ -127,8 +126,8 @@ object OutputCsvConversion {
                   val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
                   val selectionPriority = selectedTopics.get(topicId) match {
                     case Some(selectionPriority) => selectionPriority
-                    case None if selectedTopics.isEmpty => unselectedPrio
-                    case None => unwantedSelectionPrio
+                    case None if selectedTopics.isEmpty => UnselectedPrio
+                    case None => UnwantedSelectionPrio
                   }
                   (timeSlot, selectionPriority.prio, List[Any](topicId.id, workshopId.id, topicName, category, preassigned, onlyVoluntary))
                 }.toList.sortBy { case (timeSlot, _, _) => timeSlot.ts }

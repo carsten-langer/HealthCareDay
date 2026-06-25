@@ -112,7 +112,7 @@ object InputCsvConversion extends StrictLogging {
       val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
         case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
-          logger.info(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
+          logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
           (studentId, (studentName, grade, remainingTopics))
         case valid => valid
       }

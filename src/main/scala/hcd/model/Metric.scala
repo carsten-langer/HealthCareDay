@@ -1,6 +1,7 @@
 package hcd.model
 
 import com.typesafe.scalalogging.LazyLogging
+import hcd.model
 
 /** Metric of a combo or distribution. */
 final case class Metric(m: Int) extends AnyVal
@@ -9,10 +10,10 @@ object Metric extends LazyLogging {
 
   private val neutralMetric = Metric(0)
   private val bonusMetricGroup = Metric(-6) // compensation for simple metrics for selection prios (1 + 2 + 3), see below for details
-  private val malusMetricNoneOfFirstPrios = Metric(10000)
+  private val malusMetricNoneOfFirstPrios = Metric(10_000)
   private val malusMetricUnwantedTopic = Metric(7)
-  private val malusMetricSports = Metric(1000)
-  private val malusMetricSparseWorkshop = Metric(10000)
+  private val malusMetricAllSports = Metric(1_000)
+  private val malusMetricSparseWorkshop = Metric(10_000)
 
   private val initialMetric: Metric = neutralMetric
 
@@ -21,10 +22,9 @@ object Metric extends LazyLogging {
   private def add(m: Metric, ms: Iterable[Metric]): Metric = ms.fold(m)(add)
 
   def metricGlobal(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): Metric = {
-    val metricStudents = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments) match {
-      case Nil => initialMetric
-      case ::(head, next) => add(head, next)
-    }
+    val metricStudents =
+      orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
+        .fold(initialMetric)(add)
     add(metricStudents, metricWorkshops(workshopAssignments))
   }
 
@@ -50,8 +50,9 @@ object Metric extends LazyLogging {
         // The student did choose topics, and we expect the student to have selected enough topics that all 3 timeslots
         // could be filled. However, we do not hard assert it, as some unit tests may profit from setting up such a
         // normally unexpected situation. However, we log an error in this case.
-        if (selectedTopics.size < allTimeSlots.size) logger.error(
-          s"If a student made selections, at least ${allTimeSlots.size} selections should have been made, but only ${selectedTopics.size} were made!")
+        if (selectedTopics.size < model.allTimeSlots.size) logger.error(
+          s"If a student made selections, at least ${model.allTimeSlots.size} selections should have been made, but only ${selectedTopics.size} were made!"
+        )
         // In this case, a student being assigned the topics of the first 3 selection priorities would without
         // compensation get a metric of 1 + 2 + 3 = 6, and thus a worse metric than a student having made no selection
         // and getting the metric 0.
@@ -66,7 +67,7 @@ object Metric extends LazyLogging {
             prio <= 3 && assignedTopicIds.contains(topicId)
           }) neutralMetric // no malus if no topic was selected or from the selected at least one topic with prio <= 3 was assigned
           else malusMetricNoneOfFirstPrios
-        val malusesUnwantedTopics = List.fill(allTimeSlots.size - assignedSelectedTopics.size)(malusMetricUnwantedTopic)
+        val malusesUnwantedTopics = List.fill(model.allTimeSlots.size - assignedSelectedTopics.size)(malusMetricUnwantedTopic)
         val malus = add(malusNoneOfFirstThreePrios, malusesUnwantedTopics)
         val bonusMalus = add(bonusMetricGroup, malus)
         val assignedSelectionPriorities = assignedSelectedTopics.values
@@ -100,7 +101,7 @@ object Metric extends LazyLogging {
 
   /** Malus if a combo contains only sports category. */
   private def metricFromCategories(categories: Iterable[Category]): Metric =
-    if (categories.forall(_ == Sports)) malusMetricSports
+    if (categories.forall(_ == Sports)) malusMetricAllSports
     else neutralMetric
 
   def metricWorkshops(workshopAssignments: WorkshopAssignments): Metric =
