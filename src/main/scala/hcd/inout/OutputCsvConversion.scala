@@ -62,7 +62,7 @@ object OutputCsvConversion {
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
                 val leftSeats = seats - usedSeats
-                val workshopMetric = metricWorkshop(workshopId, usedSeats).m
+                val workshopMetric = metricWorkshop(usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
                   val (studentName, _, _) = studentsNameSelectedTopics(studentId)
