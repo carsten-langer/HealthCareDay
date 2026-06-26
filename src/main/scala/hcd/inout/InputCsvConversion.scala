@@ -17,10 +17,9 @@ object InputCsvConversion extends StrictLogging {
     }
 
     def toCategory(categoryStr: String): Category = categoryStr.trim match {
-      // special quirk for HCD24
-      // case "Bewegung" => Sports
-      // case "Entspannung" => Relaxation
-      // case "Ernährung" => Nutrition
+      case "Bewegung" => Sports
+      case "Entspannung" => Relaxation
+      case "Ernährung" => Nutrition
       case _ => Other
     }
 
