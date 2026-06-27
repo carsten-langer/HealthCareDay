@@ -190,25 +190,25 @@ object Algorithm extends StrictLogging {
         maybeWorkshop.map { case (workshopHolder, _) => workshopHolder }
       }
 
-      // Initial, first and second round of distribution:
+      // One round of distribution:
       // For each student, select the next workshop which fulfills the criteria given in findWorkshopId function.
       // If no workshop can be found, skip the student and leave the distribution to the next round.
       @tailrec
-      def recursion012(findWorkshopId: FindWorkshopId)(
+      def recursion(findWorkshopId: FindWorkshopId)(
         accWorkshopAssignments: WorkshopAssignments,
         accUndistributableStudents: List[Student],
         remainingStudentsToDistribute: List[Student],
       ): (WorkshopAssignments, List[Student]) =
         remainingStudentsToDistribute match {
           case Nil =>
-            logger.debug("Successful end of recursion012.")
+            logger.debug("Successful end of recursion.")
             (accWorkshopAssignments, accUndistributableStudents)
           case ::(headStudent@Student(algoPrio, _, studentId, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId(headStudent, accWorkshopAssignments) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
                 val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
-                recursion012(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
+                recursion(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
               case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
                 val updatedWorkshopAssignments = accWorkshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
@@ -233,7 +233,7 @@ object Algorithm extends StrictLogging {
                     val (lesserSortingOrder, greaterSortingOrder) = sameAlgoPrio.span(_.sortingOrder < updatedStudent.sortingOrder)
                     (lesserAlgoPrio ++ lesserSortingOrder :+ updatedStudent) ++ greaterSortingOrder ++ greaterAlgoPrio
                   }
-                recursion012(findWorkshopId)(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
+                recursion(findWorkshopId)(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
             }
         }
 
@@ -248,13 +248,15 @@ object Algorithm extends StrictLogging {
         student.orderedTopicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
-      val distribution0 = recursion012(findWorkshopId0)(
+      val distribution0 = recursion(findWorkshopId0)(
         accWorkshopAssignments = Map.empty,
         accUndistributableStudents = List.empty,
         remainingStudentsToDistribute = orderedStudents,
       )
       logger.debug(s"distribution0: $distribution0")
       val (workshopAssignmentsSoFarAfter0, notYetDistributedStudentsAfter0) = distribution0
+      logger.debug(s"number of workshop assignments in round 0: ${sizeOf(workshopAssignmentsSoFarAfter0)}")
+
       notYetDistributedStudentsAfter0.foreach(student =>
         student
           .orderedTopicSelections
@@ -281,12 +283,14 @@ object Algorithm extends StrictLogging {
         student.orderedTopicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
-      val distribution1 = recursion012(findWorkshopId1)(
+      val distribution1 = recursion(findWorkshopId1)(
         accWorkshopAssignments = workshopAssignmentsSoFarAfter0,
         accUndistributableStudents = List.empty,
         remainingStudentsToDistribute = notYetDistributedStudentsAfter0,
       )
       logger.debug(s"distribution1: $distribution1")
+      val (workshopAssignmentsSoFarAfter1, notYetDistributedStudentsAfter1) = distribution1
+      logger.debug(s"number of workshop assignments in round 1: ${sizeOf(workshopAssignmentsSoFarAfter1) - sizeOf(workshopAssignmentsSoFarAfter0)}")
 
       // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
       // criteria and the given function isAssignable, regardless of the student's selection.
@@ -313,48 +317,29 @@ object Algorithm extends StrictLogging {
       // of her selection, and only with min varying categories.
       def findWorkshopId3: FindWorkshopId = findWorkshopId23(haveMinVaryingCategories)
 
-      val (workshopAssignmentsSoFarAfter1, notYetDistributedStudentsAfter1) = distribution1
-      val distribution2: (WorkshopAssignments, List[Student]) = recursion012(findWorkshopId2)(
+      val distribution2: (WorkshopAssignments, List[Student]) = recursion(findWorkshopId2)(
         accWorkshopAssignments = workshopAssignmentsSoFarAfter1,
         accUndistributableStudents = List.empty,
         remainingStudentsToDistribute = notYetDistributedStudentsAfter1,
       )
       logger.debug(s"distribution2: $distribution2")
+      val (workshopAssignmentsSoFarAfter2, notYetDistributedStudentsAfter2) = distribution2
+      logger.debug(s"number of workshop assignments in round 2: ${sizeOf(workshopAssignmentsSoFarAfter2) - sizeOf(workshopAssignmentsSoFarAfter1)}")
 
-      // Third round of distribution: For each student, select the next workshop which fulfils nearly all criteria,
-      // regardless of her selection. The criteria that no 3 workshops of category sports shall be assigned is removed.
+      val distribution3: (WorkshopAssignments, List[Student]) = recursion(findWorkshopId3)(
+        accWorkshopAssignments = workshopAssignmentsSoFarAfter2,
+        accUndistributableStudents = List.empty,
+        remainingStudentsToDistribute = notYetDistributedStudentsAfter2,
+      )
+      logger.debug(s"distribution3: $distribution3")
+      val (workshopAssignmentsSoFarAfter3, notYetDistributedStudentsAfter3) = distribution3
+      logger.debug(s"number of workshop assignments in round 3: ${sizeOf(workshopAssignmentsSoFarAfter3) - sizeOf(workshopAssignmentsSoFarAfter2)}")
+
       // If no workshop can be found, the distribution fails.
-      @tailrec
-      def recursion3(accWorkshopAssignments: WorkshopAssignments, remainingStudentsToDistribute: List[Student]): Option[WorkshopAssignments] =
-        remainingStudentsToDistribute match {
-          case Nil =>
-            logger.debug("Successful end of recursion3.")
-            Some(accWorkshopAssignments)
-          case ::(headStudent@Student(_, _, studentId, _, _, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId3(headStudent, accWorkshopAssignments) match {
-              case None =>
-                logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for student $headStudent.")
-                None
-              case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
-                val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                val updatedTimeSlots = unassignedTimeSlots - foundTimeSlot
-                val updatedStudents =
-                  if (updatedTimeSlots.isEmpty)
-                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
-                  else {
-                    val updatedAssignedTopics = assignedTopics + foundTopicId
-                    val updatedStudent = headStudent.copy(
-                      unassignedTimeSlots = updatedTimeSlots,
-                      assignedTopics = updatedAssignedTopics,
-                    )
-                    updatedStudent :: nextStudents
-                  }
-                recursion3(updatedWorkshopAssignments, updatedStudents)
-            }
-        }
-
-      val maybeWorkshopAssignments3 = (recursion3 _).tupled(distribution2)
+      val maybeWorkshopAssignments3 = if (notYetDistributedStudentsAfter3.nonEmpty) {
+        logger.debug(s"Unsuccessful end of recursion3. No suitable workshop found for students $notYetDistributedStudentsAfter3.")
+        None
+      } else Some(workshopAssignmentsSoFarAfter3)
       logger.debug(s"maybeWorkshopAssignments3: $maybeWorkshopAssignments3")
 
       // Make sure each workshop has a set of students. If not yet the case, add an empty set.
@@ -394,5 +379,7 @@ object Algorithm extends StrictLogging {
   // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
   // for the need for a holder to avoid deprecation message on (scala/bug#6675)
   private case class Holder[T](_1: T) extends Product1[T]
+
+  private def sizeOf[K, V](m: Map[K, Iterable[V]]): Int = m.values.foldLeft(0)(_ + _.size)
 
 }
