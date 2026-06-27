@@ -190,6 +190,53 @@ object Algorithm extends StrictLogging {
         maybeWorkshop.map { case (workshopHolder, _) => workshopHolder }
       }
 
+      // Initial, first and second round of distribution:
+      // For each student, select the next workshop which fulfills the criteria given in findWorkshopId function.
+      // If no workshop can be found, skip the student and leave the distribution to the next round.
+      @tailrec
+      def recursion012(findWorkshopId: FindWorkshopId)(
+        accWorkshopAssignments: WorkshopAssignments,
+        accUndistributableStudents: List[Student],
+        remainingStudentsToDistribute: List[Student],
+      ): Option[(WorkshopAssignments, List[Student])] =
+        remainingStudentsToDistribute match {
+          case Nil =>
+            logger.debug("Successful end of recursion012.")
+            Some((accWorkshopAssignments, accUndistributableStudents))
+          case ::(headStudent@Student(algoPrio, _, studentId, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+            findWorkshopId(headStudent, accWorkshopAssignments) match {
+              case None =>
+                // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
+                val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
+                recursion012(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
+              case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
+                val updatedWorkshopAssignments = accWorkshopAssignments
+                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
+                val updatedUnassignedTimeSlots = unassignedTimeSlots - foundTimeSlot
+                val updatedStudents =
+                  if (updatedUnassignedTimeSlots.isEmpty)
+                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
+                  else {
+                    val updatedTopicSelections = orderedTopicSelections.filterNot(_.topicId == foundTopicId)
+                    val updatedAssignedTopics = assignedTopics + foundTopicId
+                    val updatedStudent = headStudent.copy(
+                      algoPrio = algoPrio + WorstPrio.prio - prio,
+                      orderedTopicSelections = updatedTopicSelections,
+                      unassignedTimeSlots = updatedUnassignedTimeSlots,
+                      assignedTopics = updatedAssignedTopics,
+                    )
+                    // The student goes back in the list to a new place. The following usage of span is about 3 times
+                    // faster than a solution with sortBy.
+                    // nextStudents :+ updatedStudent.sortBy(s => (s.algoPrio, s.sortingOrder))
+                    val (lesserAlgoPrio, sameOrGreaterAlgoPrio) = nextStudents.span(_.algoPrio < updatedStudent.algoPrio)
+                    val (sameAlgoPrio, greaterAlgoPrio) = sameOrGreaterAlgoPrio.span(_.algoPrio == updatedStudent.algoPrio)
+                    val (lesserSortingOrder, greaterSortingOrder) = sameAlgoPrio.span(_.sortingOrder < updatedStudent.sortingOrder)
+                    (lesserAlgoPrio ++ lesserSortingOrder :+ updatedStudent) ++ greaterSortingOrder ++ greaterAlgoPrio
+                  }
+                recursion012(findWorkshopId)(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
+            }
+        }
+
       // Initial distribution for pre-assigned topics: For each student, select the next workshop which corresponds to
       // the pre-assigned topic.
       def findWorkshopId0: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
@@ -201,47 +248,7 @@ object Algorithm extends StrictLogging {
         student.orderedTopicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
-      // The initial round of distribution only for pre-assigned topics:
-      // For each student who selected a pre-assigned topic, select the first corresponding workshop.
-      // Leave everything else to the next round.
-      @tailrec
-      def recursion0(
-                      accWorkshopAssignments: WorkshopAssignments,
-                      accUndistributableStudents: List[Student],
-                      remainingStudentsToDistribute: List[Student],
-                    ): Option[(WorkshopAssignments, List[Student])] =
-        remainingStudentsToDistribute match {
-          case Nil =>
-            logger.debug("Successful end of recursion0.")
-            Some((accWorkshopAssignments, accUndistributableStudents))
-          case ::(headStudent@Student(_, _, studentId, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId0(headStudent, accWorkshopAssignments) match {
-              case None =>
-                // skip this student as no pre-assigned workshops could be found anymore (or at all), the student will get assigned workshops from next round.
-                val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
-                recursion0(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
-              case Some((foundWorkshopId, foundTopicId, _, foundTimeSlot)) =>
-                val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                val updatedUnassignedTimeSlots = unassignedTimeSlots - foundTimeSlot
-                val updatedStudents =
-                  if (updatedUnassignedTimeSlots.isEmpty)
-                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
-                  else {
-                    val updatedTopicSelections = orderedTopicSelections.filterNot(_.topicId == foundTopicId)
-                    val updatedAssignedTopics = assignedTopics + foundTopicId
-                    val updatedStudent = headStudent.copy(
-                      orderedTopicSelections = updatedTopicSelections,
-                      unassignedTimeSlots = updatedUnassignedTimeSlots,
-                      assignedTopics = updatedAssignedTopics,
-                    )
-                    updatedStudent :: nextStudents
-                  }
-                recursion0(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
-            }
-        }
-
-      val maybeDistribution0 = recursion0(
+      val maybeDistribution0 = recursion012(findWorkshopId0)(
         accWorkshopAssignments = Map.empty,
         accUndistributableStudents = List.empty,
         remainingStudentsToDistribute = orderedStudents,
@@ -275,55 +282,8 @@ object Algorithm extends StrictLogging {
         student.orderedTopicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
       }
 
-      // First and second round of distribution:
-      // For each student, select the next workshop which fulfills the criteria given in findWorkshopId function.
-      // If no workshop can be found, skip the student and leave the distribution to the next round.
-      @tailrec
-      def recursion12(findWorkshopId: FindWorkshopId)(
-        accWorkshopAssignments: WorkshopAssignments,
-        accUndistributableStudents: List[Student],
-        remainingStudentsToDistribute: List[Student],
-      ): Option[(WorkshopAssignments, List[Student])] =
-        remainingStudentsToDistribute match {
-          case Nil =>
-            logger.debug("Successful end of recursion12.")
-            Some((accWorkshopAssignments, accUndistributableStudents))
-          case ::(headStudent@Student(algoPrio, _, studentId, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
-            findWorkshopId(headStudent, accWorkshopAssignments) match {
-              case None =>
-                // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
-                val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
-                recursion12(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
-              case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
-                val updatedWorkshopAssignments = accWorkshopAssignments
-                  .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
-                val updatedUnassignedTimeSlots = unassignedTimeSlots - foundTimeSlot
-                val updatedStudents =
-                  if (updatedUnassignedTimeSlots.isEmpty)
-                    nextStudents // if a student has an assignment for each timeslot, no further distribution is needed
-                  else {
-                    val (_, updatedTopicSelections) = orderedTopicSelections.span(_.selectionPriority.prio <= prio)
-                    val updatedAssignedTopics = assignedTopics + foundTopicId
-                    val updatedStudent = headStudent.copy(
-                      algoPrio = algoPrio + WorstPrio.prio - prio,
-                      orderedTopicSelections = updatedTopicSelections,
-                      unassignedTimeSlots = updatedUnassignedTimeSlots,
-                      assignedTopics = updatedAssignedTopics,
-                    )
-                    // The student goes back in the list to a new place. The following usage of span is about 3 times
-                    // faster than a solution with sortBy.
-                    // nextStudents :+ updatedStudent.sortBy(s => (s.algoPrio, s.sortingOrder))
-                    val (lesserAlgoPrio, sameOrGreaterAlgoPrio) = nextStudents.span(_.algoPrio < updatedStudent.algoPrio)
-                    val (sameAlgoPrio, greaterAlgoPrio) = sameOrGreaterAlgoPrio.span(_.algoPrio == updatedStudent.algoPrio)
-                    val (lesserSortingOrder, greaterSortingOrder) = sameAlgoPrio.span(_.sortingOrder < updatedStudent.sortingOrder)
-                    (lesserAlgoPrio ++ lesserSortingOrder :+ updatedStudent) ++ greaterSortingOrder ++ greaterAlgoPrio
-                  }
-                recursion12(findWorkshopId)(updatedWorkshopAssignments, accUndistributableStudents, updatedStudents)
-            }
-        }
-
       val maybeDistribution1 = maybeDistribution0.flatMap { case (workshopAssignmentsSoFar, notYetDistributedStudents) =>
-        recursion12(findWorkshopId1)(
+        recursion012(findWorkshopId1)(
           accWorkshopAssignments = workshopAssignmentsSoFar,
           accUndistributableStudents = List.empty,
           remainingStudentsToDistribute = notYetDistributedStudents,
@@ -357,7 +317,7 @@ object Algorithm extends StrictLogging {
       def findWorkshopId3: FindWorkshopId = findWorkshopId23(haveMinVaryingCategories)
 
       val maybeDistribution2 = maybeDistribution1.flatMap { case (workshopAssignmentsSoFar, notYetDistributedStudents) =>
-        recursion12(findWorkshopId2)(
+        recursion012(findWorkshopId2)(
           accWorkshopAssignments = workshopAssignmentsSoFar,
           accUndistributableStudents = List.empty,
           remainingStudentsToDistribute = notYetDistributedStudents,
