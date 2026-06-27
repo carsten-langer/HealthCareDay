@@ -104,7 +104,7 @@ object OutputCsvConversion {
               .sortBy { case (StudentId(id), _) => id }
               .foreach { case (studentId, assignedWorkshopIds) =>
                 val (studentName, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
-                val metric = metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
+                val metric = metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
                 val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _) => topicId }
                 val first = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
                   assignedTopicIds.contains(topicId) && prio == 1

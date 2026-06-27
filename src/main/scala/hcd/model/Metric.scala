@@ -34,10 +34,10 @@ object Metric extends LazyLogging {
       .sortBy { case (StudentId(id), _) => id }
       .map { case (studentId, assignedWorkshopIds) =>
         val (_, selectedTopics) = studentsSelectedTopics(studentId)
-        metricStudent(topics, workshops)(assignedWorkshopIds, selectedTopics)
+        metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
       }
 
-  def metricStudent(topics: Topics, workshops: Workshops)(assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
+  def metricStudent(topics: Topics, workshops: Workshops)(studentId: StudentId, assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
     val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _) => topicId } // .toList is redundant to business logic
     val assignedCategories = assignedTopicIds.map(topics).map { case (_, category, _, _) => category }
     val metricCategories = metricFromCategories(assignedCategories)
@@ -50,8 +50,9 @@ object Metric extends LazyLogging {
         // The student did choose topics, and we expect the student to have selected enough topics that all 3 timeslots
         // could be filled. However, we do not hard assert it, as some unit tests may profit from setting up such a
         // normally unexpected situation. However, we log an error in this case.
-        if (selectedTopics.size < model.allTimeSlots.size) logger.error(
-          s"If a student made selections, at least ${model.allTimeSlots.size} selections should have been made, but only ${selectedTopics.size} were made!"
+        // TODO Quirk for HDC26 for student 332, this student only had 1 preassigned selection.
+        if (selectedTopics.size < model.allTimeSlots.size && studentId.id != 332) logger.error(
+          s"If a student made selections, at least ${model.allTimeSlots.size} selections should have been made, but for studentId $studentId only ${selectedTopics.size} were made!"
         )
         // In this case, a student being assigned the topics of the first 3 selection priorities would without
         // compensation get a metric of 1 + 2 + 3 = 6, and thus a worse metric than a student having made no selection
