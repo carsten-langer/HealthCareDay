@@ -49,34 +49,34 @@ object CmdLineConfig {
     algorithm = Algorithm.RandomRoundRobin,
     searchDuration = Duration("60s"),
     initialSeed = 0L,
-    distributeWorkshopFilling = false,
+    distributeWorkshopFilling = true,
 
     // workshop planning CSV file
     wFile = new File(""),
     wDelimiter = ';',
     wRowsToSkip = 4,
-    wNoTopics = 62,
-    wColTopicId = 1, // 1-based A = 1
-    wColTopicName = 3,
-    wColCategory = 2,
+    wNoTopics = 65,
+    wColTopicId = 11, // 1-based A = 1
+    wColTopicName = 13,
+    wColCategory = 12,
     wColPreassignedTopic = 14,
     wColOnlyVoluntaryTopic = 15,
     wColGrades1 = 16,
-    wColSeats1 = 17,
-    wColGrades2 = 18,
-    wColSeats2 = 19,
-    wColGrades3 = 20,
-    wColSeats3 = 21,
+    wColSeats1 = 20,
+    wColGrades2 = 17,
+    wColSeats2 = 20,
+    wColGrades3 = 18,
+    wColSeats3 = 20,
 
     // student topic selection CSV file
     sFile = new File(""),
     sDelimiter = ';',
     sRowsToSkip = 1,
-    sNoStudents = 533,
-    sColStudentId = 2,
-    sColStudentName = 4,
+    sNoStudents = 598,
+    sColStudentId = 1,
+    sColStudentName = 2,
     sColGrade = 3,
-    sColFirstSelection = 5,
+    sColFirstSelection = 12,
 
     // workshop assignments CSV file
     oDelimiter = ';',
