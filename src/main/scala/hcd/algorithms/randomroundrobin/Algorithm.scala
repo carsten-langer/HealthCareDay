@@ -167,21 +167,22 @@ object Algorithm extends StrictLogging {
                                student: Student,
                                workshopAssignments: WorkshopAssignments,
                              )(
-                               topicSelection: TopicSelection,
+                               maybeTopicSelection: Option[TopicSelection],
                              )
-      : Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] = {
+      : Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] = {
         val possibleWorkshops = workshops.flatMap {
           case Workshop(workshopId, topicId, timeSlot, grades, seats) =>
             val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
             if (
-              topicId == topicSelection.topicId
+              maybeTopicSelection.forall(_.topicId == topicId)
+                && !student.assignedTopics.contains(topicId)
                 && student.unassignedTimeSlots.contains(timeSlot)
                 && grades.contains(student.grade)
                 && filledSeats < seats.n
                 && isAssignable(student.assignedTopics + topicId)
             ) {
               logger.trace(s"found: $workshopId at $timeSlot for $student.")
-              Some((Holder((workshopId, topicId, topicSelection.selectionPriority, timeSlot)), filledSeats.toDouble / seats.n))
+              Some((Holder((workshopId, topicId, maybeTopicSelection.map(_.selectionPriority), timeSlot)), filledSeats.toDouble / seats.n))
             } else None
         }
         val maybeWorkshop = if (distributeWorkshopFilling)
@@ -209,7 +210,8 @@ object Algorithm extends StrictLogging {
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
                 val updatedUndistributableStudents = accUndistributableStudents :+ headStudent
                 recursion(findWorkshopId)(accWorkshopAssignments, updatedUndistributableStudents, nextStudents)
-              case Some((foundWorkshopId, foundTopicId, SelectionPriority(prio), foundTimeSlot)) =>
+              case Some((foundWorkshopId, foundTopicId, maybeSelectionPriority, foundTimeSlot)) =>
+                val prio = maybeSelectionPriority.map(_.prio).getOrElse(Int.MaxValue)
                 val updatedWorkshopAssignments = accWorkshopAssignments
                   .updatedWith(foundWorkshopId)(maybeStudents => Some(maybeStudents.getOrElse(Set.empty) + studentId))
                 val updatedUnassignedTimeSlots = unassignedTimeSlots - foundTimeSlot
@@ -241,8 +243,8 @@ object Algorithm extends StrictLogging {
       // the pre-assigned topic.
       def findWorkshopId0: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
-          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            collectBestWorkshop(preassignedWorkshops, isAssignable = _ => true)(student, workshopAssignments)(topicSelection)
+          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] =
+            collectBestWorkshop(preassignedWorkshops, isAssignable = _ => true)(student, workshopAssignments)(Some(topicSelection))
         }
 
         student.orderedTopicSelections.collectFirst { case ExtractorFindWorkshopForTopic(Holder(workshopTuple)) => workshopTuple }
@@ -275,8 +277,8 @@ object Algorithm extends StrictLogging {
       // both normal and only-voluntary workshops.
       def findWorkshopId1: FindWorkshopId = (student: Student, workshopAssignments: WorkshopAssignments) => {
         object ExtractorFindWorkshopForTopic {
-          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]] =
-            collectBestWorkshop(normalAndOnlyVoluntaryWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(topicSelection)
+          def unapply(topicSelection: TopicSelection): Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] =
+            collectBestWorkshop(normalAndOnlyVoluntaryWorkshops, haveMaxVaryingCategories)(student, workshopAssignments)(Some(topicSelection))
         }
 
         // Find the workshop with best priority for the given student that fulfills all other criteria.
@@ -292,22 +294,14 @@ object Algorithm extends StrictLogging {
       val (workshopAssignmentsSoFarAfter1, notYetDistributedStudentsAfter1) = distribution1
       logger.debug(s"number of workshop assignments in round 1: ${sizeOf(workshopAssignmentsSoFarAfter1) - sizeOf(workshopAssignmentsSoFarAfter0)}")
 
-      // Second or third round of distribution: For each student, select the next workshop which fulfils all mandatory
-      // criteria and the given function isAssignable, regardless of the student's selection.
+      // Second or third round of distribution: For each student, select the next best workshop which fulfils all
+      // mandatory criteria and the given function isAssignable, regardless of the student's selection.
       // However, any student that needs to go through the second or third round has depleted her selections;
       // thus only normal workshops can be selected, i.e. which do not have the flag "onlyVoluntary".
       def findWorkshopId23(isAssignable: Set[TopicId] => Boolean): FindWorkshopId =
         (student: Student, workshopAssignments: WorkshopAssignments) =>
-          normalWorkshops.collectFirst {
-            case Workshop(workshopId, topicId, timeSlot, grades, seats)
-              if student.unassignedTimeSlots.contains(timeSlot)
-                && !student.assignedTopics.contains(topicId)
-                && grades.contains(student.grade)
-                && workshopAssignments.getOrElse(workshopId, Set.empty).size < seats.n
-                && isAssignable(student.assignedTopics + topicId) =>
-              logger.trace(s"found23: $workshopId at $timeSlot for $student.")
-              (workshopId, topicId, SelectionPriority(Int.MaxValue), timeSlot)
-          }
+          collectBestWorkshop(normalWorkshops, isAssignable)(student, workshopAssignments)(maybeTopicSelection = None)
+            .map { case Holder(workshopTuple) => workshopTuple }
 
       // Second round of distribution: For each student, select the next workshop which fulfils all criteria, regardless
       // of her selection, but still with max varying categories.
@@ -374,7 +368,7 @@ object Algorithm extends StrictLogging {
                                   )
 
   private type DistributeFromPreOrdered = (DistributeWorkshopFilling, Topics, List[Workshop], List[Student]) => Option[WorkshopAssignments]
-  private type FindWorkshopId = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, SelectionPriority, TimeSlot)]
+  private type FindWorkshopId = (Student, WorkshopAssignments) => Option[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]
 
   // See https://github.com/scala/bug/issues/6675 and https://github.com/scala/bug/issues/6111
   // for the need for a holder to avoid deprecation message on (scala/bug#6675)
