@@ -13,7 +13,8 @@ object Metric extends LazyLogging {
   private val malusMetricNoneOfFirstPrios = Metric(10_000)
   private val malusMetricUnwantedTopic = Metric(7)
   private val malusMetricAllSports = Metric(1_000)
-  private val malusMetricSparseWorkshop = Metric(10_000)
+  private val malusMinSeatsNotReached = Metric(1_000_000)
+  private val malusMetricSparseWorkshop = Metric(100_000)
 
   private val initialMetric: Metric = neutralMetric
 
@@ -25,7 +26,7 @@ object Metric extends LazyLogging {
     val metricStudents =
       orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
         .fold(initialMetric)(add)
-    add(metricStudents, metricWorkshops(workshopAssignments))
+    add(metricStudents, metricWorkshops(workshops)(workshopAssignments))
   }
 
   def orderedMetricsStudents(topics: Topics, workshops: Workshops, studentsSelectedTopics: StudentsSelectedTopics)(workshopAssignments: WorkshopAssignments): List[Metric] =
@@ -105,11 +106,16 @@ object Metric extends LazyLogging {
     if (categories.forall(_ == Sports)) malusMetricAllSports
     else neutralMetric
 
-  def metricWorkshops(workshopAssignments: WorkshopAssignments): Metric =
-    add(neutralMetric, workshopAssignments.map { case (_, students) => metricWorkshop(students.size) })
+  def metricWorkshops(workshops: Workshops)(workshopAssignments: WorkshopAssignments): Metric =
+    add(neutralMetric, workshopAssignments.map {
+      case (workshopId, students) => metricWorkshop(workshops)(workshopId, students.size)
+    })
 
-  def metricWorkshop(filledSeats: Int): Metric =
-    if (filledSeats >= 1 && filledSeats <= 5) malusMetricSparseWorkshop
+  def metricWorkshop(workshops: Workshops)(workshopId: WorkshopId, filledSeats: Int): Metric = {
+    val (_, _, _, Seats(minSeats), _) = workshops(workshopId)
+    if (filledSeats < minSeats) malusMinSeatsNotReached
+    else if (filledSeats > 0 && filledSeats < 6) malusMetricSparseWorkshop
     else neutralMetric
+  }
 
 }

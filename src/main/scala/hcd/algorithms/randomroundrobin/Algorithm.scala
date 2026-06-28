@@ -171,7 +171,7 @@ object Algorithm extends StrictLogging {
                              )
       : Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] = {
         val possibleWorkshops = workshops.flatMap {
-          case Workshop(workshopId, topicId, timeSlot, grades, _, maxSeats) =>
+          case Workshop(workshopId, topicId, timeSlot, grades, minSeats, maxSeats) =>
             val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
             if (
               maybeTopicSelection.forall(_.topicId == topicId)
@@ -182,13 +182,26 @@ object Algorithm extends StrictLogging {
                 && isAssignable(student.assignedTopics + topicId)
             ) {
               logger.trace(s"found: $workshopId at $timeSlot for $student.")
-              Some((Holder((workshopId, topicId, maybeTopicSelection.map(_.selectionPriority), timeSlot)), filledSeats.toDouble / maxSeats.n))
+              Some((Holder((workshopId, topicId, maybeTopicSelection.map(_.selectionPriority), timeSlot)), minSeats, maxSeats, filledSeats))
             } else None
         }
         val maybeWorkshop = if (distributeWorkshopFilling)
-          possibleWorkshops.minByOption { case (_, fillRatio) => fillRatio }
+          possibleWorkshops.maxByOption {
+            // Calculate a score, the higher, the likelier that this workshop is taken.
+            case (_, Seats(minSeats), Seats(maxSeats), filledSeats) =>
+              // First, prioritize workshop which did not yet reach their minSeats; the more students are missing, the
+              // higher the prio.
+              val prioMinSeats = Math.max(0, minSeats - filledSeats)
+              // Second, prioritize workshops which did not yet reach at least 6 students (or the maxSeats if smaller);
+              // the more students are missing, the higher the prio.
+              val prioLittleFilled = Math.max(0, Math.min(6, maxSeats) - filledSeats)
+              // Third, prioritize workshops proportionally to their current fill ratio; the lower the fill ratio,
+              // the higher the prio.
+              val prioFillRatio = maxSeats.toDouble / filledSeats
+              (prioMinSeats, prioLittleFilled, prioFillRatio) // order by this tuple, search the max
+          }
         else possibleWorkshops.headOption
-        maybeWorkshop.map { case (workshopHolder, _) => workshopHolder }
+        maybeWorkshop.map { case (workshopHolder, _, _, _) => workshopHolder }
       }
 
       // One round of distribution:

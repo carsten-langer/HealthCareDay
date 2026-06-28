@@ -38,7 +38,7 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val studentsSelectedTopics = studentsSelectedTopicsFrom(studentsNameSelectedTopics)
           val globalMetric = metricGlobal(topics, workshops, studentsSelectedTopics)(workshopAssignments)
-          val workshopsMetric = metricWorkshops(workshopAssignments)
+          val workshopsMetric = metricWorkshops(workshops)(workshopAssignments)
           val orderedStudentsMetrics = orderedMetricsStudents(topics, workshops, studentsSelectedTopics)(workshopAssignments)
           val _ = Using(CSVWriter.open(metricCsvFile, append = true)(csvFormat(config))) { writer =>
             writer.writeRow(List(globalMetric.m, workshopsMetric.m) ++ orderedStudentsMetrics.map(_.m))
@@ -62,7 +62,7 @@ object OutputCsvConversion {
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
                 val leftSeats = maxSeats - usedSeats
-                val workshopMetric = metricWorkshop(usedSeats).m
+                val workshopMetric = metricWorkshop(workshops)(workshopId, usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
                   val (studentName, _, _) = studentsNameSelectedTopics(studentId)
