@@ -257,7 +257,7 @@ object Algorithm extends StrictLogging {
       )
       logger.debug(s"distribution0: $distribution0")
       val (workshopAssignmentsSoFarAfter0, notYetDistributedStudentsAfter0) = distribution0
-      logger.debug(s"number of workshop assignments in round 0: ${sizeOf(workshopAssignmentsSoFarAfter0)}")
+      logger.info(s"number of workshop assignments in round 0: ${sizeOf(workshopAssignmentsSoFarAfter0)}")
 
       notYetDistributedStudentsAfter0.foreach(student =>
         student
@@ -292,7 +292,7 @@ object Algorithm extends StrictLogging {
       )
       logger.debug(s"distribution1: $distribution1")
       val (workshopAssignmentsSoFarAfter1, notYetDistributedStudentsAfter1) = distribution1
-      logger.debug(s"number of workshop assignments in round 1: ${sizeOf(workshopAssignmentsSoFarAfter1) - sizeOf(workshopAssignmentsSoFarAfter0)}")
+      logger.info(s"number of workshop assignments in round 1: ${sizeOf(workshopAssignmentsSoFarAfter1) - sizeOf(workshopAssignmentsSoFarAfter0)}")
 
       // Second or third round of distribution: For each student, select the next best workshop which fulfils all
       // mandatory criteria and the given function isAssignable, regardless of the student's selection.
@@ -318,7 +318,7 @@ object Algorithm extends StrictLogging {
       )
       logger.debug(s"distribution2: $distribution2")
       val (workshopAssignmentsSoFarAfter2, notYetDistributedStudentsAfter2) = distribution2
-      logger.debug(s"number of workshop assignments in round 2: ${sizeOf(workshopAssignmentsSoFarAfter2) - sizeOf(workshopAssignmentsSoFarAfter1)}")
+      logger.info(s"number of workshop assignments in round 2: ${sizeOf(workshopAssignmentsSoFarAfter2) - sizeOf(workshopAssignmentsSoFarAfter1)}")
 
       val distribution3: (WorkshopAssignments, List[Student]) = recursion(findWorkshopId3)(
         accWorkshopAssignments = workshopAssignmentsSoFarAfter2,
@@ -327,7 +327,7 @@ object Algorithm extends StrictLogging {
       )
       logger.debug(s"distribution3: $distribution3")
       val (workshopAssignmentsSoFarAfter3, notYetDistributedStudentsAfter3) = distribution3
-      logger.debug(s"number of workshop assignments in round 3: ${sizeOf(workshopAssignmentsSoFarAfter3) - sizeOf(workshopAssignmentsSoFarAfter2)}")
+      logger.info(s"number of workshop assignments in round 3: ${sizeOf(workshopAssignmentsSoFarAfter3) - sizeOf(workshopAssignmentsSoFarAfter2)}")
 
       // If no workshop can be found, the distribution fails.
       val maybeWorkshopAssignments3 = if (notYetDistributedStudentsAfter3.nonEmpty) {
