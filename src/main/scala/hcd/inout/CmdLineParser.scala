@@ -80,26 +80,38 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades1 = x))
         .text(s"The column of the set of grades for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColGrades1}"),
-      opt[Int]("wColSeats1")
+      opt[Int]("wColMinSeats1")
         .valueName("<int>")
-        .action((x, c) => c.copy(wColSeats1 = x))
-        .text(s"The column of the number of seats for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSeats1}"),
+        .action((x, c) => c.copy(wColMinSeats1 = x))
+        .text(s"The column of the minimum number of seats for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMinSeats1}"),
+      opt[Int]("wColMaxSeats1")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColMaxSeats1 = x))
+        .text(s"The column of the maximum number of seats for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMaxSeats1}"),
       opt[Int]("wColGrades2")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades2 = x))
         .text(s"The column of the set of grades for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColGrades2}"),
-      opt[Int]("wColSeats2")
+      opt[Int]("wColMinSeats2")
         .valueName("<int>")
-        .action((x, c) => c.copy(wColSeats2 = x))
-        .text(s"The column of the number of seats for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSeats2}"),
+        .action((x, c) => c.copy(wColMinSeats2 = x))
+        .text(s"The column of the minimum number of seats for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMinSeats2}"),
+      opt[Int]("wColMaxSeats2")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColMaxSeats2 = x))
+        .text(s"The column of the maximum number of seats for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMaxSeats2}"),
       opt[Int]("wColGrades3")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades3 = x))
         .text(s"The column of the set of grades for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColGrades3}"),
-      opt[Int]("wColSeats3")
+      opt[Int]("wColMinSeats3")
         .valueName("<int>")
-        .action((x, c) => c.copy(wColSeats3 = x))
-        .text(s"The column of the number of seats for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSeats3}"),
+        .action((x, c) => c.copy(wColMinSeats3 = x))
+        .text(s"The column of the minimum number of seats for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMinSeats3}"),
+      opt[Int]("wColMaxSeats3")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColMaxSeats3 = x))
+        .text(s"The column of the maximum number of seats for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMaxSeats3}"),
       arg[File]("<hcd-workshop-planning-file.csv>")
         .required()
         .action((x, c) => c.copy(wFile = x))

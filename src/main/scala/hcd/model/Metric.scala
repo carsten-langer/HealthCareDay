@@ -38,7 +38,7 @@ object Metric extends LazyLogging {
       }
 
   def metricStudent(topics: Topics, workshops: Workshops)(studentId: StudentId, assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
-    val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _) => topicId } // .toList is redundant to business logic
+    val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _, _) => topicId } // .toList is redundant to business logic
     val assignedCategories = assignedTopicIds.map(topics).map { case (_, category, _, _) => category }
     val metricCategories = metricFromCategories(assignedCategories)
     val metricSelectedTopics =

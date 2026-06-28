@@ -34,17 +34,25 @@ object InputCsvConversion extends StrictLogging {
       Some(grades2).filterNot(_.isEmpty)
     }
 
-    def maybeSeats(seats: String): Option[Seats] = {
+    def maybeMinSeats(seats: String): Option[Seats] = {
+      val seatsString = seats.trim
+      val seatsInt = (if (seatsString.isEmpty) "0" else seatsString).toInt // empty seats -> 0
+      val maybeSeatsInt: Option[Int] = Option.when(seatsInt >= 0)(seatsInt) // seats < 0 -> None
+      maybeSeatsInt.map(Seats)
+    }
+
+    def maybeMaxSeats(seats: String): Option[Seats] = {
       val seats1: Option[String] = Some(seats.trim).filterNot(_.isEmpty) // empty seats -> None
       val seats2: Option[Int] = seats1.map(_.toInt).filter(_ > 0) // seats <= 0 -> None
       seats2.map(Seats)
     }
 
-    def maybeWorkshop(topicId: TopicId, timeSlot: TimeSlot, gradesStr: String, seatsStr: String): Option[(TopicId, TimeSlot, Set[Grade], Seats)] =
+    def maybeWorkshop(topicId: TopicId, timeSlot: TimeSlot, gradesStr: String, minSeatsStr: String, maxSeatsStr: String): Option[(TopicId, TimeSlot, Set[Grade], Seats, Seats)] =
       for {
         grades <- maybeGrades(gradesStr)
-        seats <- maybeSeats(seatsStr)
-      } yield (topicId, timeSlot, grades, seats)
+        minSeats <- maybeMinSeats(minSeatsStr)
+        maxSeats <- maybeMaxSeats(maxSeatsStr)
+      } yield (topicId, timeSlot, grades, minSeats, maxSeats)
 
     Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
       val topicsWorkshops = reader
@@ -57,22 +65,25 @@ object InputCsvConversion extends StrictLogging {
           val preassigned = toFlag(columns(config.wColPreassignedTopic - 1))
           val onlyVoluntary = toFlag(columns(config.wColOnlyVoluntaryTopic - 1))
           val grades1 = columns(config.wColGrades1 - 1)
-          val seats1 = columns(config.wColSeats1 - 1)
+          val minSeats1 = columns(config.wColMinSeats1 - 1)
+          val maxSeats1 = columns(config.wColMaxSeats1 - 1)
           val grades2 = columns(config.wColGrades2 - 1)
-          val seats2 = columns(config.wColSeats2 - 1)
+          val minSeats2 = columns(config.wColMinSeats2 - 1)
+          val maxSeats2 = columns(config.wColMaxSeats2 - 1)
           val grades3 = columns(config.wColGrades3 - 1)
-          val seats3 = columns(config.wColSeats3 - 1)
-          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, seats1)
-          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, seats2)
-          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, seats3)
+          val minSeats3 = columns(config.wColMinSeats3 - 1)
+          val maxSeats3 = columns(config.wColMaxSeats3 - 1)
+          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, minSeats1, maxSeats1)
+          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, minSeats2, maxSeats2)
+          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, minSeats3, maxSeats3)
 
-          logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, s1=$seats1, g2=$grades2, s2=$seats2, g3=$grades3, s3=$seats3")
+          logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, mins1=$minSeats1, maxs1=$maxSeats1, g2=$grades2, mins2=$minSeats2, maxs2=$maxSeats2, g3=$grades3, mins3=$minSeats3, maxs3=$maxSeats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
             .zipWithIndex
             .collect {
-              case (Some(ws@(topicId, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
+              case (Some(ws@(topicId, _, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
             }
           ((topicId, (topicName, category, preassigned, onlyVoluntary)), workshops)
         }

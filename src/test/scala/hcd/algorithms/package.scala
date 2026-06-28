@@ -17,7 +17,7 @@ package object algorithms {
     // Generate symmetric workshops:
     // workshop categories are equally distributed among topics
     // each workshop topic exists in all timeslot
-    // no limits of workshop seats
+    // no limits of workshop max seats
     // categories alter n,n,n, r,r,r, s,s,s, o,o,o, n,n,n, ...
     // topicIds alter 0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4, ...
     // timeslots alter f,s,t, f,s,t, f,s,t, f,s,t, f,s,t, ...
@@ -25,13 +25,14 @@ package object algorithms {
       topicId -> ("topicName", categories(topicId.id % categories.size), /* preassigned */ false, /* onlyVoluntary */ false)
     ).toMap
     override val noSeats: Int = _noSeats
-    private val seats = Seats(noSeats)
+    private val maxSeats = Seats(noSeats)
     override val workshops: Workshops = workshopIds.map(workshopId =>
       workshopId -> (
         TopicId(workshopId.id / timeSlots.size),
         timeSlots(workshopId.id % timeSlots.size),
         grades,
-        seats,
+        zeroSeats,
+        maxSeats,
       )
     ).toMap
   }

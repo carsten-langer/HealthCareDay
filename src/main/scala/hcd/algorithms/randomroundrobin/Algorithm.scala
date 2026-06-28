@@ -39,7 +39,7 @@ object Algorithm extends StrictLogging {
       // algorithm, so that re-ordering it per round with different random seed is guaranteed to give reproducible
       // results.
       val baseWorkshops = workshops.toList.map {
-        case (workshopId, (topicId, timeSlot, grades, seats)) => Workshop(workshopId, topicId, timeSlot, grades, seats)
+        case (workshopId, (topicId, timeSlot, grades, minSeats, maxSeats)) => Workshop(workshopId, topicId, timeSlot, grades, minSeats, maxSeats)
       }
       val baseOrderedWorkshops = baseWorkshops.sortBy(_.workshopId.id)
 
@@ -171,18 +171,18 @@ object Algorithm extends StrictLogging {
                              )
       : Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] = {
         val possibleWorkshops = workshops.flatMap {
-          case Workshop(workshopId, topicId, timeSlot, grades, seats) =>
+          case Workshop(workshopId, topicId, timeSlot, grades, _, maxSeats) =>
             val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
             if (
               maybeTopicSelection.forall(_.topicId == topicId)
                 && !student.assignedTopics.contains(topicId)
                 && student.unassignedTimeSlots.contains(timeSlot)
                 && grades.contains(student.grade)
-                && filledSeats < seats.n
+                && filledSeats < maxSeats.n
                 && isAssignable(student.assignedTopics + topicId)
             ) {
               logger.trace(s"found: $workshopId at $timeSlot for $student.")
-              Some((Holder((workshopId, topicId, maybeTopicSelection.map(_.selectionPriority), timeSlot)), filledSeats.toDouble / seats.n))
+              Some((Holder((workshopId, topicId, maybeTopicSelection.map(_.selectionPriority), timeSlot)), filledSeats.toDouble / maxSeats.n))
             } else None
         }
         val maybeWorkshop = if (distributeWorkshopFilling)
@@ -351,7 +351,7 @@ object Algorithm extends StrictLogging {
 
   // Ordering the Workshops is necessary for the unit tests to know the expected result.
   // It is easier if we have our own data type.
-  private final case class Workshop(workshopId: WorkshopId, topicId: TopicId, timeSlot: TimeSlot, grades: Set[Grade], seats: Seats)
+  private final case class Workshop(workshopId: WorkshopId, topicId: TopicId, timeSlot: TimeSlot, grades: Set[Grade], minSeats: Seats, maxSeats: Seats)
 
   // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result.
   // It is easier if we have our own data type. Ordering makes most sense by selection priority;

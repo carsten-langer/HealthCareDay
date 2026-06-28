@@ -1,6 +1,6 @@
 package hcd.algorithms
 
-import hcd.model.{Grade, Topics, Workshops}
+import hcd.model.{Grade, Seats, Topics, Workshops}
 
 trait FixtureWorkshops {
   def topics: Topics
@@ -8,6 +8,8 @@ trait FixtureWorkshops {
   def workshops: Workshops
 
   def noSeats: Int
+
+  def zeroSeats: Seats = Seats(0)
 
   def grade: Grade = Grade(0) // a test grade for all students, included in the workshops, value 0 has no further meaning
 

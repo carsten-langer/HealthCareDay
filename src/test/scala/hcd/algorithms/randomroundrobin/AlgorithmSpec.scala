@@ -211,7 +211,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which respects that not all 3 workshops shall be of category nutrition" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
         // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8, 9 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(0, 4, 8, 9).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(0, 4, 8, 9).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
@@ -242,7 +242,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if the rule no-3-nutrition cannot be fulfilled" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 9)
         // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(0, 4, 8).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(0, 4, 8).contains(id) }
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
@@ -255,7 +255,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which respects that not all 3 workshops shall be of category relaxation" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 11)
         // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9, 10 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(1, 5, 9, 10).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(1, 5, 9, 10).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
@@ -287,7 +287,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if the rule no-3-relaxation cannot be fulfilled" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
         // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(1, 5, 9).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(1, 5, 9).contains(id) }
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
@@ -300,7 +300,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which avoids that all 3 workshops shall are of category sports" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 12)
         // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, so that only topics 2, 6, 10, 11 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(2, 6, 10, 11).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(2, 6, 10, 11).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
@@ -333,7 +333,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which assigns all 3 workshops having category sports if no alternative exists" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 15)
         // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13 so that only topics 2, 6, 10, 14 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _)) => Set(2, 6, 10, 14).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(2, 6, 10, 14).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
@@ -380,7 +380,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         // reset grades of workshops 0, 6, 7, 8 to non-matching grades
         val workshopsGradesChanged = Set(0, 7, 8).foldLeft(f.workshops) { case (workshops, id) =>
           workshops.updatedWith(WorkshopId(id))(_.map {
-            case (topicId, timeSlot, _, seats) => (topicId, timeSlot, Set(f.gradeNonMatching), seats)
+            case (topicId, timeSlot, _, minSeats, maxSeats) => (topicId, timeSlot, Set(f.gradeNonMatching), minSeats, maxSeats)
           })
         }
         val student1 = StudentId(1)

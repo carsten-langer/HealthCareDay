@@ -51,17 +51,17 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Preassigned",
-              "OnlyVoluntary", "Grades", "Seats", "UsedSeats", "LeftSeats", "WorkshopMetric",
+              "OnlyVoluntary", "Grades", "MinSeats", "MaxSeats", "UsedSeats", "LeftSeats", "WorkshopMetric",
               "Student1", "Student2", "..."))
             workshopAssignments
               .toList
               .sortBy { case (WorkshopId(id), _) => id }
               .foreach { case (workshopId, unsortedStudentIds) =>
-                val (topicId, timeSlot, unorderedGrades, Seats(seats)) = workshops(workshopId)
+                val (topicId, timeSlot, unorderedGrades, Seats(minSeats), Seats(maxSeats)) = workshops(workshopId)
                 val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
-                val leftSeats = seats - usedSeats
+                val leftSeats = maxSeats - usedSeats
                 val workshopMetric = metricWorkshop(usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
@@ -77,7 +77,8 @@ object OutputCsvConversion {
                   preassigned,
                   onlyVoluntary,
                   grades,
-                  seats,
+                  minSeats,
+                  maxSeats,
                   usedSeats,
                   leftSeats,
                   workshopMetric,
@@ -105,7 +106,7 @@ object OutputCsvConversion {
               .foreach { case (studentId, assignedWorkshopIds) =>
                 val (studentName, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
                 val metric = metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
-                val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _) => topicId }
+                val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _, _) => topicId }
                 val first = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
                   assignedTopicIds.contains(topicId) && prio == 1
                 }
@@ -122,7 +123,7 @@ object OutputCsvConversion {
                     assignedTopicIds.contains(topicId) && prio == 2
                   })
                 val assignedWorkshopsWithPrios = assignedWorkshopIds.map { workshopId =>
-                  val (topicId, timeSlot, _, _) = workshops(workshopId)
+                  val (topicId, timeSlot, _, _, _) = workshops(workshopId)
                   val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
                   val selectionPriority = selectedTopics.get(topicId) match {
                     case Some(selectionPriority) => selectionPriority
