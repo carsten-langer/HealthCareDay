@@ -78,6 +78,7 @@ object Algorithm extends StrictLogging {
 
       val WorstMetric = Int.MaxValue
       val startNanoTime = System.nanoTime()
+      val seedStep = baseOrderedStudents.size + baseOrderedWorkshops.size
 
       // From originally pre-ordered workshops and students, run a distribution incl. shuffling until the shallStop sign.
       @tailrec
@@ -105,8 +106,9 @@ object Algorithm extends StrictLogging {
               (currentGlobalMetric, maybeCurrentWorkshopAssignments)
             } else
               (bestMetric, maybeBestWorkshopAssignments)
+          val nextSeed = initialSeed + round * seedStep + 1L
           val nextMaybeCurrentWorkshopAssignments =
-            shuffleThenDistribute(initialSeed + round)(distributeWorkshopFilling, topics, baseOrderedWorkshops, baseOrderedStudents)
+            shuffleThenDistribute(nextSeed)(distributeWorkshopFilling, topics, baseOrderedWorkshops, baseOrderedStudents)
           _distributeUntilStop(
             nextMaybeCurrentWorkshopAssignments,
             nextMaybeBestWorkshopAssignments,
