@@ -22,9 +22,9 @@ class FixtureWorkshopsSpec
       inside(f.topics(TopicId(1))) { case (_, category, _, _) => category shouldEqual Relaxation }
       inside(f.topics(TopicId(2))) { case (_, category, _, _) => category shouldEqual Sports }
       inside(f.topics(TopicId(3))) { case (_, category, _, _) => category shouldEqual Other }
-      f.workshops(WorkshopId(0)) shouldEqual(TopicId(0), FirstTimeSlot, f.grades, f.zeroSeats, Seats(f.noSeats))
-      f.workshops(WorkshopId(4)) shouldEqual(TopicId(1), SecondTimeSlot, f.grades, f.zeroSeats, Seats(f.noSeats))
-      f.workshops(WorkshopId(8)) shouldEqual(TopicId(2), ThirdTimeSlot, f.grades, f.zeroSeats, Seats(f.noSeats))
+      f.workshops(WorkshopId(0)) shouldEqual(TopicId(0), FirstTimeSlot, f.sexes, f.grades, f.zeroSeats, Seats(f.noSeats))
+      f.workshops(WorkshopId(4)) shouldEqual(TopicId(1), SecondTimeSlot, f.sexes, f.grades, f.zeroSeats, Seats(f.noSeats))
+      f.workshops(WorkshopId(8)) shouldEqual(TopicId(2), ThirdTimeSlot, f.sexes, f.grades, f.zeroSeats, Seats(f.noSeats))
 
       // print workshops ordered by id
       //f.workshops.toSeq.sortBy(_._1.id).foreach(w => logger.info(w.toString))

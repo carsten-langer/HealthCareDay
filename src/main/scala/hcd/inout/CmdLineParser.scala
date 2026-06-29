@@ -76,6 +76,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColOnlyVoluntaryTopic = x))
         .text(s"The column of the flag if the topic is only assignable if the student selected it (1-based, A = 1, B = 2, ...), default: ${d.wColOnlyVoluntaryTopic}"),
+      opt[Int]("wColSexes1")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColSexes1 = x))
+        .text(s"The column of the set of sexes for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSexes1}"),
       opt[Int]("wColGrades1")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades1 = x))
@@ -88,6 +92,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColMaxSeats1 = x))
         .text(s"The column of the maximum number of seats for the first topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMaxSeats1}"),
+      opt[Int]("wColSexes2")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColSexes2 = x))
+        .text(s"The column of the set of sexes for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSexes2}"),
       opt[Int]("wColGrades2")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades2 = x))
@@ -100,6 +108,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(wColMaxSeats2 = x))
         .text(s"The column of the maximum number of seats for the second topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColMaxSeats2}"),
+      opt[Int]("wColSexes3")
+        .valueName("<int>")
+        .action((x, c) => c.copy(wColSexes3 = x))
+        .text(s"The column of the set of sexes for the third topic timeslot (1-based, A = 1, B = 2, ...), default: ${d.wColSexes3}"),
       opt[Int]("wColGrades3")
         .valueName("<int>")
         .action((x, c) => c.copy(wColGrades3 = x))
@@ -138,6 +150,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(sColStudentName = x))
         .text(s"The column of the student name (1-based, A = 1, B = 2, ...), default: ${d.sColStudentName}"),
+      opt[Int]("sColSex")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColSex = x))
+        .text(s"The column of the student's sex (1-based, A = 1, B = 2, ...), default: ${d.sColSex}"),
       opt[Int]("sColGrade")
         .valueName("<int>")
         .action((x, c) => c.copy(sColGrade = x))

@@ -29,7 +29,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "assigns 3 workshops to a student which has not selected any topic" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student1 has no selection, thus gets assigned next best workshops, one per timeslot
         val expectedWorkshopAssignments = Map(
           WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
@@ -43,7 +43,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution for workshops for 3 topics and 1 student selecting 1 topic" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap(TopicId(0) -> SelectionPriority(1))))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap(TopicId(0) -> SelectionPriority(1))))
         // student1 has only 1 selection, thus gets assigned 2 other workshops, one per timeslot
         val expectedWorkshopAssignments = Map(
           WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
@@ -59,8 +59,8 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(TopicId(0) -> SelectionPriority(2))),
-          student2 -> (f.grade, BiMap(TopicId(0) -> SelectionPriority(1))),
+          student1 -> (f.sex, f.grade, BiMap(TopicId(0) -> SelectionPriority(2))),
+          student2 -> (f.sex, f.grade, BiMap(TopicId(0) -> SelectionPriority(1))),
         )
         // student1 and student2 both have only 1 selection, thus get assigned 2 other workshops, one per timeslot
         val expectedWorkshopAssignments = Map(
@@ -77,8 +77,8 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(TopicId(1) -> SelectionPriority(2))),
-          student2 -> (f.grade, BiMap(TopicId(0) -> SelectionPriority(1))),
+          student1 -> (f.sex, f.grade, BiMap(TopicId(1) -> SelectionPriority(2))),
+          student2 -> (f.sex, f.grade, BiMap(TopicId(0) -> SelectionPriority(1))),
         )
         // student1 and student2 both have only 1 selection, thus get assigned 2 other workshops, one per timeslot
         val expectedWorkshopAssignments = Map(
@@ -93,7 +93,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "assigns an alternative workshops if a student selects a non-existing topic" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap(TopicId(3) -> SelectionPriority(1)))) // TopicId(3) does not exist
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap(TopicId(3) -> SelectionPriority(1)))) // TopicId(3) does not exist
         // student1 has no valid selection, thus gets assigned next best workshops, one per timeslot
         val expectedWorkshopAssignments = Map(
           WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set.empty, WorkshopId(2) -> Set.empty, // TopicId(0)
@@ -108,7 +108,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(1) -> SelectionPriority(12), // expected in 2nd timeslot, as assigned second due to lower selection prio
             TopicId(0) -> SelectionPriority(11), // expected in 1st timeslot, as assigned first due to higher selection prio
           )),
@@ -128,7 +128,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val workshopsWsRemoved = f.workshops.removed(WorkshopId(0)).removed(WorkshopId(3))
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(1) -> SelectionPriority(11), // expected in 2nd timeslot, as assigned first due to prio, but workshop 3 does not exist, thus first timeslot cannot be used, but workshop 4 exists and second timeslot is free
             TopicId(0) -> SelectionPriority(12), // expected in 3rd timeslot, as assigned second due to prio, but workshops 0 do not exist, thus first timeslot cannot be used, workshop 1 exists, but second timeslot is not free, finally workshop 2 exists, and third timeslot is free
           )),
@@ -149,7 +149,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val workshopsWsRemoved = f.workshops.removed(WorkshopId(0)).removed(WorkshopId(3)).removed(WorkshopId(5))
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1), // expected in 2nd timeslot, as assigned first due to prio, but 1st timeslot does not exist.
             TopicId(1) -> SelectionPriority(2), // unassigned, as tried to assign second due to prio, but both 1st and 3rd timeslots do not exist and the 2nd is already assigned.
           )),
@@ -168,7 +168,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if there are not enough workshops to cover all needed timeslots" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 2)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student1 should get 3 workshops from 3 different topics, but only 2 topics exist, thus distribution fails
 
         distributeSingleRound(false, f.topics, f.workshops, studentsSelectedTopics) shouldBe empty
@@ -179,7 +179,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val workshopsWsRemoved = f.workshops.removed(WorkshopId(0)).removed(WorkshopId(3)).removed(WorkshopId(5))
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1), // expected in 2nd timeslot, as assigned first due to prio, but 1st timeslot does not exist.
             TopicId(1) -> SelectionPriority(2), // unassigned, as tried to assign second due to prio, but both 1st and 3rd timeslots do not exist and the 2nd is already assigned.
           )),
@@ -193,7 +193,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(11), // expected in 1st timeslot, as assigned first due to prio
             TopicId(1) -> SelectionPriority(12), // expected in 2nd timeslot, as assigned second due to prio
             TopicId(2) -> SelectionPriority(13), // expected in 3rd timeslot, as assigned third due to prio
@@ -211,16 +211,16 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which respects that not all 3 workshops shall be of category nutrition" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
         // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8, 9 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(0, 4, 8, 9).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(0, 4, 8, 9).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1), // nutrition
             TopicId(4) -> SelectionPriority(2), // nutrition
             TopicId(8) -> SelectionPriority(3), // nutrition
           )),
-          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student2 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         // student 1 can be assigned topic 0 and topic 4, but not topic 8, as this would be the 3rd nutrition.
         // As topic 1, 2, 3, 5, 6, 7 do not exist, topic 9 is the replacement, i.e. the assignment is 0, 4, 9.
@@ -242,9 +242,9 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if the rule no-3-nutrition cannot be fulfilled" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 9)
         // remove workshops for topics 1, 2, 3, 5, 6, 7, so that only topics 0, 4, 8 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(0, 4, 8).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(0, 4, 8).contains(id) }
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
         // As some do not exist, she would get assigned 0, 4, 8, but this is 3 times nutrition.
         // As no topic 9 exists, the distribution fails.
@@ -255,16 +255,16 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which respects that not all 3 workshops shall be of category relaxation" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 11)
         // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9, 10 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(1, 5, 9, 10).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(1, 5, 9, 10).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(1) -> SelectionPriority(1), // relaxation
             TopicId(5) -> SelectionPriority(2), // relaxation
             TopicId(9) -> SelectionPriority(3), // relaxation
           )),
-          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student2 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         // student 1 can be assigned topic 1 and topic 5, but not topic 9, as this would be the 3rd relaxation.
         // As topic 0, 2, 3, 4, 6, 7, 8 do not exist, topic 10 is the replacement, i.e. the assignment is 1, 5, 10.
@@ -287,9 +287,9 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if the rule no-3-relaxation cannot be fulfilled" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 10)
         // remove workshops for topics 0, 2, 3, 4, 6, 7, 8, so that only topics 1, 5, 9 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(1, 5, 9).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(1, 5, 9).contains(id) }
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]))
         // student 1 has no selection, thus would get assigned topics 0, 1, 2 if they existed.
         // As some do not exist, she would get assigned 1, 5, 9, but this is 3 times relaxation.
         // As no topic 10 exists, the distribution fails.
@@ -300,16 +300,16 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which avoids that all 3 workshops shall are of category sports" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 12)
         // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, so that only topics 2, 6, 10, 11 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(2, 6, 10, 11).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(2, 6, 10, 11).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(2) -> SelectionPriority(1), // sports
             TopicId(6) -> SelectionPriority(2), // sports
             TopicId(10) -> SelectionPriority(3), // sports
           )),
-          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student2 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         // student 1 can be assigned topic 2 and topic 6. She could also be assigned topic 10, if really needed, but
         // this is avoided if possible. As topics 0, 1, 3, 4, 5, 7, 8, 9 do not exist, but topic 11 exists,
@@ -333,16 +333,16 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "finds a distribution which assigns all 3 workshops having category sports if no alternative exists" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 15)
         // remove workshops for topics 0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13 so that only topics 2, 6, 10, 14 are left
-        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _)) => Set(2, 6, 10, 14).contains(id) }
+        val workshopsWsRemoved = f.workshops.filter { case (_, (TopicId(id), _, _, _, _, _)) => Set(2, 6, 10, 14).contains(id) }
         val student1 = StudentId(1)
         val student2 = StudentId(2)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(2) -> SelectionPriority(1), // sports
             TopicId(6) -> SelectionPriority(2), // sports
             TopicId(14) -> SelectionPriority(3), // sports
           )),
-          student2 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student2 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         // student 1 can be assigned topic 2 and topic 6. She could also be assigned topic 10 or 14, if really needed, but
         // this is avoided if possible. As topics 0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13 do not exist, and also no topic 15
@@ -380,12 +380,12 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         // reset grades of workshops 0, 6, 7, 8 to non-matching grades
         val workshopsGradesChanged = Set(0, 7, 8).foldLeft(f.workshops) { case (workshops, id) =>
           workshops.updatedWith(WorkshopId(id))(_.map {
-            case (topicId, timeSlot, _, minSeats, maxSeats) => (topicId, timeSlot, Set(f.gradeNonMatching), minSeats, maxSeats)
+            case (topicId, timeSlot, sexes, _, minSeats, maxSeats) => (topicId, timeSlot, sexes, Set(f.gradeNonMatching), minSeats, maxSeats)
           })
         }
         val student1 = StudentId(1)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1), // for student's grade only available in 2nd and 3rd timeslot
             TopicId(1) -> SelectionPriority(2), // available for student's grade in all 3 timeslots
             TopicId(2) -> SelectionPriority(3), // not at all available for student's grade
@@ -404,7 +404,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if no workshop with the right grade can be found" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.gradeNonMatching, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.gradeNonMatching, BiMap.empty[TopicId, SelectionPriority]))
 
         distributeSingleRound(false, f.topics, f.workshops, studentsSelectedTopics) shouldBe empty
       }
@@ -416,18 +416,18 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student3 = StudentId(3)
         val student4 = StudentId(4)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1),
             TopicId(1) -> SelectionPriority(2),
             TopicId(2) -> SelectionPriority(3),
           )),
-          student2 -> (f.grade, BiMap(
+          student2 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1),
             TopicId(1) -> SelectionPriority(2),
             TopicId(2) -> SelectionPriority(3),
           )),
-          student3 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
-          student4 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student3 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
+          student4 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]),
         )
         val expectedWorkshopAssignments = Map(
           WorkshopId(0) -> Set(student1), WorkshopId(1) -> Set(student2), WorkshopId(2) -> Set(student3), // TopicId(0)
@@ -442,7 +442,7 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
       "fails the distribution if no workshop with enough seats can be found" in {
         val f = fixtureSymmetricWorkshopsFor(noTopics = 3, _noSeats = 0)
         val student1 = StudentId(1)
-        val studentsSelectedTopics = Map(student1 -> (f.grade, BiMap.empty[TopicId, SelectionPriority]))
+        val studentsSelectedTopics = Map(student1 -> (f.sex, f.grade, BiMap.empty[TopicId, SelectionPriority]))
 
         distributeSingleRound(false, f.topics, f.workshops, studentsSelectedTopics) shouldBe empty
       }
@@ -454,22 +454,22 @@ class AlgorithmSpec extends AlgorithmBaseSpec {
         val student3 = StudentId(3)
         val student4 = StudentId(4)
         val studentsSelectedTopics = Map(
-          student1 -> (f.grade, BiMap(
+          student1 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(1),
             TopicId(1) -> SelectionPriority(2),
             TopicId(2) -> SelectionPriority(3),
           )),
-          student2 -> (f.grade, BiMap(
+          student2 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(4),
             TopicId(1) -> SelectionPriority(5),
             TopicId(2) -> SelectionPriority(6),
           )),
-          student3 -> (f.grade, BiMap(
+          student3 -> (f.sex, f.grade, BiMap(
             TopicId(0) -> SelectionPriority(2),
             TopicId(1) -> SelectionPriority(3),
             TopicId(2) -> SelectionPriority(4),
           )),
-          student4 -> (f.grade, BiMap(
+          student4 -> (f.sex, f.grade, BiMap(
             TopicId(1) -> SelectionPriority(6),
             TopicId(4) -> SelectionPriority(7), // not existing topic to force assignment of an unwanted topic
             TopicId(5) -> SelectionPriority(8), // not existing topic to force assignment of an unwanted topic

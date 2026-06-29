@@ -51,21 +51,22 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(workshopAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List("WorkshopId", "TopicId", "TopicName", "TimeSlot", "Category", "Preassigned",
-              "OnlyVoluntary", "Grades", "MinSeats", "MaxSeats", "UsedSeats", "LeftSeats", "WorkshopMetric",
+              "OnlyVoluntary", "Sexes", "Grades", "MinSeats", "MaxSeats", "UsedSeats", "LeftSeats", "WorkshopMetric",
               "Student1", "Student2", "..."))
             workshopAssignments
               .toList
               .sortBy { case (WorkshopId(id), _) => id }
               .foreach { case (workshopId, unsortedStudentIds) =>
-                val (topicId, timeSlot, unorderedGrades, Seats(minSeats), Seats(maxSeats)) = workshops(workshopId)
+                val (topicId, timeSlot, unorderedSexes, unorderedGrades, Seats(minSeats), Seats(maxSeats)) = workshops(workshopId)
                 val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
+                val sexes = unorderedSexes.toList.sortBy(_.getClass.getSimpleName).mkString(",")
                 val grades = unorderedGrades.map(_.grade).toList.sorted.mkString(",")
                 val usedSeats = unsortedStudentIds.size
                 val leftSeats = maxSeats - usedSeats
                 val workshopMetric = metricWorkshop(workshops)(workshopId, usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
-                  val (studentName, _, _) = studentsNameSelectedTopics(studentId)
+                  val (studentName, _, _, _) = studentsNameSelectedTopics(studentId)
                   s"${studentId.id}, $studentName"
                 }
                 writer.writeRow(List[Any](
@@ -76,6 +77,7 @@ object OutputCsvConversion {
                   category,
                   preassigned,
                   onlyVoluntary,
+                  sexes,
                   grades,
                   minSeats,
                   maxSeats,
@@ -93,7 +95,7 @@ object OutputCsvConversion {
         (workshopAssignments: WorkshopAssignments) => {
           val _ = Using(CSVWriter.open(studentAssignmentsCsvFile)(csvFormat(config))) { writer =>
             writer.writeRow(List(
-              "StudentId", "StudentName", "Grade", "Metric",
+              "StudentId", "StudentName", "Sex", "Grade", "Metric",
               "First", "OneOfFirstTwo", "OneOfFirstThree", "bothFirstTwo",
               "TS1Prio", "TS2Prio", "TS3Prio",
               "TopicId1", "WorkshopId1", "TopicName1", "Category1", "Preassigned1", "OnlyVoluntary1",
@@ -104,9 +106,9 @@ object OutputCsvConversion {
               .toList
               .sortBy { case (StudentId(id), _) => id }
               .foreach { case (studentId, assignedWorkshopIds) =>
-                val (studentName, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
+                val (studentName, sex, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
                 val metric = metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
-                val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _, _) => topicId }
+                val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _, _, _) => topicId }
                 val first = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
                   assignedTopicIds.contains(topicId) && prio == 1
                 }
@@ -123,7 +125,7 @@ object OutputCsvConversion {
                     assignedTopicIds.contains(topicId) && prio == 2
                   })
                 val assignedWorkshopsWithPrios = assignedWorkshopIds.map { workshopId =>
-                  val (topicId, timeSlot, _, _, _) = workshops(workshopId)
+                  val (topicId, timeSlot, _, _, _, _) = workshops(workshopId)
                   val (topicName, category, preassigned, onlyVoluntary) = topics(topicId)
                   val selectionPriority = selectedTopics.get(topicId) match {
                     case Some(selectionPriority) => selectionPriority
@@ -138,6 +140,7 @@ object OutputCsvConversion {
                 writer.writeRow(List[Any](
                   studentId.id,
                   studentName,
+                  sex,
                   grade.grade,
                   metric.m,
                   first,

@@ -34,10 +34,10 @@ package object model {
   type SelectedTopics = BiMap[TopicId, SelectionPriority]
 
   /** The students' grade and workshop topic selections. */
-  type StudentsSelectedTopics = Map[StudentId, (Grade, SelectedTopics)]
+  type StudentsSelectedTopics = Map[StudentId, (Sex, Grade, SelectedTopics)]
 
-  /** The students' name and grade and workshop topic selections. */
-  type StudentsNameSelectedTopics = Map[StudentId, (String, Grade, SelectedTopics)]
+  /** The students' name, sex and grade, and workshop topic selections. */
+  type StudentsNameSelectedTopics = Map[StudentId, (String, Sex, Grade, SelectedTopics)]
 
   /**
    * All the concrete workshops.
@@ -48,7 +48,7 @@ package object model {
    * However, as we extend the workshops with other attributes relevant to the distribution algorithms, this would break
    * the nature of a BiMap, so it is not used. Instead, this property of the map can be checked via verification.
    */
-  type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Set[Grade], Seats, Seats)]
+  type Workshops = Map[WorkshopId, (TopicId, TimeSlot, Set[Sex], Set[Grade], Seats, Seats)]
 
   /** The assignments of students to a workshop. */
   type WorkshopAssignments = Map[WorkshopId, Set[StudentId]]
@@ -84,7 +84,7 @@ package object model {
   type InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = Long => StoppableDistributionAlgorithmSavingIntermediateStates
 
   def studentsSelectedTopicsFrom(studentsNameSelectedTopics: StudentsNameSelectedTopics): StudentsSelectedTopics =
-    studentsNameSelectedTopics.view.mapValues { case (_, grade, selectedTopics) => (grade, selectedTopics) }.toMap
+    studentsNameSelectedTopics.view.mapValues { case (_, sex, grade, selectedTopics) => (sex, grade, selectedTopics) }.toMap
 
   def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
     workshopAssignments

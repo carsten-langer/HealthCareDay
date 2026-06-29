@@ -34,12 +34,12 @@ object Metric extends LazyLogging {
       .toList
       .sortBy { case (StudentId(id), _) => id }
       .map { case (studentId, assignedWorkshopIds) =>
-        val (_, selectedTopics) = studentsSelectedTopics(studentId)
+        val (_, _, selectedTopics) = studentsSelectedTopics(studentId)
         metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
       }
 
   def metricStudent(topics: Topics, workshops: Workshops)(studentId: StudentId, assignedWorkshopIds: Set[WorkshopId], selectedTopics: SelectedTopics): Metric = {
-    val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _, _) => topicId } // .toList is redundant to business logic
+    val assignedTopicIds = assignedWorkshopIds.map(workshops).toList.map { case (topicId, _, _, _, _, _) => topicId } // .toList is redundant to business logic
     val assignedCategories = assignedTopicIds.map(topics).map { case (_, category, _, _) => category }
     val metricCategories = metricFromCategories(assignedCategories)
     val metricSelectedTopics =
@@ -112,7 +112,7 @@ object Metric extends LazyLogging {
     })
 
   def metricWorkshop(workshops: Workshops)(workshopId: WorkshopId, filledSeats: Int): Metric = {
-    val (_, _, _, Seats(minSeats), _) = workshops(workshopId)
+    val (_, _, _, _, Seats(minSeats), _) = workshops(workshopId)
     if (filledSeats < minSeats) malusMinSeatsNotReached
     else if (filledSeats > 0 && filledSeats < 6) malusMetricSparseWorkshop
     else neutralMetric

@@ -30,6 +30,7 @@ package object algorithms {
       workshopId -> (
         TopicId(workshopId.id / timeSlots.size),
         timeSlots(workshopId.id % timeSlots.size),
+        sexes,
         grades,
         zeroSeats,
         maxSeats,

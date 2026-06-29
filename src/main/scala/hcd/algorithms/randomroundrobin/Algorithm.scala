@@ -39,7 +39,7 @@ object Algorithm extends StrictLogging {
       // algorithm, so that re-ordering it per round with different random seed is guaranteed to give reproducible
       // results.
       val baseWorkshops = workshops.toList.map {
-        case (workshopId, (topicId, timeSlot, grades, minSeats, maxSeats)) => Workshop(workshopId, topicId, timeSlot, grades, minSeats, maxSeats)
+        case (workshopId, (topicId, timeSlot, sexes, grades, minSeats, maxSeats)) => Workshop(workshopId, topicId, timeSlot, sexes, grades, minSeats, maxSeats)
       }
       val baseOrderedWorkshops = baseWorkshops.sortBy(_.workshopId.id)
 
@@ -48,13 +48,14 @@ object Algorithm extends StrictLogging {
       // to give reproducible results. Each student has the topic selections represented as a list ordered by the
       // selection priority. The initial ordering between students is on the student id.
       val baseStudentsWithOrderedSelections = studentsSelectedTopics.toList.map {
-        case (studentId, (grade, selectedTopics)) =>
+        case (studentId, (sex, grade, selectedTopics)) =>
           val topicSelections = selectedTopics.toList.map(_.swap).map(TopicSelection.tupled)
           val orderedTopicSelections = topicSelections.sortBy(_.selectionPriority.prio)
           Student(
             algoPrio = 1,
             sortingOrder = studentId.id,
             studentId = studentId,
+            sex = sex,
             grade = grade,
             orderedTopicSelections = orderedTopicSelections,
             unassignedTimeSlots = model.allTimeSlots,
@@ -173,7 +174,7 @@ object Algorithm extends StrictLogging {
                              )
       : Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] = {
         val possibleWorkshops = workshops.flatMap {
-          case Workshop(workshopId, topicId, timeSlot, grades, minSeats, maxSeats) =>
+          case Workshop(workshopId, topicId, timeSlot, _, grades, minSeats, maxSeats) =>
             val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
             if (
               maybeTopicSelection.forall(_.topicId == topicId)
@@ -219,7 +220,7 @@ object Algorithm extends StrictLogging {
           case Nil =>
             logger.debug("Successful end of recursion.")
             (accWorkshopAssignments, accUndistributableStudents)
-          case ::(headStudent@Student(algoPrio, _, studentId, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
+          case ::(headStudent@Student(algoPrio, _, studentId, _, _, orderedTopicSelections, unassignedTimeSlots, assignedTopics), nextStudents) =>
             findWorkshopId(headStudent, accWorkshopAssignments) match {
               case None =>
                 // skip this student as no workshops could be found now, the student will get assigned workshops from next round.
@@ -366,7 +367,7 @@ object Algorithm extends StrictLogging {
 
   // Ordering the Workshops is necessary for the unit tests to know the expected result.
   // It is easier if we have our own data type.
-  private final case class Workshop(workshopId: WorkshopId, topicId: TopicId, timeSlot: TimeSlot, grades: Set[Grade], minSeats: Seats, maxSeats: Seats)
+  private final case class Workshop(workshopId: WorkshopId, topicId: TopicId, timeSlot: TimeSlot, sexes: Set[Sex], grades: Set[Grade], minSeats: Seats, maxSeats: Seats)
 
   // Ordering the SelectedTopics per student is necessary for the unit tests to know the expected result.
   // It is easier if we have our own data type. Ordering makes most sense by selection priority;
@@ -377,6 +378,7 @@ object Algorithm extends StrictLogging {
                                     algoPrio: Int,
                                     sortingOrder: Int,
                                     studentId: StudentId,
+                                    sex: Sex,
                                     grade: Grade,
                                     orderedTopicSelections: List[TopicSelection],
                                     unassignedTimeSlots: Set[TimeSlot],

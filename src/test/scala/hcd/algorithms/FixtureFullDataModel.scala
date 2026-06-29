@@ -24,6 +24,6 @@ trait FixtureFullDataModel extends FixtureWorkshops {
   // generate random workshop selections
   Random.setSeed(0L) // fix randomness during development
   lazy val studentsSelectedTopics: StudentsSelectedTopics = studentIds.map(
-    _ -> (grade, BiMap.from(Random.shuffle(topics.keySet.toSeq).zip(selectionPriorities)))
+    _ -> (sex, grade, BiMap.from(Random.shuffle(topics.keySet.toSeq).zip(selectionPriorities)))
   ).toMap
 }

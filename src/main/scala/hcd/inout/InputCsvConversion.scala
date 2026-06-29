@@ -28,6 +28,12 @@ object InputCsvConversion extends StrictLogging {
       case _ => true
     }
 
+    def toSexes(sexStr: String): Set[Sex] = sexStr.trim match {
+      case "weiblich" => Set(Female)
+      case "männlich" => Set(Male)
+      case _ => Set(Divers, Female, Male)
+    }
+
     def maybeGrades(grades: String): Option[Set[Grade]] = {
       val grades1: Set[String] = grades.trim.split(',').toSet.filterNot(_.isEmpty) // deal with trailing ','
       val grades2: Set[Grade] = grades1.map(to(Grade))
@@ -47,12 +53,14 @@ object InputCsvConversion extends StrictLogging {
       seats2.map(Seats)
     }
 
-    def maybeWorkshop(topicId: TopicId, timeSlot: TimeSlot, gradesStr: String, minSeatsStr: String, maxSeatsStr: String): Option[(TopicId, TimeSlot, Set[Grade], Seats, Seats)] =
+    def maybeWorkshop(topicId: TopicId, timeSlot: TimeSlot, sexesStr: String, gradesStr: String, minSeatsStr: String, maxSeatsStr: String): Option[(TopicId, TimeSlot, Set[Sex], Set[Grade], Seats, Seats)] = {
+      val sexes = toSexes(sexesStr)
       for {
         grades <- maybeGrades(gradesStr)
         minSeats <- maybeMinSeats(minSeatsStr)
         maxSeats <- maybeMaxSeats(maxSeatsStr)
-      } yield (topicId, timeSlot, grades, minSeats, maxSeats)
+      } yield (topicId, timeSlot, sexes, grades, minSeats, maxSeats)
+    }
 
     Using(CSVReader.open(config.wFile)(csvFormat)) { reader =>
       val topicsWorkshops = reader
@@ -64,26 +72,29 @@ object InputCsvConversion extends StrictLogging {
           val category = toCategory(columns(config.wColCategory - 1))
           val preassigned = toFlag(columns(config.wColPreassignedTopic - 1))
           val onlyVoluntary = toFlag(columns(config.wColOnlyVoluntaryTopic - 1))
+          val sexes1 = columns(config.wColSexes1 - 1)
           val grades1 = columns(config.wColGrades1 - 1)
           val minSeats1 = columns(config.wColMinSeats1 - 1)
           val maxSeats1 = columns(config.wColMaxSeats1 - 1)
+          val sexes2 = columns(config.wColSexes2 - 1)
           val grades2 = columns(config.wColGrades2 - 1)
           val minSeats2 = columns(config.wColMinSeats2 - 1)
           val maxSeats2 = columns(config.wColMaxSeats2 - 1)
+          val sexes3 = columns(config.wColSexes3 - 1)
           val grades3 = columns(config.wColGrades3 - 1)
           val minSeats3 = columns(config.wColMinSeats3 - 1)
           val maxSeats3 = columns(config.wColMaxSeats3 - 1)
-          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, grades1, minSeats1, maxSeats1)
-          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, grades2, minSeats2, maxSeats2)
-          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, grades3, minSeats3, maxSeats3)
+          val ws1 = maybeWorkshop(topicId, FirstTimeSlot, sexes1, grades1, minSeats1, maxSeats1)
+          val ws2 = maybeWorkshop(topicId, SecondTimeSlot, sexes2, grades2, minSeats2, maxSeats2)
+          val ws3 = maybeWorkshop(topicId, ThirdTimeSlot, sexes3, grades3, minSeats3, maxSeats3)
 
-          logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, g1=$grades1, mins1=$minSeats1, maxs1=$maxSeats1, g2=$grades2, mins2=$minSeats2, maxs2=$maxSeats2, g3=$grades3, mins3=$minSeats3, maxs3=$maxSeats3")
+          logger.debug(s"$topicId, $category, $preassigned, $onlyVoluntary, $topicName, s1=$sexes1, g1=$grades1, mins1=$minSeats1, maxs1=$maxSeats1, s2=$sexes2, g2=$grades2, mins2=$minSeats2, maxs2=$maxSeats2, s3=$sexes3, g3=$grades3, mins3=$minSeats3, maxs3=$maxSeats3")
           logger.trace(s"$ws1, $ws2, $ws3")
 
           val workshops = Seq(ws1, ws2, ws3)
             .zipWithIndex
             .collect {
-              case (Some(ws@(topicId, _, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
+              case (Some(ws@(topicId, _, _, _, _, _)), i) => (WorkshopId(topicId.id * 3 - 2 + i), ws)
             }
           ((topicId, (topicName, category, preassigned, onlyVoluntary)), workshops)
         }
@@ -100,6 +111,12 @@ object InputCsvConversion extends StrictLogging {
       override val delimiter: Char = config.sDelimiter
     }
 
+    def toSex(sexStr: String): Sex = sexStr.trim match {
+      case "w" => Female
+      case "m" => Male
+      case _ => Divers
+    }
+
     Using(CSVReader.open(config.sFile)(csvFormat)) { reader =>
       val unselectedTopicId = TopicId(Int.MinValue)
       val allStudentsSelectedTopics = reader
@@ -108,6 +125,7 @@ object InputCsvConversion extends StrictLogging {
         .map { columns =>
           val studentId = to(StudentId)(columns(config.sColStudentId - 1))
           val studentName = columns(config.sColStudentName - 1)
+          val sex = toSex(columns(config.sColSex - 1))
           val grade = to(Grade)(columns(config.sColGrade - 1))
           // scan the selected topics from least to highest priority, so that in case a student has selected a topic
           // several times, it is inserted into the BiMap with the best priority
@@ -118,13 +136,13 @@ object InputCsvConversion extends StrictLogging {
               topicId -> selectionPriority
             })
           logger.debug(s"$studentId, $studentName, $grade, $selectedTopics")
-          studentId -> (studentName, grade, selectedTopics)
+          studentId -> (studentName, sex, grade, selectedTopics)
         }.toMap
       val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
-        case (studentId, (studentName, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
+        case (studentId, (studentName, sex, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
           logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
-          (studentId, (studentName, grade, remainingTopics))
+          (studentId, (studentName, sex, grade, remainingTopics))
         case valid => valid
       }
       studentsNameSelectedTopics
