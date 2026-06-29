@@ -174,12 +174,13 @@ object Algorithm extends StrictLogging {
                              )
       : Option[Holder[(WorkshopId, TopicId, Option[SelectionPriority], TimeSlot)]] = {
         val possibleWorkshops = workshops.flatMap {
-          case Workshop(workshopId, topicId, timeSlot, _, grades, minSeats, maxSeats) =>
+          case Workshop(workshopId, topicId, timeSlot, sexes, grades, minSeats, maxSeats) =>
             val filledSeats = workshopAssignments.getOrElse(workshopId, Set.empty).size
             if (
               maybeTopicSelection.forall(_.topicId == topicId)
                 && !student.assignedTopics.contains(topicId)
                 && student.unassignedTimeSlots.contains(timeSlot)
+                && sexes.contains(student.sex)
                 && grades.contains(student.grade)
                 && filledSeats < maxSeats.n
                 && isAssignable(student.assignedTopics + topicId)
