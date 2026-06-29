@@ -126,6 +126,7 @@ object InputCsvConversion extends StrictLogging {
           val studentId = to(StudentId)(columns(config.sColStudentId - 1))
           val studentName = columns(config.sColStudentName - 1)
           val sex = toSex(columns(config.sColSex - 1))
+          val className = columns(config.sColClassName - 1)
           val grade = to(Grade)(columns(config.sColGrade - 1))
           // scan the selected topics from least to highest priority, so that in case a student has selected a topic
           // several times, it is inserted into the BiMap with the best priority
@@ -136,13 +137,13 @@ object InputCsvConversion extends StrictLogging {
               topicId -> selectionPriority
             })
           logger.debug(s"$studentId, $studentName, $grade, $selectedTopics")
-          studentId -> (studentName, sex, grade, selectedTopics)
+          studentId -> (studentName, sex, className, grade, selectedTopics)
         }.toMap
       val studentsNameSelectedTopics = allStudentsSelectedTopics.map {
-        case (studentId, (studentName, sex, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
+        case (studentId, (studentName, sex, className, grade, selectedTopics)) if selectedTopics.keySet.contains(unselectedTopicId) =>
           val remainingTopics = selectedTopics.filterNot { case (topicId, _) => topicId == unselectedTopicId }
           logger.debug(s"Removing non-selected topics for student $studentId, remaining topics = $remainingTopics.")
-          (studentId, (studentName, sex, grade, remainingTopics))
+          (studentId, (studentName, sex, className, grade, remainingTopics))
         case valid => valid
       }
       studentsNameSelectedTopics

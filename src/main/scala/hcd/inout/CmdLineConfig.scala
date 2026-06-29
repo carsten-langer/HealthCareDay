@@ -43,6 +43,7 @@ case class CmdLineConfig(
                           sColStudentId: Int,
                           sColStudentName: Int,
                           sColSex: Int,
+                          sColClassName: Int,
                           sColGrade: Int,
                           sColFirstSelection: Int,
 
@@ -89,8 +90,9 @@ object CmdLineConfig {
     sColStudentId = 1,
     sColStudentName = 2,
     sColSex = 3,
-    sColGrade = 4,
-    sColFirstSelection = 13,
+    sColClassName = 4,
+    sColGrade = 5,
+    sColFirstSelection = 14,
 
     // workshop assignments CSV file
     oDelimiter = ';',

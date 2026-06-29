@@ -5,20 +5,29 @@ import hcd.model.Metric._
 import hcd.model.SelectionPriority.{UnselectedPrio, UnwantedSelectionPrio}
 import hcd.model._
 
-import java.io.File
+import java.io.{File, PrintWriter}
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.util.Using
 
-object OutputCsvConversion {
+object OutputConversion {
 
+  val studentsJsonFile = new File("Students.json")
+  val workshopsJsonFile = new File("Workshops.json")
+  val workshopAssignmentsJsonFile = new File("WorkshopAssignments.json")
   val metricCsvFile = new File("Metric.csv")
   val workshopAssignmentsCsvFile = new File("WorkshopAssignments.csv")
   val studentAssignmentsCsvFile = new File("StudentAssignments.csv")
+
+  def writeNonDistributionJsonFiles(topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics): Unit = {
+    writeStudentsJson(studentsNameSelectedTopics)
+    writeWorkshopsJson(topics, workshops)
+  }
 
   def initWriteDistribution(config: CmdLineConfig): Unit = {
     Using(CSVWriter.open(metricCsvFile)(csvFormat(config))) { writer =>
       writer.writeRow(List("GlobalMetric", "MetricWorkshops", "MetricStudent1", "..."))
     }
-    val otherFiles = Seq(workshopAssignmentsCsvFile, studentAssignmentsCsvFile)
+    val otherFiles = Seq(workshopAssignmentsCsvFile, studentAssignmentsCsvFile, workshopAssignmentsJsonFile)
     otherFiles.foreach(_.delete())
     otherFiles.foreach(_.createNewFile())
   }
@@ -28,9 +37,34 @@ object OutputCsvConversion {
   def writeDistribution: WriteDistribution =
     (config: CmdLineConfig) =>
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
-        (workshopAssignments: WorkshopAssignments) =>
-          Seq(appendMetric, writeWorkshopAssignments, writeStudentAssignments)
+        (workshopAssignments: WorkshopAssignments) => {
+          Seq(appendMetric, writeWorkshopAssignmentsCsv, writeStudentAssignmentsCsv)
             .foreach(f => f(config)(topics, workshops, studentsNameSelectedTopics)(workshopAssignments))
+          writeWorkshopAssignmentsJson(workshopAssignments)
+        }
+
+  private def writeStudentsJson(studentsNameSelectedTopics: StudentsNameSelectedTopics): Unit = {
+    val _ = Using(new PrintWriter(studentsJsonFile, UTF_8)) { writer =>
+      val studentJsons = studentsNameSelectedTopics.toList
+        .sortBy { case (studentId, _) => studentId.id }
+        .map { case (StudentId(id), (studentName, _, className, _, _)) =>
+          s"""{"studentId": $id, "name": "$studentName", "studentClass": "$className"}"""
+        }
+      writer.write(studentJsons.mkString("[\n", ",\n", "\n]"))
+    }
+  }
+
+  private def writeWorkshopsJson(topics: Topics, workshops: Workshops): Unit = {
+    val _ = Using(new PrintWriter(workshopsJsonFile, UTF_8)) { writer =>
+      val workshopJsons = workshops.toList
+        .sortBy { case (WorkshopId(id), _) => id }
+        .map { case (WorkshopId(id), (topicId, timeSlot, _, _, _, Seats(maxSeats))) =>
+          val (topicName, _, _, _) = topics(topicId)
+          s"""{"workshopId": $id, "name": "$topicName", "timeSlotId": ${timeSlot.ts}, "seats": $maxSeats}"""
+        }
+      writer.write(workshopJsons.mkString("[\n", ",\n", "\n]"))
+    }
+  }
 
   private def appendMetric: WriteDistribution =
     (config: CmdLineConfig) =>
@@ -45,7 +79,7 @@ object OutputCsvConversion {
           }
         }
 
-  private def writeWorkshopAssignments: WriteDistribution =
+  private def writeWorkshopAssignmentsCsv: WriteDistribution =
     (config: CmdLineConfig) =>
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
@@ -66,7 +100,7 @@ object OutputCsvConversion {
                 val workshopMetric = metricWorkshop(workshops)(workshopId, usedSeats).m
                 val studentIds = unsortedStudentIds.toList.sortBy(_.id)
                 val students = studentIds.map { studentId =>
-                  val (studentName, _, _, _) = studentsNameSelectedTopics(studentId)
+                  val (studentName, _, _, _, _) = studentsNameSelectedTopics(studentId)
                   s"${studentId.id}, $studentName"
                 }
                 writer.writeRow(List[Any](
@@ -89,7 +123,7 @@ object OutputCsvConversion {
           }
         }
 
-  private def writeStudentAssignments: WriteDistribution =
+  private def writeStudentAssignmentsCsv: WriteDistribution =
     (config: CmdLineConfig) =>
       (topics: Topics, workshops: Workshops, studentsNameSelectedTopics: StudentsNameSelectedTopics) =>
         (workshopAssignments: WorkshopAssignments) => {
@@ -106,7 +140,7 @@ object OutputCsvConversion {
               .toList
               .sortBy { case (StudentId(id), _) => id }
               .foreach { case (studentId, assignedWorkshopIds) =>
-                val (studentName, sex, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
+                val (studentName, sex, _, grade, selectedTopics) = studentsNameSelectedTopics(studentId)
                 val metric = metricStudent(topics, workshops)(studentId, assignedWorkshopIds, selectedTopics)
                 val assignedTopicIds = assignedWorkshopIds.map(workshops).map { case (topicId, _, _, _, _, _) => topicId }
                 val first = selectedTopics.isEmpty || selectedTopics.exists { case (topicId, SelectionPriority(prio)) =>
@@ -175,5 +209,18 @@ object OutputCsvConversion {
     new DefaultCSVFormat {
       override val delimiter: Char = config.oDelimiter
     }
+
+  private def writeWorkshopAssignmentsJson(workshopAssignments: WorkshopAssignments): Unit = {
+    val _ = Using(new PrintWriter(workshopAssignmentsJsonFile, UTF_8)) { writer =>
+      val workshopAssignmentJsons = workshopAssignments.toList
+        .sortBy { case (WorkshopId(id), _) => id }
+        .flatMap { case (WorkshopId(wsId), studentIds) =>
+          studentIds.toList
+            .sortBy(_.id)
+            .map(studentId => s"""{"workshopId": $wsId, "studentId": ${studentId.id}}""")
+        }
+      writer.write(workshopAssignmentJsons.mkString("[\n", ",\n", "\n]"))
+    }
+  }
 
 }

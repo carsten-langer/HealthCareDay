@@ -1,7 +1,7 @@
 package hcd
 
 import hcd.inout.InputCsvConversion.{readHcdStudentTopicSelection, readHcdWorkshopPlanning}
-import hcd.inout.OutputCsvConversion._
+import hcd.inout.OutputConversion._
 import hcd.inout.{CmdLineConfig, CmdLineParser}
 import hcd.model.Verification.withVerification
 import hcd.model.{ShallStop, studentsSelectedTopicsFrom}
@@ -15,6 +15,9 @@ object Main {
           (topics, workshops) <- readHcdWorkshopPlanning(config)
           studentsNameSelectedTopics <- readHcdStudentTopicSelection(config)
         } yield {
+          writeNonDistributionJsonFiles(topics, workshops, studentsNameSelectedTopics)
+          println(s"Students JSON written to file $studentsJsonFile")
+          println(s"Workshops JSON written to file $workshopsJsonFile")
           initWriteDistribution(config)
           val saveIntermediateState = writeDistribution(config)(topics, workshops, studentsNameSelectedTopics)
           val startNanoTime = System.nanoTime()
@@ -34,8 +37,9 @@ object Main {
               println("Distribution of students to workshops found!")
               saveIntermediateState(workshopAssignments)
               println(s"Metric written to file $metricCsvFile")
-              println(s"Workshop assignments written to file $workshopAssignmentsCsvFile")
-              println(s"Student assignments written to file $studentAssignmentsCsvFile")
+              println(s"Workshop assignments CSV written to file $workshopAssignmentsCsvFile")
+              println(s"Student assignments CSV written to file $studentAssignmentsCsvFile")
+              println(s"WorkshopAssignments JSON written to file $workshopAssignmentsJsonFile")
           }
         }
         unitT.getOrElse(unitT.failed.foreach { t =>

@@ -154,6 +154,10 @@ object CmdLineParser {
         .valueName("<int>")
         .action((x, c) => c.copy(sColSex = x))
         .text(s"The column of the student's sex (1-based, A = 1, B = 2, ...), default: ${d.sColSex}"),
+      opt[Int]("sColClassName")
+        .valueName("<int>")
+        .action((x, c) => c.copy(sColClassName = x))
+        .text(s"The column of the student's class name (1-based, A = 1, B = 2, ...), default: ${d.sColClassName}"),
       opt[Int]("sColGrade")
         .valueName("<int>")
         .action((x, c) => c.copy(sColGrade = x))

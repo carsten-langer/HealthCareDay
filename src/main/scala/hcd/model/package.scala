@@ -36,8 +36,8 @@ package object model {
   /** The students' grade and workshop topic selections. */
   type StudentsSelectedTopics = Map[StudentId, (Sex, Grade, SelectedTopics)]
 
-  /** The students' name, sex and grade, and workshop topic selections. */
-  type StudentsNameSelectedTopics = Map[StudentId, (String, Sex, Grade, SelectedTopics)]
+  /** The students' name, sex, class name and grade, and workshop topic selections. */
+  type StudentsNameSelectedTopics = Map[StudentId, (String, Sex, String, Grade, SelectedTopics)]
 
   /**
    * All the concrete workshops.
@@ -84,7 +84,7 @@ package object model {
   type InitiallySeededStoppableDistributionAlgorithmSavingIntermediateStates = Long => StoppableDistributionAlgorithmSavingIntermediateStates
 
   def studentsSelectedTopicsFrom(studentsNameSelectedTopics: StudentsNameSelectedTopics): StudentsSelectedTopics =
-    studentsNameSelectedTopics.view.mapValues { case (_, sex, grade, selectedTopics) => (sex, grade, selectedTopics) }.toMap
+    studentsNameSelectedTopics.view.mapValues { case (_, sex, _, grade, selectedTopics) => (sex, grade, selectedTopics) }.toMap
 
   def studentAssignmentsFrom(workshopAssignments: WorkshopAssignments): StudentAssignments =
     workshopAssignments
